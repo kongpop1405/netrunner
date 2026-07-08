@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="th" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan — Multi-Buy / Double Coins / Heart fix</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
+  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tok{background:#fef08a;color:#713f12;padding:0 .25rem;border-radius:.25rem;font-weight:600}
+  .dark .tok{background:#713f12;color:#fef9c3}
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <div class="text-xs font-semibold tracking-widest text-rose-600 dark:text-rose-400 uppercase">Plan Spec · Bugfix</div>
+      <h1 class="text-3xl font-bold mt-1">Multi-Buy หยุดถูกจุด · Double Coins · หัวใจหมด</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun config · <code>config/cookierun.json</code> เท่านั้น (ไม่แตะ engine)</p>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-4 gap-3 mb-10">
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">3 bug</div>
+      <div class="text-xs text-slate-500 mt-1">buy ซ้ำ · กด Stop · หัวใจ</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">1 ไฟล์</div>
+      <div class="text-xs text-slate-500 mt-1">cookierun.json</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">2 PNG</div>
+      <div class="text-xs text-slate-500 mt-1">user แคปเพิ่ม</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">0 gem</div>
+      <div class="text-xs text-slate-500 mt-1">ห้ามซื้อหัวใจ</div>
+    </div>
+  </div>
+
+  <!-- Core rule -->
+  <section class="mb-10">
+    <div class="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-5 text-sm leading-relaxed">
+      <b class="text-amber-700 dark:text-amber-300">กฏเกมที่ทำให้ทุกอย่างพลิก:</b>
+      กด <b>Multi-Buy ครั้งเดียว</b> → <b>เกมจะสุ่มบูสต์ให้เองเรื่อย ๆ</b> (มี Stop + animation) จนได้บูสต์ที่ติ๊กถูก = <b>Double Coins</b> แล้วเกม<b>หยุดเอง</b>.
+      บอทมีหน้าที่แค่ <b>รอ</b> ไม่ใช่วน buy ซ้ำ และ<b>ห้ามแตะอะไรระหว่าง roll</b> (แตะ = ไปโดน Stop = ตัดการสุ่มกลางคัน).
+    </div>
+  </section>
+
+  <!-- Bugs -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">B</span>อาการ &amp; สาเหตุ</h2>
+    <div class="space-y-4">
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-rose-600 dark:text-rose-400">#1 ซื้อบูสต์ซ้ำแม้ได้ Double Coins แล้ว</div>
+        <p class="mt-1 leading-relaxed"><code>picker</code> รอแค่ <b>3500ms</b> แล้วไป <code>check_boost_result → start_run</code>. แต่เกมยังสุ่มเองไม่จบ → banner ยังไม่ใช่ Double Coins → <code>start_run</code> <b>on_absent → boost_shop</b> → <b>เปิด picker กด Multi-Buy รอบใหม่</b> = buy ซ้ำทั้งที่เกมกำลังสุ่มให้อยู่แล้ว.</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-rose-600 dark:text-rose-400">#2 กด Stop กลางคัน multi-buy</div>
+        <p class="mt-1 leading-relaxed">เพราะ #1 บอทกลับเข้ามากด/แตะ ระหว่าง roll animation ยังเล่นอยู่ → tap ไปโดนปุ่ม <b>Stop</b> → ตัดการสุ่มอัตโนมัติของเกมก่อนได้ Double Coins.</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-rose-600 dark:text-rose-400">#3 หัวใจหมดแล้วยังพยายาม Play</div>
+        <p class="mt-1 leading-relaxed">ไม่มี state ไหน<b>เช็คหัวใจ</b>เลย. หัวใจ = 0 → กด Play ไม่ได้/เด้ง dialog → loop รวน. ต้องรอจนหัวใจ &ge; 1 ค่อยวิ่ง.
+        <span class="tok">RULE</span> <b>ห้ามซื้อหัวใจด้วย gem เด็ดขาด</b> · หัวใจ 1 ดวง = วิ่งได้.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fix flow -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">F</span>Flow ใหม่ (แก้แล้ว)</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto">
+<pre><code>boost_shop → tap gift box → tap Multi → <b>picker</b>
+  <b>picker</b>: tap Multi-Buy <b>ครั้งเดียว</b>
+            → goto <b>wait_roll</b>            (state ใหม่: เฝ้า roll)
+  <b>wait_roll</b>: detect = <span class="tok">multibuy_marker / stop</span> (roll กำลังเล่น)
+            on_match  → ไม่แตะอะไร, wait, self-loop  (รอเกมสุ่มเอง)
+            on_absent → roll จบแล้ว → goto <b>start_run</b>
+  <b>start_run</b>: detect = doublecoins_banner
+            on_match  → goto <b>check_heart</b>       (ได้ Double Coins)
+            on_absent → goto <b>check_heart</b>       (roll จบแต่ไม่ใช่ DC → play ด้วยของที่ได้; ไม่ buy ซ้ำ)
+  <b>check_heart</b> (state ใหม่): detect = <span class="tok">heart_empty</span>
+            on_match  → หัวใจ=0 → wait, self-loop      (รอหัวใจ เติมเอง; ห้าม gem)
+            on_absent → หัวใจ&ge;1 → tap Play → goto running</code></pre>
+    </div>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+      หัวใจของการแก้: <b>ตัด loop <code>start_run → boost_shop</code> ที่ re-roll ทิ้ง</b> (เกม roll เอง ไม่ใช่บอท) และ
+      <b>เพิ่ม <code>wait_roll</code></b> ให้บอทนิ่งจนเกมสุ่มจบ (แก้ทั้ง #1 buy ซ้ำ + #2 กด Stop ในทีเดียว). <code>check_heart</code> = #3.
+    </p>
+  </section>
+
+  <!-- Build steps -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">S</span>ขั้นตอนแก้ (config-only)</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-3 leading-relaxed">
+      <div><b class="text-emerald-600 dark:text-emerald-400">1.</b> <b>picker</b> — เปลี่ยนปลายทางหลัง tap Multi-Buy จาก fixed <code>wait 3500 → check_boost_result</code> เป็น <code>goto wait_roll</code> (ลด wait ตายตัวลง, ให้ wait_roll คุมเวลาแทน).</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">2.</b> เพิ่ม state <b>wait_roll</b> — detect <code>multibuy_marker.png</code> (ปุ่ม/animation ตอน roll). on_match = <code>wait</code> + self-loop (ไม่มี tap). on_absent = <code>goto start_run</code>. <code>timeout_ms</code> เผื่อ roll ยาว (~30–40s หลายรอบ).</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">3.</b> <b>start_run</b> — เปลี่ยน on_absent จาก <code>goto boost_shop</code> (re-roll) เป็น <code>goto check_heart</code>. on_match ก็ไป <code>check_heart</code> (แทนที่จะ tap Play ตรง ๆ). <b>ลบ path re-buy ทิ้ง.</b></div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">4.</b> เพิ่ม state <b>check_heart</b> — detect <code>heart_empty.png</code> (แถวหัวใจสีเทา/ว่าง มุมขวาบน). on_match = <code>wait</code> + self-loop (รอหัวใจ; ไม่ทำอะไร). on_absent = tap Play <code>(1365,931)</code> → <code>wait 6000</code> → <code>goto running</code>.</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">5.</b> จุด Play อื่น (<code>force_play</code>, <code>play_home</code>) — เดินผ่าน <code>check_heart</code> ก่อน tap Play ด้วย เพื่อกันวิ่งตอนหัวใจหมดทุกทาง.</div>
+    </div>
+  </section>
+
+  <!-- Templates to capture -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 mr-2">T</span>Template PNG ที่ต้องแคปเพิ่ม</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-3 leading-relaxed">
+      <div><code>heart_empty.png</code> — <b>ต้องแคปตอนหัวใจหมดจริง</b> (มุมขวาบน แถวหัวใจ ~<code>x 1300–1490, y 40–70</code> เป็นรูปหัวใจโครงเทา/ว่าง). ครอปให้แคบ เฉพาะหัวใจดวงแรกที่ว่าง. <span class="text-rose-500">ยังไม่มีในโฟลเดอร์ — ต้องได้ก่อนถึงจะเทสต์ #3 ได้.</span></div>
+      <div><code>multibuy_marker.png</code> — <b>มีแล้ว</b> ✓ ใช้เป็น detect ของ <code>wait_roll</code> ได้ทันที (ถ้า marker นี้ยังอยู่บนจอ = roll ยังไม่จบ). ถ้าพบว่าปุ่ม Stop ต่างจากนี้ อาจแคป <code>stop_marker.png</code> เสริม.</div>
+    </div>
+  </section>
+
+  <!-- Risks -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 mr-2">R</span>ความเสี่ยง / ต้องยืนยัน</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2 leading-relaxed">
+      <div>• <b>wait_roll detect</b>: <code>multibuy_marker</code> อยู่บนจอตลอดช่วง roll จริงไหม? ถ้าปุ่มเปลี่ยนเป็น "Stop" ระหว่าง roll อาจต้อง detect ปุ่ม Stop แทน. → เทสต์ <code>--dry-run</code> ดู log ก่อน.</div>
+      <div>• <b>heart_empty</b> false-negative: หัวใจ "1 ดวง" ต้อง<b>ไม่</b> match template (เพราะ 1 ดวง = วิ่งได้). ครอปเฉพาะ state ว่างสุด (0 ดวง) ให้ชัด.</div>
+      <div>• <b>timeout_ms ของ wait_roll</b>: roll หลายรอบกินเวลานาน — ตั้งสั้นไปจะ bail กลางคัน. เริ่มที่ ~40000ms แล้วปรับ.</div>
+    </div>
+  </section>
+
+  <div class="text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-4">
+    แก้เฉพาะ <code>config/cookierun.json</code> · ไม่แตะ <code>src/</code> · รอ confirm ก่อน edit
+  </div>
+
+</div>
+</body>
+</html>

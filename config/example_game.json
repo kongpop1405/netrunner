@@ -1,0 +1,50 @@
+{
+  "_comment": "Sample stage-grind FSM. Replace template filenames with your own crops in templates/example_game/. Run with --dry-run first.",
+  "device": "127.0.0.1:5555",
+  "templates_dir": "templates/example_game",
+  "poll_ms": 800,
+  "match_threshold": 0.85,
+  "start_state": "home",
+  "states": {
+    "home": {
+      "detect": "home_marker.png",
+      "on_match": [
+        { "type": "tap_template", "template": "enter_stage.png" },
+        { "type": "wait", "ms": 1500 }
+      ],
+      "on_absent": { "goto": "unknown" },
+      "timeout_ms": 30000
+    },
+    "battle": {
+      "detect": "battle_marker.png",
+      "on_match": [
+        { "type": "wait", "ms": 3000 }
+      ],
+      "timeout_ms": 180000
+    },
+    "victory": {
+      "detect": "victory_marker.png",
+      "on_match": [
+        { "type": "tap_template", "template": "confirm.png" },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "home" }
+      ]
+    },
+    "defeat": {
+      "detect": "defeat_marker.png",
+      "on_match": [
+        { "type": "tap_template", "template": "confirm.png" },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "home" }
+      ]
+    },
+    "unknown": {
+      "detect": "home_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "home" }
+      ],
+      "on_absent": { "goto": "unknown" },
+      "timeout_ms": 60000
+    }
+  }
+}

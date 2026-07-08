@@ -1,0 +1,102 @@
+{
+  "_comment": "Cookie Run OvenBreak — auto Add Friends (Find tab). Entry steps automated: home -> tap the Friends icon (right panel) -> popup opens -> tap the Find tab. Loop: tap every green Request button visible (the 4 rows; each tap turns its button dark with a checkmark, no dialog) -> when no green button remains, tap Refresh for a fresh batch of 4 -> repeat. No natural end state — cap the run with --max-cycles (the bat computes it from the desired friend count). All coords verified live @1920x1080.",
+  "device": "127.0.0.1:5555",
+  "templates_dir": "templates/cookierun",
+  "poll_ms": 600,
+  "match_threshold": 0.85,
+  "start_state": "entry",
+  "states": {
+    "entry": {
+      "_note": "If we're sitting on home (Episode banner marker), tap the Friends icon (1203,465 — right panel, orange people glyph) to open the social popup, then make sure the Find tab is selected. If home isn't visible, assume the popup is already open and just verify the tab.",
+      "detect": "home_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 1203, "y": 465 },
+        { "type": "wait", "ms": 2000 },
+        { "type": "goto", "state": "open_find" }
+      ],
+      "on_absent": { "goto": "open_find" },
+      "timeout_ms": 10000
+    },
+    "open_find": {
+      "_note": "Refresh button (findtab_marker) is unique to the Find tab. Present -> go refresh FIRST (do_refresh) so every batch starts with 4 fresh all-green rows — this is what guarantees the fixed-coord walk never taps a dark already-sent button (a dark-button tap opens the row's 'Friend's Info' screen, seen live, NOT a no-op). Absent -> popup is on another tab -> tap the Find tab (851,117) and re-check; still absent after that -> maybe a Friend's Info screen is covering us -> close_info.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "do_refresh" }
+      ],
+      "on_absent": [
+        { "type": "tap_xy", "x": 851, "y": 117 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "check_find" }
+      ],
+      "timeout_ms": 15000
+    },
+    "check_find": {
+      "_note": "Second look after tapping the Find tab. Still no Refresh pill -> a 'Friend's Info' screen (opened by a stray tap on an already-requested row) is probably covering the popup -> tap its X (1640,107 — verified live) and loop back. The open_find <-> check_find ping-pong is bounded by --max-cycles.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "do_refresh" }
+      ],
+      "on_absent": [
+        { "type": "tap_xy", "x": 1640, "y": 107 },
+        { "type": "wait", "ms": 1200 },
+        { "type": "goto", "state": "open_find" }
+      ],
+      "timeout_ms": 15000
+    },
+    "req_row1": {
+      "_note": "Fixed-coordinate batch walk — each of the 4 rows gets EXACTLY ONE tap per batch, then Refresh. Why not tap_template scanning: every tap raises a center-screen toast (cream box, 'Friend request sent!' or 'This player's friend list is full!' — visually identical frames). A full player's button stays GREEN, so a template scanner would re-tap that same player forever (livelock). The fixed walk taps a full player once, moves on (skips them), and still requests the other 3 rows. Taps on a dark already-sent button are no-ops; a tap landing on a lingering toast just dismisses it. The 1800ms wait lets each toast fade before the next row's tap so it isn't swallowed. detect=findtab_marker (Refresh pill, y~190-265) stays visible above the toast zone (y~420-650), so it anchors every step even mid-toast.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 1330, "y": 367 },
+        { "type": "wait", "ms": 1800 },
+        { "type": "goto", "state": "req_row2" }
+      ],
+      "on_absent": { "goto": "open_find" },
+      "timeout_ms": 10000
+    },
+    "req_row2": {
+      "_note": "Row 2 (y529). See req_row1 for the batch-walk rationale.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 1330, "y": 529 },
+        { "type": "wait", "ms": 1800 },
+        { "type": "goto", "state": "req_row3" }
+      ],
+      "on_absent": { "goto": "open_find" },
+      "timeout_ms": 10000
+    },
+    "req_row3": {
+      "_note": "Row 3 (y691).",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 1330, "y": 691 },
+        { "type": "wait", "ms": 1800 },
+        { "type": "goto", "state": "req_row4" }
+      ],
+      "on_absent": { "goto": "open_find" },
+      "timeout_ms": 10000
+    },
+    "req_row4": {
+      "_note": "Row 4 (y853). Batch complete after this -> refresh for the next 4 candidates.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 1330, "y": 853 },
+        { "type": "wait", "ms": 1800 },
+        { "type": "goto", "state": "do_refresh" }
+      ],
+      "on_absent": { "goto": "open_find" },
+      "timeout_ms": 10000
+    },
+    "do_refresh": {
+      "_note": "Batch walked. Tap Refresh (538,226) for a fresh batch of 4, give the list time to reload, then walk again. Refresh also skips past any full-list player whose button stayed green. If the Refresh button isn't visible we're off-screen -> recover via open_find.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 538, "y": 226 },
+        { "type": "wait", "ms": 2500 },
+        { "type": "goto", "state": "req_row1" }
+      ],
+      "on_absent": { "goto": "open_find" },
+      "timeout_ms": 10000
+    }
+  }
+}

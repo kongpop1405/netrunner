@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan — LDPlayer Auto-Farm · Digivice</title>
+<script src="https://cdn.tailwindcss.com" integrity="sha384-Wqh1kJDBWZLPMLQVeg8QRV8kwgxXW8+8LmBgOZQwvdb6Iq0Bg9mmZ9lJ0bBv9uK" crossorigin="anonymous"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{
+  digi:{orange:'#ff7a1a',amber:'#ffb02e',blue:'#1e9bff',deep:'#0a1930',navy:'#0d233f',card:'#12233d',line:'#1d3a5f'}
+}}}}</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Noto+Sans+Thai:wght@400;600;700&display=swap');
+  body{font-family:'Noto Sans Thai',ui-sans-serif,system-ui,sans-serif}
+  h1,h2,.mono{font-family:'Orbitron','Noto Sans Thai',sans-serif;letter-spacing:.04em}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .num{width:1.9rem;height:1.9rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.5rem;font-weight:800;font-size:.8rem}
+  .glow{box-shadow:0 0 0 1px rgba(255,122,26,.25),0 0 24px -6px rgba(255,122,26,.35)}
+  .scan{background:linear-gradient(180deg,transparent,rgba(30,155,255,.05) 50%,transparent);background-size:100% 6px}
+  .egg{clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
+</style>
+</head>
+<body class="bg-digi-deep text-slate-200 antialiased scan">
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 bg-gradient-to-br from-digi-orange to-digi-amber egg glow grid place-items-center">
+        <span class="text-digi-deep font-black text-lg mono">D</span>
+      </div>
+      <div>
+        <div class="text-[11px] font-bold tracking-[.3em] text-digi-orange uppercase mono">Digivice · Plan Spec</div>
+        <h1 class="text-3xl font-extrabold mt-1 text-white">Auto-Farm Engine</h1>
+        <p class="text-sm text-digi-blue mt-1">CV + scripted · ADB · Python · config-driven</p>
+      </div>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-digi-line text-digi-blue hover:bg-digi-navy mono">◐ MODE</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-4 gap-3 mb-10">
+    <div class="rounded-xl bg-digi-card border border-digi-line p-4">
+      <div class="text-xl font-bold text-digi-orange mono">CV+SCRIPT</div>
+      <div class="text-[11px] text-slate-400 mt-1">no RL / no train</div>
+    </div>
+    <div class="rounded-xl bg-digi-card border border-digi-line p-4">
+      <div class="text-xl font-bold text-digi-blue mono">ADB</div>
+      <div class="text-[11px] text-slate-400 mt-1">screencap + tap</div>
+    </div>
+    <div class="rounded-xl bg-digi-card border border-digi-line p-4">
+      <div class="text-xl font-bold text-digi-amber mono">JSON FSM</div>
+      <div class="text-[11px] text-slate-400 mt-1">loop = config</div>
+    </div>
+    <div class="rounded-xl bg-digi-card border border-digi-line p-4">
+      <div class="text-xl font-bold text-white mono">AGNOSTIC</div>
+      <div class="text-[11px] text-slate-400 mt-1">plug per-game</div>
+    </div>
+  </div>
+
+  <!-- Goal -->
+  <section class="mb-10">
+    <h2 class="text-lg font-bold mb-3 text-white"><span class="num bg-digi-orange/20 text-digi-orange border border-digi-orange/40 mr-2">G</span>เป้าหมาย</h2>
+    <div class="rounded-xl bg-digi-card border border-digi-line p-5 text-sm leading-relaxed">
+      Engine กลาง auto-farm บน LDPlayer. วน loop:
+      <b class="text-digi-orange">capture</b> จอ (ADB screencap) →
+      <b class="text-digi-blue">perceive</b> รู้ state (OpenCV template match / OCR) →
+      <b class="text-digi-amber">act</b> ยิง tap/swipe (ADB input) ตาม FSM config.
+      เกม-agnostic — เปลี่ยนเกม = เปลี่ยนแค่ <code class="text-digi-orange">config JSON + template PNG</code>. RL <b>ยังไม่ทำ</b>.
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="mb-10">
+    <h2 class="text-lg font-bold mb-3 text-white"><span class="num bg-digi-blue/20 text-digi-blue border border-digi-blue/40 mr-2">A</span>สถาปัตยกรรม — 3 layer</h2>
+    <div class="rounded-xl bg-digi-card border border-digi-line p-5 text-sm space-y-3">
+      <div><b class="text-digi-orange mono">1 · CAPTURE</b> — <code>adb exec-out screencap -p</code> → PNG bytes → numpy/BGR. ห่อ device id, retry, timing.</div>
+      <div><b class="text-digi-blue mono">2 · PERCEIVE</b> — <code>cv2.matchTemplate</code> + optional OCR (tesseract). คืน state name + matched region.</div>
+      <div><b class="text-digi-amber mono">3 · ACT</b> — <code>adb shell input tap/swipe</code>. รับ region/coord จาก config, jitter+delay กัน pattern.</div>
+      <div class="pt-2 border-t border-digi-line"><b class="text-white mono">FSM RUNNER</b> — อ่าน config JSON: state = {detect, on_match, next}. วนจน stop/error.</div>
+    </div>
+  </section>
+
+  <!-- File tree -->
+  <section class="mb-10">
+    <h2 class="text-lg font-bold mb-3 text-white"><span class="num bg-digi-amber/20 text-digi-amber border border-digi-amber/40 mr-2">F</span>ไฟล์ที่จะสร้าง</h2>
+    <div class="rounded-xl bg-digi-navy border border-digi-line p-5 text-xs leading-6 text-slate-300">
+<pre><code>ldplayer-autofarm/
+├─ requirements.txt          opencv-python, numpy, pytesseract(optional)
+├─ README.md                 setup + วิธี add เกมใหม่
+├─ config/
+│  └─ example_game.json      FSM config ตัวอย่าง
+├─ templates/
+│  └─ example_game/          .png ของปุ่ม/state (แคปเอง)
+├─ src/
+│  ├─ __init__.py
+│  ├─ capture.py             ADB screencap → numpy
+│  ├─ perceive.py            template match + OCR → state
+│  ├─ act.py                 ADB tap/swipe + jitter
+│  ├─ fsm.py                 FSM runner อ่าน config
+│  ├─ device.py              ADB connect / list / resolution
+│  └─ config.py              load+validate JSON schema
+├─ tools/
+│  └─ snap.py                แคปจอปัจจุบัน → PNG (ช่วยทำ template)
+└─ main.py                   python main.py --config config/example_game.json</code></pre>
+    </div>
+  </section>
+
+  <!-- Config schema -->
+  <section class="mb-10">
+    <h2 class="text-lg font-bold mb-3 text-white"><span class="num bg-digi-orange/20 text-digi-orange border border-digi-orange/40 mr-2">C</span>Config schema (FSM)</h2>
+    <div class="rounded-xl bg-digi-navy border border-digi-line p-5 text-xs leading-6 text-slate-300">
+<pre><code>{
+  "device": "emulator-5554",
+  "poll_ms": 800,
+  "match_threshold": 0.85,
+  "start_state": "home",
+  "states": {
+    "home": {
+      "detect": "home_marker.png",
+      "on_match":  [{"type":"tap_template","template":"enter_stage.png"}],
+      "on_absent": {"goto":"unknown"}
+    },
+    "battle": {
+      "detect": "battle_marker.png",
+      "on_match": [{"type":"wait","ms":3000}],
+      "timeout_ms": 120000
+    },
+    "victory": {
+      "detect": "victory_marker.png",
+      "on_match": [{"type":"tap_template","template":"confirm.png"},
+                   {"type":"goto","state":"home"}]
+    }
+  }
+}</code></pre>
+      <p class="text-xs text-slate-400 mt-3">Action types: <code class="text-digi-blue">tap_template · tap_xy · swipe · wait · goto · stop</code>. เพิ่ม type = เพิ่ม handler ใน <code>act.py</code>.</p>
+    </div>
+  </section>
+
+  <!-- Build steps -->
+  <section class="mb-10">
+    <h2 class="text-lg font-bold mb-3 text-white"><span class="num bg-digi-blue/20 text-digi-blue border border-digi-blue/40 mr-2">B</span>ลำดับ build</h2>
+    <ol class="space-y-2 text-sm">
+      <li class="rounded-lg bg-digi-card border border-digi-line p-3"><b class="text-digi-orange mono">01</b> &nbsp;scaffold: requirements, folder, README</li>
+      <li class="rounded-lg bg-digi-card border border-digi-line p-3"><b class="text-digi-orange mono">02</b> &nbsp;<code>device.py</code> + <code>capture.py</code> — ต่อ ADB, screencap จริง → เทสต์ <code>tools/snap.py</code></li>
+      <li class="rounded-lg bg-digi-card border border-digi-line p-3"><b class="text-digi-orange mono">03</b> &nbsp;<code>perceive.py</code> — matchTemplate คืน (found, score, x, y)</li>
+      <li class="rounded-lg bg-digi-card border border-digi-line p-3"><b class="text-digi-orange mono">04</b> &nbsp;<code>act.py</code> — tap/swipe/wait + jitter</li>
+      <li class="rounded-lg bg-digi-card border border-digi-line p-3"><b class="text-digi-orange mono">05</b> &nbsp;<code>config.py</code> + <code>fsm.py</code> — โหลด JSON, วน loop, dispatch action</li>
+      <li class="rounded-lg bg-digi-card border border-digi-line p-3"><b class="text-digi-orange mono">06</b> &nbsp;<code>main.py</code> + <code>example_game.json</code> — end-to-end (dry-run ได้แม้ไม่มี template)</li>
+    </ol>
+  </section>
+
+  <!-- Out of scope -->
+  <section class="mb-10">
+    <h2 class="text-lg font-bold mb-3 text-white"><span class="num bg-slate-600/30 text-slate-300 border border-slate-600/50 mr-2">X</span>นอก scope (ตอนนี้)</h2>
+    <ul class="text-sm space-y-1 text-slate-400 list-disc list-inside">
+      <li>RL agent / training loop — เผื่อ interface ไม่ implement</li>
+      <li>Template PNG จริงของเกม — user แคปผ่าน <code>tools/snap.py</code></li>
+      <li>เกมเฉพาะ (state/ปุ่มจริง) — เติมหลัง engine พร้อม</li>
+      <li>GUI / dashboard — CLI ก่อน</li>
+    </ul>
+  </section>
+
+  <div class="text-center text-xs text-digi-blue mono mt-12 tracking-widest">◆ AWAIT CONFIRM · DIGITAL WORLD READY ◆</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+opencv-python>=4.9
+numpy>=1.26
+# optional OCR — install tesseract binary separately, then:
+pytesseract>=0.3.10

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan — Anti-bot Captcha handler (jumping/sliding card)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
+  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tok{background:#fef08a;color:#713f12;padding:0 .25rem;border-radius:.25rem;font-weight:600}
+  .dark .tok{background:#713f12;color:#fef9c3}
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <div class="text-xs font-semibold tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">Plan Spec · Feature</div>
+      <h1 class="text-3xl font-bold mt-1">Captcha กันบอท "Find the jumping/sliding card!"</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · แตะ <code>engine</code> (action ใหม่) + <code>config/cookierun.json</code></p>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-4 gap-3 mb-10">
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">1 action</div>
+      <div class="text-xs text-slate-500 mt-1">solve_captcha ใหม่</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">3 ไฟล์</div>
+      <div class="text-xs text-slate-500 mt-1">act · config · cookierun.json</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">2 เฟส</div>
+      <div class="text-xs text-slate-500 mt-1">A engine · B template</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">0 snap</div>
+      <div class="text-xs text-slate-500 mt-1">ยังไม่เคยเจอจริง</div>
+    </div>
+  </div>
+
+  <!-- Goal -->
+  <section class="mb-10">
+    <div class="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-5 text-sm leading-relaxed">
+      <b class="text-amber-700 dark:text-amber-300">โจทย์:</b>
+      Cookie Run เด้ง popup กันบอทแบบสุ่ม — หัวข้อ <b>"Surprise! Find the jumping card!"</b> หรือ <b>"...sliding card!"</b>.
+      การ์ด 6 ใบ (grid 3×2) รูปตัวละครเดียวกัน ต่างแค่ <b>ท่า</b> — บางใบทำท่าตรงคำถาม (กระโดด/สไลด์) บางใบ<b>ล้ม/นอน</b>.
+      ปิดไม่ได้ ต้อง<b>แตะเฉพาะการ์ดที่ทำท่าตรงคำถามให้ครบทุกใบ</b> แล้วยืนยัน. ตอบผิด = เสี่ยงโดนแบนไอดี.
+      <br><b class="text-amber-700 dark:text-amber-300">เป้า:</b> ให้บอท auto-solve — ตรวจทีละช่อง แยกท่า "ถูก" จาก "ผิด" แล้วแตะครบทุกใบที่ถูก.
+    </div>
+  </section>
+
+  <!-- Why engine change -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">W</span>ทำไม config ล้วนไม่พอ</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-3 leading-relaxed">
+      <div><b class="text-rose-600 dark:text-rose-400">1.</b> <code>perceive.find</code> คืน <b>peak เดียว</b> (จุด match ดีสุดจุดเดียว) — เลือกได้ 1 ใบ ไม่ใช่ "ทุกใบที่ถูก".</div>
+      <div><b class="text-rose-600 dark:text-rose-400">2.</b> ต้อง<b>แยก 2 ท่า</b>ที่หน้าตา ~90% เหมือนกัน (ยืน/กระโดด vs ล้ม/นอน) — ต้องเทียบ score สองแบบ<b>ต่อช่อง</b> แล้วตัดสิน ซึ่ง action เดิมไม่มี.</div>
+      <div><b class="text-rose-600 dark:text-rose-400">3.</b> ต้อง<b>วน 6 ช่องพิกัดตายตัว</b> ทำ per-cell classify + แตะเฉพาะที่ผ่าน — ไม่มี primitive นี้ใน <code>act.py</code>.</div>
+      <div class="text-slate-500">→ เพิ่ม action เดียว <code>solve_captcha</code> (crop 6 cell → เทียบ correct vs wrong → แตะที่ correct ชนะ → Confirm). Config ที่เหลือ = state chain ปกติ.</div>
+    </div>
+  </section>
+
+  <!-- Action design -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">A</span>Action <code>solve_captcha</code> (เฟส A)</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto">
+<pre><code>{ "type": "solve_captcha",
+  "cells": [ [cx,cy], ...6 จุด center ของแต่ละการ์ด ],   <span class="tok">TODO วัดจริง</span>
+  "crop":  [w, h],                  ครึ่งกว้าง/สูง หน้าต่าง crop รอบ center
+  "correct_tpl": "captcha_jump.png",   ท่าที่ถูก (กระโดด/สไลด์)
+  "wrong_tpl":   "captcha_lie.png",    ท่าที่ผิด (ล้ม/นอน)
+  "margin": 0.04,                   correct ต้องชนะ wrong เกินระยะนี้ ถึงจะแตะ
+  "confirm_xy": [cx, cy] }          ปุ่มยืนยันหลังเลือกครบ  <span class="tok">TODO</span></code></pre>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2 leading-relaxed mt-3">
+      <div><b>Algorithm:</b> ต่อ 1 cell → crop region รอบ center → match <code>correct_tpl</code> ได้ score_c, match <code>wrong_tpl</code> ได้ score_w → ถ้า <code>score_c &gt; score_w + margin</code> = ท่าถูก → เก็บไว้แตะ.</div>
+      <div><b>ถามคำ:</b> "jumping" vs "sliding" ใช้ <b>correct_tpl คนละไฟล์</b> — เลือกไฟล์ตามหัวข้อ (มี state แยก 2 ทางตาม marker หัวข้อ).</div>
+      <div><b>แตะ:</b> ทุก cell ที่ผ่าน แตะทีละใบ (ผ่าน <code>_jitter</code> เดิม = human noise), เว้นจังหวะสุ่มสั้น ๆ ระหว่างแตะ. จบแล้วแตะ <code>confirm_xy</code>.</div>
+      <div class="text-rose-500"><b>Safety:</b> ถ้า<b>ไม่มี cell ไหนผ่านเลย</b> (classify ไม่ชัด/template เพี้ยน) → <b>ไม่แตะอะไร ไม่ Confirm</b> → คืน sentinel ให้ FSM ไป state <code>captcha_bail</code> = beep + <code>stop</code> (ให้คนมาต่อ ดีกว่าตอบมั่วโดนแบน).</div>
+    </div>
+  </section>
+
+  <!-- FSM flow -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 mr-2">F</span>FSM states (เฟส A skeleton)</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto">
+<pre><code><b>ทุก probe state</b> ในลูป (probe_congrats, probe_levelup, running ...)
+   จะ<b>แทรก probe_captcha ก่อน</b> — captcha เด้งทับได้ทุกจังหวะ
+
+<b>probe_captcha</b>: detect = <span class="tok">captcha_marker.png</span> (แถบหัว "Surprise! Find the")
+   on_match  → goto <b>captcha_which</b>
+   on_absent → (probe ถัดไปตามเดิม)
+
+<b>captcha_which</b>: detect = <span class="tok">captcha_jump_title.png</span> ("jumping card")
+   on_match  → solve_captcha(correct=jump)  → goto captcha_recheck
+   on_absent → goto <b>captcha_slide</b>      (ไม่ใช่ jump = ลอง slide)
+
+<b>captcha_slide</b>: detect = <span class="tok">captcha_slide_title.png</span> ("sliding card")
+   on_match  → solve_captcha(correct=slide) → goto captcha_recheck
+   on_absent → goto <b>captcha_bail</b>       (หัวข้อแปลกใหม่ ไม่รู้จัก)
+
+<b>captcha_recheck</b>: detect = captcha_marker.png
+   on_match  → ยังอยู่ (ตอบไม่ผ่าน/ยังไม่ครบ) → goto captcha_bail
+   on_absent → ผ่านแล้ว → goto running/home (กลับลูปฟาร์ม)
+
+<b>captcha_bail</b>: beep(key) + <span class="tok">stop</span>   แจ้งคน มารับช่วง</code></pre>
+    </div>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+      หลักการ: <b>ลองครั้งเดียว</b> — solve → recheck. ยังอยู่ = ไป bail ทันที ไม่ retry มั่ว (ตอบผิดซ้ำ = สัญญาณบอทชัดขึ้น). Conservative เพราะ downside = แบนไอดี.
+    </p>
+  </section>
+
+  <!-- Phase B -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">B</span>เฟส B — เก็บ template จริง (ตอน user เจอ captcha)</h2>
+    <div class="rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 p-5 text-sm leading-relaxed mb-3">
+      <b class="text-rose-700 dark:text-rose-300">ยังทำเฟส B ตอนนี้ไม่ได้:</b> user ยังไม่เคยเจอ captcha เอง → ไม่มี live snap @1920×1080.
+      Screenshot ในแชท = จอคนอื่น สเกลต่างกัน (×1.17/×1.20) → crop template + วัดพิกัดจากมัน<b>ไม่แม่น</b> (matchTemplate ไวต่อ scale). ต้องรอ captcha โผล่บนจอ user แล้ว snap.
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2 leading-relaxed">
+      <div><b class="text-emerald-600 dark:text-emerald-400">1.</b> เจอ captcha → <code>python tools/snap.py</code> เก็บจอเต็ม (อย่าแตะจอ).</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">2.</b> Crop: <code>captcha_marker</code> (แถบหัว), <code>captcha_jump_title</code>/<code>captcha_slide_title</code> (คำในหัวข้อ), <code>captcha_jump</code>/<code>captcha_lie</code> (ท่าถูก/ผิด จากช่องตัวอย่าง).</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">3.</b> วัด <b>6 cell center + confirm_xy</b> จาก snap จริง (grid 3×2). เสียบลง config.</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">4.</b> Verify score: correct-pose ต้องชนะ wrong-pose ชัดในช่องที่ควรถูก, และกลับกันในช่องที่ควรผิด — ปรับ <code>margin</code> จนแยกขาด.</div>
+      <div><b class="text-emerald-600 dark:text-emerald-400">5.</b> Dry-run: <code>solve_captcha</code> ต้อง log "จะแตะ cell 1,2,3,5,6 (ข้าม 4)" ตรงกับตาที่คนอ่านภาพ ก่อนปล่อยแตะจริง.</div>
+      <div class="text-slate-500">หมายเหตุ: ตัวละคร cookie สลับได้หลายแบบ (ในภาพเห็น 4+). ท่า "ล้ม/นอน" เป็น silhouette แนวนอนคล้ายกันข้ามตัวละคร → <code>captcha_lie</code> อาจ generalize ได้ ต้องเทสต์. ถ้าไม่ → เก็บ pose ต่อ cookie.</div>
+    </div>
+  </section>
+
+  <!-- Files -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 mr-2">#</span>ไฟล์ที่แตะ</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2 leading-relaxed">
+      <div><code>src/act.py</code> — เพิ่ม method <code>solve_captcha</code> + dispatch ใน <code>run()</code>. คืน sentinel <code>__captcha_fail__</code> เมื่อ classify ไม่ผ่าน.</div>
+      <div><code>src/config.py</code> — เพิ่ม <code>"solve_captcha"</code> ใน <code>_ACTION_TYPES</code> + required fields (<code>cells, correct_tpl, wrong_tpl, confirm_xy</code>).</div>
+      <div><code>src/fsm.py</code> — รับ sentinel <code>__captcha_fail__</code> → route ไป state bail (คล้าย <code>_STOP</code>).</div>
+      <div><code>config/cookierun.json</code> — เพิ่ม captcha states + แทรก <code>probe_captcha</code> เข้า probe chain.</div>
+      <div class="text-rose-500"><code>templates/cookierun/captcha_*.png</code> — เฟส B (ยังไม่มี).</div>
+    </div>
+  </section>
+
+  <!-- Decision -->
+  <section class="mb-4">
+    <div class="rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-300 dark:border-indigo-800 p-5 text-sm leading-relaxed">
+      <b class="text-indigo-700 dark:text-indigo-300">ทำเลยตอนนี้ (เฟส A):</b> engine action + FSM sentinel + config skeleton (มี placeholder <code>TODO</code> ตรงพิกัด/template).
+      บอทจะ<b>ปลอดภัยทันที</b> — เจอ captcha ก็ไม่วิ่งต่อมั่ว, ไป <code>captcha_bail</code> beep+stop.
+      พอ auto-solve พร้อม (เฟส B) ค่อยเปิดใช้.
+      <br><b class="text-indigo-700 dark:text-indigo-300">รอ user:</b> ยืนยันแนวทางนี้ → เขียนเฟส A.
+    </div>
+  </section>
+
+  <p class="text-xs text-slate-400 mt-8">PLAN_captcha-jumpslide-handler.html · netrunner · template A (feature)</p>
+</div>
+</body>
+</html>

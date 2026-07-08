@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan — LDPlayer Auto-Farm Engine</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
+  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Feature</div>
+      <h1 class="text-3xl font-bold mt-1">LDPlayer Auto-Farm Engine</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">CV + scripted control · ADB · Python · generic/config-driven</p>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-4 gap-3 mb-10">
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-sky-600 dark:text-sky-400">CV+scripted</div>
+      <div class="text-xs text-slate-500 mt-1">no RL / no training</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-sky-600 dark:text-sky-400">ADB</div>
+      <div class="text-xs text-slate-500 mt-1">screencap + input tap</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-sky-600 dark:text-sky-400">JSON FSM</div>
+      <div class="text-xs text-slate-500 mt-1">farm loop = config</div>
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-2xl font-bold text-sky-600 dark:text-sky-400">game-agnostic</div>
+      <div class="text-xs text-slate-500 mt-1">plug templates later</div>
+    </div>
+  </div>
+
+  <!-- Goal -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">G</span>เป้าหมาย</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed">
+      Engine กลาง auto-farm บน LDPlayer. วน loop: <b>capture</b> หน้าจอ (ADB screencap) →
+      <b>perceive</b> รู้ว่าอยู่ state ไหน (OpenCV template match / OCR) → <b>act</b> ยิง tap/swipe (ADB input)
+      ตามกฎที่กำหนดใน FSM config. เกม-agnostic — เปลี่ยนเกม = เปลี่ยนแค่ <code>config JSON + template PNG</code> ไม่แตะ engine.
+      RL <b>ยังไม่ทำ</b> (interface เผื่อไว้เฉย ๆ).
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 mr-2">A</span>สถาปัตยกรรม — 3 layer</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-3">
+      <div><b class="text-sky-600 dark:text-sky-400">1. Capture</b> — <code>adb exec-out screencap -p</code> → PNG bytes → numpy/BGR. ห่อ device id, retry, timing.</div>
+      <div><b class="text-sky-600 dark:text-sky-400">2. Perceive</b> — template match (cv2.matchTemplate) + optional OCR (tesseract). คืน state name + matched region.</div>
+      <div><b class="text-sky-600 dark:text-sky-400">3. Act</b> — <code>adb shell input tap/swipe</code>. รับ region/coord จาก config, jitter+delay กัน pattern.</div>
+      <div class="pt-2 border-t border-slate-200 dark:border-slate-800"><b class="text-indigo-600 dark:text-indigo-400">FSM runner</b> — อ่าน config JSON: แต่ละ state = {detect: template, on_match: action, next: state}. loop จนเจอ stop/error.</div>
+    </div>
+  </section>
+
+  <!-- File tree -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">F</span>ไฟล์ที่จะสร้าง</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6">
+<pre><code>ldplayer-autofarm/
+├─ requirements.txt          opencv-python, numpy, pytesseract(optional)
+├─ README.md                 setup + วิธี add เกมใหม่
+├─ config/
+│  └─ example_game.json      FSM config ตัวอย่าง (states + actions)
+├─ templates/
+│  └─ example_game/          .png ของปุ่ม/state (user แคปเอง)
+├─ src/
+│  ├─ __init__.py
+│  ├─ capture.py             ADB screencap → numpy
+│  ├─ perceive.py            template match + OCR → state
+│  ├─ act.py                 ADB tap/swipe + jitter
+│  ├─ fsm.py                 FSM runner อ่าน config
+│  ├─ device.py              ADB connect / list / resolution
+│  └─ config.py              load+validate JSON schema
+├─ tools/
+│  └─ snap.py                แคปหน้าจอปัจจุบัน → เซฟ PNG (ช่วยทำ template)
+└─ main.py                   entrypoint: python main.py --config config/example_game.json</code></pre>
+    </div>
+  </section>
+
+  <!-- Config schema -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 mr-2">C</span>Config schema (FSM)</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6">
+<pre><code>{
+  "device": "emulator-5554",
+  "poll_ms": 800,
+  "match_threshold": 0.85,
+  "start_state": "home",
+  "states": {
+    "home": {
+      "detect": "home_marker.png",
+      "on_match":  [{"type":"tap_template","template":"enter_stage.png"}],
+      "on_absent": {"goto":"unknown"}
+    },
+    "battle": {
+      "detect": "battle_marker.png",
+      "on_match": [{"type":"wait","ms":3000}],
+      "timeout_ms": 120000
+    },
+    "victory": {
+      "detect": "victory_marker.png",
+      "on_match": [{"type":"tap_template","template":"confirm.png"},{"type":"goto","state":"home"}]
+    }
+  }
+}</code></pre>
+      <p class="text-xs text-slate-400 mt-3">Action types: <code>tap_template</code>, <code>tap_xy</code>, <code>swipe</code>, <code>wait</code>, <code>goto</code>, <code>stop</code>. เพิ่ม type = เพิ่ม handler ใน <code>act.py</code>.</p>
+    </div>
+  </section>
+
+  <!-- Build steps -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">B</span>ลำดับ build</h2>
+    <ol class="space-y-2 text-sm">
+      <li class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3"><b>1.</b> scaffold: requirements, folder, README</li>
+      <li class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3"><b>2.</b> <code>device.py</code> + <code>capture.py</code> — ต่อ ADB, screencap ได้จริง → <code>tools/snap.py</code> เทสต์</li>
+      <li class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3"><b>3.</b> <code>perceive.py</code> — matchTemplate คืน (found, score, x, y)</li>
+      <li class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3"><b>4.</b> <code>act.py</code> — tap/swipe/wait + jitter</li>
+      <li class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3"><b>5.</b> <code>config.py</code> + <code>fsm.py</code> — โหลด JSON, วน loop, dispatch action</li>
+      <li class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3"><b>6.</b> <code>main.py</code> + <code>example_game.json</code> — ต่อครบ end-to-end (dry-run ได้แม้ไม่มี template)</li>
+    </ol>
+  </section>
+
+  <!-- Out of scope -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 mr-2">X</span>นอก scope (ตอนนี้)</h2>
+    <ul class="text-sm space-y-1 text-slate-600 dark:text-slate-400 list-disc list-inside">
+      <li>RL agent / training loop — เผื่อ interface ไว้ ไม่ implement</li>
+      <li>Template PNG จริงของเกม — user แคปเองผ่าน <code>tools/snap.py</code></li>
+      <li>เกมเฉพาะ (state/ปุ่มจริง) — เติมหลัง engine พร้อม</li>
+      <li>GUI / dashboard — CLI ก่อน</li>
+    </ul>
+  </section>
+
+  <div class="text-center text-xs text-slate-400 mt-12">รอ confirm ก่อนเขียน code · แก้ scope ได้</div>
+
+</div>
+</body>
+</html>
