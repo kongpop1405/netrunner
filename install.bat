@@ -58,32 +58,30 @@ rem 3. Python present and real (not the Microsoft Store stub)?
 rem ---------------------------------------------------------------------------
 echo [3/5] Checking Python...
 echo [3] python>> "%LOG%"
+
+rem Try candidates in order; accept the first that prints a real "Python 3.x".
+rem A Microsoft Store stub is on PATH as py/python but prints nothing, so we
+rem verify the version string rather than trusting `where`.
 set "PY="
-where py >nul 2>&1 && set "PY=py"
-if not defined PY where python >nul 2>&1 && set "PY=python"
+set "PYVER="
+for %%C in ("py" "python") do call :try_python %%~C
+if not defined PY (
+    rem PATH has nothing usable — look for a real install that just wasn't added to PATH
+    for /d %%D in ("%LocalAppData%\Programs\Python\Python3*") do call :try_python "%%D\python.exe"
+    for /d %%D in ("C:\Python3*") do call :try_python "%%D\python.exe"
+)
 
 if not defined PY (
-    echo   [X] Python not found.
+    echo   [X] Python not found ^(or only the Microsoft Store placeholder is present^).
     call :python_help
-    echo   MISSING: python>> "%LOG%"
+    echo   MISSING or STUB python; last version string: [!PYVER!]>> "%LOG%"
+    echo   FIX: install from python.org, tick "Add python.exe to PATH",>> "%LOG%"
+    echo        disable Store aliases, re-run install.bat>> "%LOG%"
     set "FAIL=1"
     goto :done
 )
-
-rem Store stub returns nothing useful and exits 9009-ish; capture real version
-for /f "delims=" %%V in ('%PY% --version 2^>^&1') do set "PYVER=%%V"
-echo   %PY% --version -^> !PYVER!>> "%LOG%"
-echo !PYVER! | findstr /i "Python 3" >nul
-if errorlevel 1 (
-    echo   [X] Python did not run correctly ^(got: !PYVER!^).
-    echo       This is usually the Microsoft Store placeholder.
-    call :python_help
-    echo   BAD python version: !PYVER!>> "%LOG%"
-    set "FAIL=1"
-    goto :done
-)
-echo   [OK] !PYVER!
-echo   OK !PYVER!>> "%LOG%"
+echo   [OK] !PYVER!  ^(!PY!^)
+echo   OK !PYVER! via !PY!>> "%LOG%"
 
 rem ---------------------------------------------------------------------------
 rem 4. Install dependencies
@@ -147,6 +145,20 @@ echo ============================================
 echo.
 pause
 exit /b %FAIL%
+
+rem ---------------------------------------------------------------------------
+rem Probe one python candidate; on success set PY + PYVER. No-op if PY already set.
+:try_python
+if defined PY exit /b 0
+set "CAND=%~1"
+set "V="
+for /f "delims=" %%V in ('"%CAND%" --version 2^>^&1') do set "V=%%V"
+echo   try %CAND% -^> [!V!]>> "%LOG%"
+echo !V! | findstr /i "Python 3" >nul
+if errorlevel 1 exit /b 0
+set "PY=%CAND%"
+set "PYVER=!V!"
+exit /b 0
 
 rem ---------------------------------------------------------------------------
 :python_help

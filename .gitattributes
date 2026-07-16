@@ -1,0 +1,14 @@
+# Batch files MUST stay CRLF — cmd.exe mis-parses LF .bat files (eats the first
+# character of each line: `chcp` -> `cp`, `echo` -> `cho`), which silently breaks
+# the launchers on some machines. Force CRLF on checkout regardless of platform.
+*.bat text eol=crlf
+
+# Everything else: normalize to LF in the repo, let Git handle working-tree endings.
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+
+# Binary assets — never touch.
+*.png binary
