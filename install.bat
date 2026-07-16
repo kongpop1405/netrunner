@@ -135,8 +135,11 @@ echo ============================================
 if "%FAIL%"=="0" (
     echo   INSTALL COMPLETE - ready to use.
     echo.
-    echo   Next: open LDPlayer + CookieRun, then double-click
-    echo   run_coinrun.bat ^(or another run_*.bat^).
+    echo   IMPORTANT: set the LDPlayer instance to 1920x1080 or the bot
+    echo   will not recognize the game. See PLAY_SETUP.md.
+    echo.
+    echo   Next: open LDPlayer + CookieRun on the home screen, then
+    echo   double-click run_coinrun.bat ^(or another run_*.bat^).
 ) else (
     echo   INSTALL DID NOT FINISH - see the [X] above.
     echo   Send install-log.txt to whoever set this up.

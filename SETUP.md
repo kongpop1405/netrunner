@@ -48,6 +48,11 @@ entries. Then `pip install -r requirements.txt` (add `requirements-dev.txt` for 
 3. Enable ADB: LDPlayer → Settings → Other → ADB debugging → **Open local connection**.
 4. Port formula: `5555 + 2*instance_index` (index 0 → 5555, index 1 → 5557, …).
 
+> ⚠️ The 1920×1080 step is not optional — templates only match at that exact size.
+> Wrong resolution is the #1 cause of "the bot does nothing / taps randomly."
+> Full pre-run checklist: **[PLAY_SETUP.md](PLAY_SETUP.md)**. The bot also prints a
+> resolution warning at startup if it's wrong.
+
 ## 4. `.env` — optional, usually skip this
 
 adb and the emulator are **auto-detected**: the engine finds adb (`PATH`, then newest

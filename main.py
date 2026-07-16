@@ -76,6 +76,27 @@ def _detect_device(adb: str, hint: str | None) -> str | None:
     return candidates[0]
 
 
+def _check_resolution(device: Device) -> None:
+    """Warn loudly if the emulator isn't 1920x1080 — templates are cropped at that
+    size and match near-zero at any other resolution, which looks like a 'bot does
+    nothing / taps randomly' bug rather than a config problem."""
+    log = logging.getLogger("netrunner")
+    try:
+        w, h = device.resolution()
+    except AdbError as e:
+        log.warning("could not read screen resolution: %s", e)
+        return
+    if (w, h) != (1920, 1080):
+        log.warning(
+            "emulator resolution is %dx%d, NOT 1920x1080. Templates are cropped at "
+            "1920x1080 and will NOT match at other sizes — the bot will appear to do "
+            "nothing or tap randomly. Fix: set the LDPlayer instance to 1920x1080 "
+            "(dpi 240) and restart it.", w, h,
+        )
+    else:
+        log.info("resolution 1920x1080 OK")
+
+
 def _setup_logging(verbose: bool) -> None:
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
@@ -174,6 +195,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         device = _resolve_device(address, adb)
+        _check_resolution(device)
         Runner(cfg, device, webhook_url=webhook_url).run(
             dry_run=args.dry_run, max_cycles=args.max_cycles
         )
