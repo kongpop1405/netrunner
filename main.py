@@ -7,9 +7,13 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 
+from dotenv import load_dotenv
+
 from src import config as cfgmod
+from src.alert import setup_file_logging
 from src.device import AdbError, Device, connect, list_devices
 from src.fsm import Runner
 
@@ -20,6 +24,8 @@ def _setup_logging(verbose: bool) -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+    log_path = setup_file_logging(verbose=verbose)
+    logging.getLogger("netrunner").info("logging to %s", log_path)
 
 
 def _resolve_device(address: str, adb: str) -> Device:
@@ -40,18 +46,23 @@ def main(argv: list[str] | None = None) -> int:
                     help="stop after N poll cycles (smoke-test)")
     ap.add_argument("--start-state", default=None,
                     help="override the config's start_state (resume mid-loop)")
-    ap.add_argument("--adb", default="adb",
-                    help="path to the adb binary (default: 'adb' on PATH). "
-                         r"LDPlayer ships one, e.g. C:\LDPlayer\LDPlayer9\adb.exe")
+    ap.add_argument("--adb", default=None,
+                    help="path to the adb binary (default: ADB_PATH from .env, "
+                         "else 'adb' on PATH). LDPlayer ships one, e.g. "
+                         r"C:\LDPlayer\LDPlayer14\adb.exe")
     ap.add_argument("--list-devices", action="store_true", help="list attached devices and exit")
     ap.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     args = ap.parse_args(argv)
 
+    load_dotenv()
     _setup_logging(args.verbose)
+
+    # machine-specific bits live in .env; CLI flag > .env > config/default
+    adb = args.adb or os.environ.get("ADB_PATH") or "adb"
 
     if args.list_devices:
         try:
-            serials = list_devices(adb=args.adb)
+            serials = list_devices(adb=adb)
         except AdbError as e:
             print(f"error: {e}", file=sys.stderr)
             return 2
@@ -73,9 +84,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"config error: {e}", file=sys.stderr)
         return 2
 
-    address = args.device or cfg.device
+    address = args.device or os.environ.get("NETRUNNER_DEVICE") or cfg.device
     if not address:
-        print("error: no device given (set 'device' in config or pass --device)", file=sys.stderr)
+        print("error: no device given (set 'device' in config, NETRUNNER_DEVICE in .env, "
+              "or pass --device)", file=sys.stderr)
         return 2
 
     if args.start_state:
@@ -85,9 +97,13 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         cfg.start_state = args.start_state
 
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+
     try:
-        device = _resolve_device(address, args.adb)
-        Runner(cfg, device).run(dry_run=args.dry_run, max_cycles=args.max_cycles)
+        device = _resolve_device(address, adb)
+        Runner(cfg, device, webhook_url=webhook_url).run(
+            dry_run=args.dry_run, max_cycles=args.max_cycles
+        )
     except AdbError as e:
         print(f"adb error: {e}", file=sys.stderr)
         return 2

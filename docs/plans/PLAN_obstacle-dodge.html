@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="th" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan — Pit Detection (jump/slide)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
+  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tok{background:#fef08a;color:#713f12;padding:0 .25rem;border-radius:.25rem;font-weight:600}
+  .dark .tok{background:#713f12;color:#fef9c3}
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #e2e8f0;padding:.4rem .6rem;text-align:left;font-size:.8rem}
+  .dark th,.dark td{border-color:#334155}
+  th{background:#f1f5f9;font-weight:600}
+  .dark th{background:#1e293b}
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Feature · <span class="text-rose-600 dark:text-rose-400">rev 2 — หลังวัดจอจริง</span></div>
+      <h1 class="text-3xl font-bold mt-1">Pit Detection — กระโดดข้ามหลุม</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · edge-profile ไม่ใช่ template · engine 3 ไฟล์ + config</p>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
+  </div>
+
+  <!-- REVISION NOTICE -->
+  <section class="mb-10">
+    <div class="rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 p-5 text-sm leading-relaxed">
+      <b class="text-rose-700 dark:text-rose-300">rev 1 ตั้งสมมติฐานผิด — แก้แล้วด้วยหลักฐานจากจอจริง:</b>
+      <ul class="list-disc ml-5 mt-2 space-y-1">
+        <li>เฝ้า run จริงจนตาย → popup คือ <b>“Save the Cookie · 💎 5 for 1 <u>Pit Lift</u>”</b> = <b>ตกหลุม</b> ไม่ใช่ชน obstacle</li>
+        <li>HP bar <b>เต็มตลอด 52 วินาที</b> — Bonus Time ทำให้ชน obstacle ไม่เจ็บ. Obstacle avoidance จึงแทบไม่มีมูลค่า</li>
+        <li><b>Pit ไม่มี sprite</b> — มันคือการ<i>ไม่มีพื้น</i>. Template matching หา “ของที่ไม่มี” ไม่ได้ → Tier 2 ใช้ไม่ได้โดยหลักการ</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Measured facts -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">M</span>ตัวเลขที่วัดได้จริง (ไม่ใช่ประมาณ)</h2>
+    <div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <table>
+        <thead><tr><th>สิ่งที่วัด</th><th>ค่า</th><th>นัยยะ</th></tr></thead>
+        <tbody>
+          <tr><td><code>screencap -p</code> + imdecode (engine ปัจจุบัน)</td><td>~856 ms</td><td>1.2 fps</td></tr>
+          <tr><td><code>screencap</code> raw (ไม่ encode PNG)</td><td>~614 ms</td><td>ประหยัด 240ms</td></tr>
+          <tr><td>raw + crop แถบพื้นบน device (<code>tail|head</code>)</td><td>~400 ms</td><td><b>2.5 fps — ตัวเลือกที่ใช้</b></td></tr>
+          <tr><td>device render อย่างเดียว (ไม่ transfer)</td><td>126 ms</td><td>คอขวด = ADB transfer 8.3MB</td></tr>
+          <tr><td><code>adb shell input tap</code> (spawn ใหม่ทุกครั้ง)</td><td>45 ms</td><td>—</td></tr>
+          <tr><td><b>persistent shell</b> tap (stdin)</td><td><b>9.5 ms</b></td><td>act ไม่ใช่ปัญหา</td></tr>
+        </tbody>
+      </table>
+      <p class="text-xs text-slate-500 mt-3 leading-relaxed">
+        <b>งบเวลา:</b> คุกกี้วิ่ง ~900 px/s. ถ้าตรวจที่ x≈1150–1500 → หลุมห่างตัว 650–1000 px = <b>0.7–1.1 s</b>.
+        Detect 400 ms + tap 10 ms = 410 ms → <b>เหลือ margin ~1 เฟรม</b> แม้พลาดไป 1 รอบก็ยังทัน. <span class="tok">ทำได้</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- Detection method -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 mr-2">D</span>วิธีตรวจหลุม — edge profile ไม่ใช่สี ไม่ใช่ template</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed mb-4">
+      พื้นที่ยืนได้ทุกชนิดถูกวาดด้วย <b>ขอบบนคมชัด</b> (vector outline). Background ถูกวาดเบลอ/ไล่เฉด.
+      วัด <code>|Sobel_y|</code> สูงสุดในแถบ ±13 px รอบ<b>ระดับพื้นคงที่</b> → มีพื้น = ค่าสูง, หลุม = ค่าต่ำ.
+      ไม่พึ่งสี จึงข้าม stage ได้ (jungle เขียวมืด ↔ sandwich ส้มสว่าง).
+    </div>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <div class="text-xs font-semibold mb-2 text-slate-500">ผลวัดจริง — <code>|Sobel_y|</code> max ต่อทุก 100px</div>
+      <div class="rounded-lg bg-slate-900 text-slate-100 p-4 text-xs leading-6 overflow-x-auto"><pre><code>x=            0   100  200  300  400  500  600  700  800  900 1000 1100 1200 1300 1400 1500 1600
+<b>jungle</b>  y=885    4   142  304  427  441  340  508  512 |  11    8    8    8    8    8    8   18   33
+                                    ^--- มีพื้น ---^       ^------------ หลุม ------------^
+<b>jungle</b>  y=675   10     4   39  262   42   15   57    3   26    8  508  508  267  508  116  508  233
+                                                                ^--- แพลตฟอร์มลอย ---^
+<b>sandwich</b>y=885  304   387  301  435  299  261  582  350  430  681  684  684  653  456  596  684  412
+                       ^------------------------ พื้นเต็ม ไม่มีหลุม ------------------------^</code></pre></div>
+      <p class="text-xs text-slate-500 mt-3">
+        แยกขาด: มีพื้น <b>≥142</b> · หลุม <b>≤72</b>. ตั้ง <span class="tok">EDGE_MIN = 100</span> · <b>y พื้น = 885</b> (ground) · <b>y แพลตฟอร์ม = 675</b>
+      </p>
+    </div>
+  </section>
+
+  <!-- Decision rule -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">R</span>กติกาตัดสิน (ต่อ 1 เฟรม)</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto">
+<pre><code>PROBE_X = 1150 .. 1500        # โซนล่วงหน้า ~0.7-1.1s ข้างหน้าคุกกี้
+ground = any(|Sobel_y|(x, 885) > 100  for x in PROBE_X)
+plat   = any(|Sobel_y|(x, 675) > 100  for x in PROBE_X)
+
+ถ้า  not ground and not plat   → <b>หลุมข้างหน้า → jump</b>   (cooldown ~700ms)
+ถ้า  not ground and plat       → <b>หลุม แต่มีแพลตฟอร์มให้เกาะ → jump</b>
+ถ้า  ground                    → พื้นต่อเนื่อง → ไม่ทำอะไร
+</code></pre>
+    </div>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+      <b>Slide</b> ยังไม่มี trigger ที่พิสูจน์แล้ว (ยังไม่เคยเห็น run ตายเพราะคานเตี้ย) — primitive เขียนไว้ใน engine แล้ว
+      แต่<b>ยังไม่เสียบใน config</b> จนกว่าจะมีหลักฐานว่าจำเป็น. <span class="tok">ไม่เพิ่มสิ่งที่ยังพิสูจน์ไม่ได้ว่าต้องใช้</span>
+    </p>
+  </section>
+
+  <!-- Engine changes -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300 mr-2">E</span>Engine changes</h2>
+    <div class="space-y-4">
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-violet-600 dark:text-violet-400">1. <code>perceive.py</code> — <code>roi</code> param <span class="text-emerald-600 dark:text-emerald-400 text-xs">✔ ทำแล้ว</span></div>
+        <p class="mt-1 leading-relaxed">Crop ก่อน match แล้ว offset coord กลับเป็น full-frame. ใช้กับ marker ปกติ; ไม่ได้ใช้กับ pit (pit ไม่มี template).</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-violet-600 dark:text-violet-400">2. <code>act.py</code> — primitive <code>slide</code> <span class="text-emerald-600 dark:text-emerald-400 text-xs">✔ ทำแล้ว</span></div>
+        <p class="mt-1 leading-relaxed">กดค้างปุ่ม Slide (ขวาล่าง <b>1675,940</b> — verify จากจอจริง) ด้วย <code>input swipe x y x y hold_ms</code>. เขียนไว้ใช้ภายหลัง.</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-violet-600 dark:text-violet-400">3. <code>capture.py</code> — <code>grab_band()</code> raw + on-device crop</div>
+        <p class="mt-1 leading-relaxed">
+          <code>exec-out "screencap | tail -c +&lt;off&gt; | head -c &lt;n&gt;"</code> → คืน numpy แถบ rows ที่ขอ.
+          ตัด transfer 8.3MB → 0.9MB. ใช้เฉพาะใน dodge loop; state อื่นยังใช้ <code>grab()</code> เดิม (ไม่แตะ template ใด ๆ).
+        </p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-violet-600 dark:text-violet-400">4. <code>fsm.py</code> — state type <code>"dodge"</code></div>
+        <p class="mt-1 leading-relaxed">
+          Tight loop, ไม่ sleep: <code>grab_band</code> → ตัดสิน → jump ถ้าต้อง → วน. ทางออก <b>2 ทางเสมอ</b> —
+          ทุก N รอบ <code>grab()</code> เต็มเฟรมเช็ค <code>until</code> marker (<code>result_marker</code> → ออก),
+          และ <code>max_ms</code> กันค้าง. <span class="tok">ไม่มี self-goto + timeout</span> (pattern นั้น = FsmError crash)
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Config -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">C</span>Config — <code>cookierun.json</code></h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto">
+<pre><code>"dodge_run": {
+  "dodge": true,
+  "until": "result_marker.png",     → goto "run_result"
+  "check_until_every": 6,           # เช็ค full-frame ทุก 6 รอบ (~2.5s)
+  "max_ms": 300000,                 → goto "guard_not_home"
+  "ground_y": 885, "platform_y": 675,
+  "probe_x": [1150, 1500], "edge_min": 100,
+  "on_pit":  { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
+  "cooldown_ms": 700,
+  "idle": { "type": "tap_xy", "x": 960, "y": 540 },   # Cookie Relay, ทุก ~2s
+  "idle_every_ms": 2000
+}</code></pre>
+    </div>
+    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+      <code>guard_not_shop.on_absent</code>: เดิม <code>jump + tap</code> → เปลี่ยนเป็น <code>goto dodge_run</code>.
+      Safety net เดิม (probe chain, coin guard, heart gate, ห้าม gem) <b>ไม่แตะ</b>.
+    </p>
+  </section>
+
+  <!-- Risks -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">!</span>ความเสี่ยงที่รู้ตัว</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed">
+      <ul class="list-disc ml-5 space-y-1">
+        <li><b>ยังไม่ทดสอบ:</b> stage ที่ background มีขอบคมแนวนอนพาดผ่าน y=885 (โต๊ะ/ชั้นวาง) → อ่านผิดว่า “มีพื้น” → ไม่กระโดด → ตก. <b>ต้องเก็บสถิติหลาย stage ก่อนเชื่อ threshold</b></li>
+        <li><b>ระดับพื้นอาจไม่ใช่ 885 ทุก stage</b> — verify กับ snap ของ episode อื่นก่อน hardcode; ถ้าต่าง ต้องทำ auto-calibrate จากแถวที่คุกกี้ยืน</li>
+        <li>Jump ธรรมดาข้ามหลุมกว้างไม่ได้ — เกมมี double jump. <code>jump</code> ปัจจุบันสุ่ม double 35% → หลุมกว้างอาจต้องบังคับ double เสมอ (วัดหลัง live test)</li>
+        <li>เป้าหมายวัดผล: <b>ระยะเวลา/ระยะทางต่อ run</b> เทียบ baseline (jump มั่ว) — ไม่ใช่ “ไม่ตายเลย”</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Build order -->
+  <section class="mb-4">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">B</span>ลำดับงาน</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed">
+      <ol class="list-decimal ml-5 space-y-1">
+        <li><span class="text-emerald-600 dark:text-emerald-400">✔</span> perceive <code>roi</code> · act <code>slide</code></li>
+        <li>เก็บเฟรมหลาย stage → ยืนยัน <code>ground_y</code> + <code>edge_min</code> ว่าคงที่จริง (offline, ไม่ต้องแตะเกม)</li>
+        <li><code>capture.grab_band()</code> + unit-check ว่า byte ครบและ shape ถูก</li>
+        <li><code>fsm</code> dodge state · config <code>dodge_run</code></li>
+        <li><b>Dry-run ระหว่าง run จริง</b> — log บอกว่า “เห็นหลุม/ไม่เห็น” ตรงกับตาหรือไม่ โดยไม่ tap</li>
+        <li>Live 1–2 run → เทียบ ระยะทาง/เหรียญ กับ baseline → ปรับ <code>probe_x</code>, <code>cooldown_ms</code></li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

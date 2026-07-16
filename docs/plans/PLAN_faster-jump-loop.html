@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan — Faster jump loop</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
+  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tok{background:#fef08a;color:#713f12;padding:0 .25rem;border-radius:.25rem;font-weight:600}
+  .dark .tok{background:#713f12;color:#fef9c3}
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #e2e8f0;padding:.4rem .6rem;text-align:left;font-size:.8rem}
+  .dark th,.dark td{border-color:#334155}
+  th{background:#f1f5f9;font-weight:600}
+  .dark th{background:#1e293b}
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Perf</div>
+      <h1 class="text-3xl font-bold mt-1">กระโดดถี่ขึ้น — ลด jump gap 3s → ~1s</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · <b>ไม่ต้อง detect หลุม</b> — แก้ที่โครงสร้าง loop</p>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
+  </div>
+
+  <!-- Why -->
+  <section class="mb-10">
+    <div class="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-5 text-sm leading-relaxed">
+      <b class="text-amber-700 dark:text-amber-300">ทำไมเลิกไล่ pit detection:</b>
+      วัดจากจอจริงแล้ว หลุมโผล่ขอบขวา→ถึงตัวคุกกี้ ใช้เวลาน้อยกว่า 1 เฟรม (screencap 856 ms).
+      Detector ที่เขียนเสร็จแล้ว ทดสอบกับ run เต็ม ep1 (118 เฟรม): <b>เตือนก่อนตก 0 ครั้ง</b>, เตือนหลังตายไปแล้ว 10 ครั้ง.
+      ที่ latency ระดับนี้ ไม่มี algorithm ไหนช่วยได้ — <b>แต่ความถี่การกระโดดช่วยได้ และวัดได้ชัด</b>
+    </div>
+  </section>
+
+  <!-- Measured -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">M</span>ตัวเลขจาก log จริง (10,073 jump)</h2>
+    <div class="overflow-x-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <table>
+        <thead><tr><th>สิ่งที่วัด</th><th>ค่า</th></tr></thead>
+        <tbody>
+          <tr><td>ช่วงห่างระหว่าง jump</td><td>median <b>3s</b> · p75 5s · เจอ 6s ถึง 1,339 ครั้ง</td></tr>
+          <tr><td>double-jump rate</td><td>34.4% (config 35% ✓)</td></tr>
+          <tr><td>หลุมเดินทางถึงตัวคุกกี้</td><td>~1.5–2 s</td></tr>
+          <tr><td><code>screencap -p</code> ต่อเฟรม</td><td>856 ms</td></tr>
+          <tr><td><code>adb shell input tap</code> (spawn)</td><td>45 ms</td></tr>
+          <tr><td><b>persistent shell</b> tap</td><td><b>9.5 ms</b></td></tr>
+        </tbody>
+      </table>
+      <p class="text-xs text-slate-500 mt-3">
+        <b>สรุป:</b> jump gap (3s) ยาวกว่าอายุของหลุม (1.5–2s) → บอท<b>พลาดหลุมโดยโครงสร้าง</b> ประมาณครึ่งหนึ่ง แม้กระโดดสุ่มก็ตาม
+      </p>
+    </div>
+  </section>
+
+  <!-- Where the 3s goes -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">W</span>3 วินาทีนั้นหายไปไหน</h2>
+    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto mb-3">
+<pre><code>running            <span class="tok">grab 856ms</span>  result? no
+guard_not_home     (reuse frame)  home? no
+guard_not_shop     (reuse frame)  shop? no  -> <b>jump + tap relay</b>   acted=True -> frame ทิ้ง
+check_shop_after_run <span class="tok">grab 856ms</span>  home? no
+probe_boostshop    (reuse)
+probe_congrats     (reuse)
+probe_levelup      (reuse)         <span class="text-slate-400">6 states ฟรี — ใช้ frame เดียวกัน</span>
+probe_rankingrewards (reuse)
+probe_giftdraw     (reuse)
+probe_friendinfo   (reuse)  -> goto running
+                              <span class="tok">sleep poll_ms 600ms</span>
+─────────────────────────────────────────────
+รวม ≈ 856 + 856 + 600 + jump/tap overhead  ≈ <b>2.9 s</b>   ตรงกับ median 3s</code></pre>
+    </div>
+    <p class="text-xs text-slate-500 leading-relaxed">
+      Probe chain ไม่ได้กิน grab (engine reuse frame ใน pure-goto chain อยู่แล้ว) — <b>ตัวกินคือ grab 2 ครั้ง + sleep</b>.
+      และ probe chain ทั้งหมดมีเหตุผลอยู่ที่ <b>หลัง</b> run จบ (popup รางวัล/friend) ไม่ใช่ระหว่างวิ่ง.
+    </p>
+  </section>
+
+  <!-- Design -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 mr-2">D</span>สิ่งที่จะแก้</h2>
+    <div class="space-y-4">
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-indigo-600 dark:text-indigo-400">1. <code>device.py</code> — persistent adb shell</div>
+        <p class="mt-1 leading-relaxed">เปิด <code>adb shell</code> ค้างไว้ ส่งคำสั่งทาง stdin. tap 45 ms → 9.5 ms (วัดแล้ว). ล้มเหลว → fallback เป็น spawn เดิม.</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-indigo-600 dark:text-indigo-400">2. <code>fsm.py</code> — <code>"no_poll_sleep": true</code> ต่อ state</div>
+        <p class="mt-1 leading-relaxed">ข้าม <code>sleep(poll_ms)</code> เฉพาะ state ที่ประกาศไว้ (in-run เท่านั้น). ประหยัด 600 ms/รอบ. State อื่นไม่กระทบ.</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-indigo-600 dark:text-indigo-400">3. <code>cookierun.json</code> — in-run fast loop</div>
+        <p class="mt-1 leading-relaxed">
+          <code>guard_not_shop.on_absent</code> → <b>jump + goto <code>running</code></b> (ตรง ๆ ไม่ผ่าน probe chain).
+          Probe chain ยังอยู่ครบ แต่เข้าถึงจาก <code>check_shop_after_run</code> ซึ่งวิ่งเฉพาะตอน <code>running</code> timeout / result เจอ.
+          <br>เหลือ grab เดียวต่อรอบ: <span class="tok">856 ms + jump 10 ms ≈ 0.9 s/jump</span>
+        </p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-indigo-600 dark:text-indigo-400">4. <code>act.py</code> — <code>double_jump_chance</code> ตั้งค่าได้ต่อ action</div>
+        <p class="mt-1 leading-relaxed">หลุมกว้างต้อง double jump. ให้ config สั่ง <code>"double": 1.0</code> ระหว่าง run ได้ (ปัจจุบัน hardcode 35%).
+        <b>ต้อง A/B วัดจริง</b> — double เสมออาจทำให้ข้ามแพลตฟอร์มเตี้ยพลาด.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Risks -->
+  <section class="mb-10">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">!</span>ความเสี่ยง / กติกาที่คงเดิม</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed">
+      <ul class="list-disc ml-5 space-y-1">
+        <li><b>ความเสี่ยงหลัก:</b> ตัด probe chain ออกจาก in-run loop → popup ที่โผล่<i>ระหว่าง</i> run (friend info จาก relay tap หลง) จะไม่ถูกเก็บทันที.
+            บรรเทาโดย <code>running.timeout_ms</code> ยังพาไป <code>guard_not_home</code> → chain เดิมทั้งชุด</li>
+        <li>Relay tap (960,540) ยังอยู่ แต่ตอนนี้ยิงถี่ขึ้น → โอกาสโดน leaderboard มากขึ้น. ทางแก้: ยิง relay ทุก N รอบ ไม่ใช่ทุกรอบ</li>
+        <li>ทุก safety net เดิม (coin guard, heart gate, ห้าม gem, probe chain) <b>ไม่ลบทิ้ง</b> — แค่ย้ายจุดเรียก</li>
+        <li><b>วัดผลด้วย:</b> jump gap median (log), และ Play-to-Play interval — ไม่ใช่ความรู้สึก</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Build -->
+  <section class="mb-4">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">B</span>ลำดับงาน + จุดวัด</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed">
+      <ol class="list-decimal ml-5 space-y-1">
+        <li><b>Baseline</b> — เก็บ jump-gap median จาก log ปัจจุบัน = <b>3s</b> ✔ (ทำแล้ว)</li>
+        <li>Config: <code>guard_not_shop.on_absent</code> → jump + goto <code>running</code> · <code>running.no_poll_sleep</code></li>
+        <li><code>fsm.py</code> รองรับ <code>no_poll_sleep</code></li>
+        <li>Live 1 run → วัด jump gap ใหม่ (คาด ~1s) + ยืนยัน probe chain ยังกู้ popup ได้ตอน run จบ</li>
+        <li><code>device.py</code> persistent shell (ถ้ายังอยากได้อีก ~50ms/action)</li>
+        <li>A/B <code>double_jump_chance</code> 0.35 vs 1.0 — วัด Play-to-Play interval</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

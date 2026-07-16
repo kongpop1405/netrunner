@@ -1,14 +1,18 @@
 @echo off
 chcp 65001 >nul
-setlocal enabledelayedexpansion
+setlocal
 
-set "ADB=C:\LDPlayer\LDPlayer9\adb.exe"
 set "REPO=%~dp0"
 cd /d "%REPO%"
 
+rem machine-specific settings come from .env (copy .env.example) — fallbacks below
+if exist ".env" for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do set "%%a=%%b"
+if not defined ADB_PATH set "ADB_PATH=adb"
+if not defined NETRUNNER_DEVICE set "NETRUNNER_DEVICE=127.0.0.1:5555"
+
 echo ============================================
 echo   NetRunner - Gift Draw box opener
-echo   device 127.0.0.1:5555
+echo   device %NETRUNNER_DEVICE%
 echo ============================================
 echo.
 echo Precondition: Gift Draw popup must already be open
@@ -32,9 +36,9 @@ echo.
 echo Opening %BOXES% box(es)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
 echo.
 
-"%ADB%" connect 127.0.0.1:5555
+"%ADB_PATH%" connect %NETRUNNER_DEVICE%
 
-python main.py --config config/giftdraw.json --adb "%ADB%" --max-cycles %CYCLES%
+python main.py --config config/cookierun/giftdraw.json --adb "%ADB_PATH%" --device %NETRUNNER_DEVICE% --max-cycles %CYCLES%
 
 echo.
 echo bot stopped.

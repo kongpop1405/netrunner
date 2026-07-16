@@ -1,18 +1,55 @@
 # RUN — cookierun bot cheatsheet
 
-Quick-run commands for this machine. `adb` is **not** on PATH here, so every command passes `--adb` explicitly.
+Day-to-day bot commands. New machine? Start at [SETUP.md](SETUP.md).
 
-## Verified environment (2026-07-07)
+Machine-specific settings (`ADB_PATH`, `NETRUNNER_DEVICE`, `DISCORD_WEBHOOK_URL`) live in
+`.env` — main.py and every `run_*.bat` read it, so commands below need no `--adb`/`--device`.
+Precedence: CLI flag > `.env` > config JSON (configs ship with the generic `127.0.0.1:5555`).
 
-- Python 3.10.11, `opencv-python` 4.13, `numpy` 2.2.6 — installed.
-- LDPlayer9 running, `127.0.0.1:5555` in `device` state.
-- Bundled adb: `C:\LDPlayer\LDPlayer9\adb.exe`
-- Dry-run smoke test passed: `home` marker score 0.95.
+## Verified environment (2026-07-10)
+
+- Python 3.10.11, `opencv-python` 4.13, `numpy` 2.2.6, `requests`, `python-dotenv` — installed.
+- **LDPlayer14**, instance `LDPlayer-1` (index 1), device `127.0.0.1:5557` @ 1920x1080, `device` state — set via `.env` `NETRUNNER_DEVICE`.
+- Bundled adb: `C:\LDPlayer\LDPlayer14\adb.exe` — set via `.env` `ADB_PATH`.
+- The original index-0 `LDPlayer` instance's adbd got stuck permanently offline (TCP handshake
+  never completed even after kill-server/regen-key/instance-reboot — root cause never isolated,
+  only a full Windows restart cleared it once, and a second incident needed a brand new instance).
+  If `adb devices` shows a device stuck `offline` for more than a minute despite reconnects,
+  don't sink more time into that instance — create a fresh one in LDMultiPlayer, set its
+  resolution to 1920x1080 (`ldconsole modify --index N --resolution 1920,1080,240`, instance
+  must be stopped first), and update `NETRUNNER_DEVICE` in `.env` to its port (`5555 + 2*index`).
+- Dry-run smoke test passed on the new device/port (2026-07-10).
+
+## Engine upgrade (2026-07-16) — not yet live-verified
+
+Engine + layout overhaul; unit tests pass (48) and every config validates, but **no live
+run since** — treat the first live run of each bot as a smoke test (`--max-cycles` capped).
+
+- **Layout**: configs moved to `config/cookierun/<task>.json`; `cookierun.json` renamed
+  `coinrun.json`; `run_bot.bat` renamed `run_coinrun.bat`; raw `snap_*.png` moved out of
+  `templates/` into `snaps/<game>/` (git-ignored); `templates/<game>/` is curated crops only.
+- **`absent_retries` / `absent_wait_ms`** (per state): tolerate N absent polls (each optionally
+  sleeping `absent_wait_ms`) before `on_absent` fires. The hand-written retry chains
+  (`gift_draw_2/_3`, `reward_2..5`, `await_faststart_2/_3`, `await_shop_2`, `picker_2`,
+  `rescue_check2`) are collapsed into their head states.
+- **`detect` any-of + branching `on_match`**: `detect` accepts a list (first found wins) and
+  `on_match` may be a dict keyed by template — one state can watch several popups. Existing
+  probe chains still work; collapse them opportunistically after a live verify.
+- **Per-state `threshold`**: overrides global `match_threshold` (e.g. tune the thin
+  `heart_empty.png` margin without touching other templates).
+- **Load-time validation**: goto targets, template files, and field ranges are checked at
+  startup; the `on_absent`-self-goto + `timeout_ms` crash trap (see Engine gotcha below) is
+  now **rejected at load** instead of crashing mid-farm.
+- **Stale-frame goto-cycle fix**: a pure-goto cycle (no taps/waits) used to spin forever on
+  one cached frame; the engine now forces a re-grab + poll-sleep once a goto chain revisits
+  a state, and fires a "possible livelock" Discord alert if states keep flipping with no
+  action for ~100 polls (same threshold as the same-state warning).
+- **Tests**: `python -m pytest tests/` (48 tests — perceive/config/fsm/act).
 
 ## cd into repo first
 
 ```powershell
-cd "c:\Users\kongp\OneDrive\เอกสาร\Yggdrasil System\netrunner"
+cd <repo>   # wherever you cloned netrunner (ASCII path — see SETUP.md)
 ```
 
 ## Commands
@@ -20,48 +57,54 @@ cd "c:\Users\kongp\OneDrive\เอกสาร\Yggdrasil System\netrunner"
 **Run live, continuous** (long farm — stop with `Ctrl+C`):
 
 ```powershell
-python main.py --config config/cookierun.json --adb "C:\LDPlayer\LDPlayer9\adb.exe"
+python main.py --config config/cookierun/coinrun.json
 ```
 
 **Run live, capped 20 cycles** (short trial):
 
 ```powershell
-python main.py --config config/cookierun.json --adb "C:\LDPlayer\LDPlayer9\adb.exe" --max-cycles 20 -v
+python main.py --config config/cookierun/coinrun.json --max-cycles 20 -v
 ```
 
 **Dry-run** (no taps, log only — validate FSM):
 
 ```powershell
-python main.py --config config/cookierun.json --adb "C:\LDPlayer\LDPlayer9\adb.exe" --dry-run -v
+python main.py --config config/cookierun/coinrun.json --dry-run -v
 ```
 
 ## Gift Draw (box opener)
 
-Double-click **`run_giftdraw.bat`** — prompts for how many boxes to open, then runs `config/giftdraw.json` capped to that many draws (`boxes*3 + 5` cycles).
+Double-click **`run_giftdraw.bat`** — prompts for how many boxes to open, then runs `config/cookierun/giftdraw.json` capped to that many draws (`boxes*5 + 15` cycles — extra headroom for the rescue path below).
 
 Precondition: the **Gift Draw popup already open** (home → tap the Rewards gift-box icon, bottom bar). Loop: tap Draw → pick the yellow box → tap Confirm (finds it via `tap_template`, handles both reward-reveal layouts) → repeat. Auto-stops when draws run out (Draw greys → pick_box times out → closes the popup). `Ctrl+C` to abort early.
+
+Design notes (2026-07-08):
+
+- **Rare treasure popup** — a treasure reward pops a second "Congratulations! Treasure received!" dialog **over** the Gift Draw popup. Its Confirm matches `giftreward_confirm.png` (verified live, score 1.00 at 962,853), but the old config froze anyway: the FSM sat in `gift_draw` whose marker was covered, and its `on_absent` self-loop + `timeout_ms` combo made the engine raise `FsmError` (timeout with a self-goto has no escape target) — bot died with the popup stuck on screen.
+- **Fix: absent_retries + rescue** — `gift_draw` and `reward` tolerate absence via `absent_retries`/`absent_wait_ms` (originally hand-written state chains `gift_draw_2/_3`, `reward_2..5`, collapsed 2026-07-16 when the engine got counters) and fall through to a `rescue` state: re-check the Confirm template, tap it if present, else blind-tap (962,853) as backstop for future unknown popups, then verify recovery via `rescue_check` before resuming (or stop cleanly via `done`).
+- **Engine gotcha** — `on_absent` goto pointing at the state itself + `timeout_ms` = guaranteed `FsmError` crash when the timeout fires ([src/fsm.py](src/fsm.py) `_handle_absent`). Self-loop-with-timeout only works when `on_absent` is a dict goto to a *different* state (like `pick_box` → `done`). Since 2026-07-16 the config validator **rejects the trap at load time**, so it can't reach a live run anymore.
 
 Manual equivalent:
 
 ```powershell
-python main.py --config config/giftdraw.json --adb "C:\LDPlayer\LDPlayer9\adb.exe" --max-cycles 50
+python main.py --config config/cookierun/giftdraw.json --max-cycles 50
 ```
 
 ## Send-Life (friends list)
 
-Double-click **`run_sendlife.bat`** — runs `config/sendlife.json`, capped 300 cycles.
+Double-click **`run_sendlife.bat`** — runs `config/cookierun/sendlife.json`, capped 300 cycles.
 
 Precondition: **home screen, Friends tab open** (default tab — leaderboard/friends list with Send-Life icons visible). Loop: scan for any visible Send-Life icon (`tap_template`, so row position doesn't matter) → tap → Confirm the "Send a free Life?" dialog → Confirm "Message sent!" → repeat. When no icon is visible it swipes the list up and re-scans; stops automatically once two consecutive scans past a swipe find nothing (bottom of list). `Ctrl+C` to abort early.
 
 Manual equivalent:
 
 ```powershell
-python main.py --config config/sendlife.json --adb "C:\LDPlayer\LDPlayer9\adb.exe" --max-cycles 300
+python main.py --config config/cookierun/sendlife.json --max-cycles 300
 ```
 
 ## Add Friends (Find tab)
 
-Double-click **`run_addfriend.bat`** — prompts for how many friend requests to send, then runs `config/addfriend.json` capped to `friends*5/4 + 8` cycles.
+Double-click **`run_addfriend.bat`** — prompts for how many friend requests to send, then runs `config/cookierun/addfriend.json` capped to `friends*5/4 + 8` cycles.
 
 Entry automated: from **home** it taps the Friends icon (1203,465) → Find tab (851,117); if the popup is already on Find it starts straight away. Loop: **Refresh first** (fresh all-green batch), then a fixed-coordinate walk taps each of the 4 rows exactly once (y = 367/529/691/853), then Refresh again → repeat. No natural end — the cycle cap ends the run. `Ctrl+C` to abort early.
 
@@ -74,14 +117,35 @@ Design notes (learned live):
 Manual equivalent:
 
 ```powershell
-python main.py --config config/addfriend.json --adb "C:\LDPlayer\LDPlayer9\adb.exe" --max-cycles 50
+python main.py --config config/cookierun/addfriend.json --max-cycles 50
+```
+
+## Box Farm — Episode 3 (`run_boxrun_ep3.bat`)
+
+Double-click **`run_boxrun_ep3.bat`** — runs `config/cookierun/boxrun_ep3.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
+
+**Precondition**: **Episode 3 (Dragon's Valley) already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection. Future episodes get their own `boxrun_epN.json` (same skeleton, retune coords/pattern per episode).
+
+Differences from `cookierun.json` (the coin grinder), all learned live 2026-07-15:
+
+- **Buys +17% base speed, not Double Coins.** Same Multi-Buy machinery, but the picker pins a different boost. On each shop entry `probe_speed` checks `speedbase17_banner.png` (the `+17% base speed` pill on the right panel; CV: present=1.000, absent ~0.33-0.38). Absent → `buy_speed` taps the pink **Multi** toggle (1649,337) → `picker` (where **+17% base speed is PRE-TICKED** by the game — do NOT tap any row, tapping the ticked row un-ticks it) → **Multi-Buy** (953,899) → the game auto-rolls, spending coins, until the +17% boost lands. `start_run` re-verifies the pill; absent → `retry_buy`. Coins dry mid-roll → `insufficient_coins` (Cancel 770,685, never Confirm) → `force_play`.
+- **Taps the Fast Start prompt.** After `check_heart` taps Play, `await_faststart` (2 extra looks via `absent_retries`, ~700ms apart) waits for `Tap to activate Fast Start Boost!` and taps the blue-arrow button `faststart_btn.png` at (985,515). CV: prompt=1.000; mid-run tray icon 0.197 / bonustime 0.255 / shop 0.335 (no false-positive — the green glow + size distinguish it from the small tray icon). Prompt auto-dismisses after a few seconds, so a miss just means no fast-start that run, not a crash.
+- **No Cookie Relay Boost.** The coin bot's center-screen relay tap (960,540) in `guard_not_shop` is **removed** — box farming doesn't need it, and it added leaderboard-mistap risk.
+- **In-run pattern J→J→S→J** (3 jump : 1 slide per 4-hop cycle) instead of jump-only. `jump_3` is a `slide` (Slide button ~1671,937, ~550ms hold) to clear overhead bars — the one obstacle class a jump can never clear. No per-frame obstacle CV (capture ~850ms is slower than obstacles appear), so the blind mixed cadence covers both pits (jump + engine's 35% double-jump) and bars (slide). **Ratio + slide `hold_ms` are the first knobs to retune after watching a live Episode-3 run.**
+
+New templates added to `templates/cookierun/`: `faststart_btn.png`, `speedbase17_banner.png`. New engine action `slide` (registered in `src/config.py` — the actuator already had it, only the validator whitelist was missing it).
+
+Manual equivalent:
+
+```powershell
+python main.py --config config/cookierun/boxrun_ep3.json
 ```
 
 ## Preconditions (cookierun run-grind)
 
 - Cookie Run open and sitting on **home** (Episode banner + Play!). `start_state: "home"`.
 - Resume mid-loop: add `--start-state <state>` (must be a defined state).
-- `--device` not needed — config already has `127.0.0.1:5555`.
+- `--device` not needed — `.env` `NETRUNNER_DEVICE` (or the config's `127.0.0.1:5555` default) covers it.
 
 ### Heart gate (check_heart)
 
@@ -95,7 +159,7 @@ Multi-Buy fires **only when Double Coins is not already equipped**. On every boo
 
 | flag | effect |
 |------|--------|
-| `--adb <path>` | adb binary (required here — not on PATH) |
+| `--adb <path>` | adb binary (default: `.env` `ADB_PATH`, else `adb` on PATH) |
 | `--dry-run` | run FSM, send no taps |
 | `--max-cycles N` | stop after N poll cycles |
 | `--start-state S` | override config `start_state` (resume) |
@@ -103,3 +167,16 @@ Multi-Buy fires **only when Double Coins is not already equipped**. On every boo
 | `--list-devices` | list attached devices, exit |
 
 **Stop:** `Ctrl+C` — caught, exits clean.
+
+## Logging + Discord alerts (2026-07-10)
+
+Every run now writes a plain-text file log alongside the console, and can push Discord alerts on trouble. Both are opt-in-by-presence — no `.env` means no alerts, but the file log always writes.
+
+- **File log**: `logs/<YYYY-MM-DD>.log` (one file per calendar day, same format as console — no rotation beyond that, so a day with `-v` on for hours can get large). Path is announced at startup (`logging to logs\...`).
+- **Discord alerts**: set `DISCORD_WEBHOOK_URL` in `.env` (copy `.env.example`, fill in a channel webhook URL — Discord channel Settings → Integrations → Webhooks). `.env` is git-ignored; never commit it.
+  - 🔴 **critical, `@here`-pinged** — the bot crashed (`FsmError`, e.g. a state timed out with no `on_absent` target). Includes the error and last state.
+  - 🟡 **warning** — the FSM stayed on the exact same state for 100 consecutive polls (`_STUCK_STATE_WARN_CYCLES` in `src/fsm.py`), which usually means a livelock rather than an expected long wait (heart regen already self-limits via its own 30s-poll timeout logic, not this counter). Fires once per stuck episode — resets when the state finally changes.
+  - A dead/misconfigured webhook never crashes the bot — `send_alert` swallows `requests` errors and just logs a warning.
+- Design note: state-repeat tracking counts the literal FSM state string staying constant across polls, not detection score or screen content — a ping-pong between two states (A→B→A→B forever) won't trip it, only a true stuck-on-one-state loop. Threshold picked generously (100 polls × ~600ms ≈ 60s) so it doesn't fire during normal long-wait states.
+
+**Still open**: the "Connection lost! Please check your LTE/5G or Wi-Fi connection." popup (Devsisters' own network-drop dialog, distinct from any FSM-side detection) has no dedicated state/template yet in `config/cookierun/coinrun.json` — it was reproduced live once but the screen moved on before a template could be cropped. Next time it's caught on screen, crop it straight into `templates/cookierun/connlost_marker.png` and wire a `probe_connlost` state into the safety-net probe chain (same pattern as `probe_rankingrewards`/`probe_giftdraw`) ahead of `run_result`, with its `on_match` tapping Confirm and looping back to `home`.

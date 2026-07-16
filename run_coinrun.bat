@@ -11,22 +11,15 @@ if not defined ADB_PATH set "ADB_PATH=adb"
 if not defined NETRUNNER_DEVICE set "NETRUNNER_DEVICE=127.0.0.1:5555"
 
 echo ============================================
-echo   NetRunner - Send-Life to friends
-echo   device %NETRUNNER_DEVICE%
+echo   NetRunner - cookierun coin grinder
+echo   device %NETRUNNER_DEVICE%  ^|  unlimited cycles
+echo   stop: Ctrl+C
 echo ============================================
-echo.
-echo Precondition: home screen, Friends tab open
-echo (the leaderboard/friends list with Send-Life
-echo  icons must already be visible).
-echo.
-echo Sends to every unsent friend, scrolling the
-echo list as needed. Stops automatically at the
-echo bottom of the list.  Stop early: Ctrl+C
 echo.
 
 "%ADB_PATH%" connect %NETRUNNER_DEVICE%
 
-python main.py --config config/cookierun/sendlife.json --adb "%ADB_PATH%" --device %NETRUNNER_DEVICE% --max-cycles 300
+python main.py --config config/cookierun/coinrun.json --adb "%ADB_PATH%" --device %NETRUNNER_DEVICE%
 
 echo.
 echo bot stopped.

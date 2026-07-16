@@ -42,16 +42,92 @@ def _patch_find(monkeypatch, found_markers: set[str]):
     monkeypatch.setattr(fsm, "find_named", fake_find)
 
 
-def test_pure_goto_chain_reuses_one_frame(monkeypatch, grabs):
-    """a(match->goto b) -> b(absent->goto a) ping-pong: no taps ever run,
+def test_linear_goto_chain_reuses_one_frame(monkeypatch, grabs):
+    """a -> b -> c pure-goto probe chain: no taps ever run and no state repeats,
     so the whole chain must ride a single capture."""
+    _patch_find(monkeypatch, {"a.png", "b.png", "c.png"})
+    states = {
+        "a": {"detect": "a.png", "on_match": [{"type": "goto", "state": "b"}]},
+        "b": {"detect": "b.png", "on_match": [{"type": "goto", "state": "c"}]},
+        "c": {"detect": "c.png", "on_match": [{"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=10)
+    assert grabs["n"] == 1
+
+
+def test_goto_pingpong_forces_regrab(monkeypatch, grabs):
+    """a <-> b goto cycle with no actions: on ONE cached frame the matching is
+    deterministic, so without a forced re-grab the loop would spin on a stale
+    frame forever. The engine must re-capture once the chain revisits a state."""
     _patch_find(monkeypatch, {"a.png"})
     states = {
         "a": {"detect": "a.png", "on_match": [{"type": "goto", "state": "b"}]},
         "b": {"detect": "b.png", "on_absent": {"goto": "a"}, "timeout_ms": 99999},
     }
+    fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=12)
+    assert 1 < grabs["n"] < 12  # re-grabs, but still amortizes the chain
+
+
+def test_no_act_pingpong_alerts_livelock(monkeypatch, grabs):
+    """States keep flipping (same-state counter never trips) but nothing is
+    ever acted on -> the no-act livelock warning must fire."""
+    monkeypatch.setattr(fsm, "_STUCK_STATE_WARN_CYCLES", 5)
+    alerts = []
+    monkeypatch.setattr(fsm, "send_alert", lambda *a, **k: alerts.append(a))
+    _patch_find(monkeypatch, {"a.png"})
+    states = {
+        "a": {"detect": "a.png", "on_match": [{"type": "goto", "state": "b"}]},
+        "b": {"detect": "b.png", "on_absent": {"goto": "a"}, "timeout_ms": 99999},
+    }
+    fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=30)
+    assert any("livelock" in a[1].lower() for a in alerts)
+
+
+def test_absent_retries_delays_on_absent(monkeypatch, grabs):
+    """absent_retries=2: the first two absent polls stay put; the third follows
+    on_absent. Replaces the old hand-written state_2/_3 retry chains."""
+    _patch_find(monkeypatch, {"b.png"})
+    states = {
+        "a": {"detect": "a.png", "absent_retries": 2, "on_absent": {"goto": "b"}},
+        "b": {"detect": "b.png", "on_match": [{"type": "stop"}]},
+    }
     fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=10)
+    # poll 1+2 = retries (each re-grabs after the sleep), poll 3 = goto b,
+    # b rides the same frame -> stop. 3 grabs total, run ends before max_cycles.
+    assert grabs["n"] == 3
+
+
+def test_detect_any_of_picks_matching_branch(monkeypatch, grabs):
+    """detect list + dict on_match: the branch of the template actually found
+    must run — here b.png is on screen, so the b-branch stops the run. The
+    a-branch routes to a state that would raise FsmError if ever reached."""
+    _patch_find(monkeypatch, {"b.png"})
+    states = {
+        "s": {
+            "detect": ["a.png", "b.png"],
+            "on_match": {
+                "a.png": [{"type": "goto", "state": "boom"}],
+                "b.png": [{"type": "stop"}],
+            },
+        },
+        "boom": {"detect": "a.png", "timeout_ms": 0},
+    }
+    fsm.Runner(_cfg(states, "s"), FakeDevice()).run(max_cycles=10)  # no FsmError
     assert grabs["n"] == 1
+
+
+def test_per_state_threshold_overrides_global(monkeypatch, grabs):
+    """Global threshold 0.8 would miss a 0.5-score match; the state's own
+    threshold 0.4 must win and accept it."""
+    def fake_find(frame, store, name, threshold):
+        return Match(found=0.5 >= threshold, score=0.5, x=5, y=5, w=2, h=2)
+
+    monkeypatch.setattr(fsm, "find_named", fake_find)
+    states = {
+        "a": {"detect": "a.png", "threshold": 0.4, "on_match": [{"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=5)
+    assert grabs["n"] == 1  # found on the first poll -> stop
 
 
 def test_tap_invalidates_frame(monkeypatch, grabs):

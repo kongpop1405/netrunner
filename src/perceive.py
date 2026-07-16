@@ -43,13 +43,33 @@ class TemplateStore:
         return self._cache[name]
 
 
-def find(frame: np.ndarray, template: np.ndarray, threshold: float = 0.85) -> Match:
-    """Single-scale template match. Returns center coords when score >= threshold."""
+def find(
+    frame: np.ndarray,
+    template: np.ndarray,
+    threshold: float = 0.85,
+    roi: tuple[int, int, int, int] | None = None,
+) -> Match:
+    """Single-scale template match. Returns center coords when score >= threshold.
+
+    `roi` = (x, y, w, h) restricts the search to a sub-rectangle. Coordinates in
+    the returned Match are still full-frame, so callers never have to un-offset.
+    A tight ROI is both faster (matchTemplate cost scales with search area) and
+    safer: an in-run obstacle template would otherwise match the same sprite
+    drawn anywhere else on screen.
+    """
+    ox = oy = 0
+    if roi is not None:
+        ox, oy, rw, rh = roi
+        frame = frame[oy : oy + rh, ox : ox + rw]
+        if frame.size == 0:
+            raise PerceiveError(f"roi {roi} is empty or outside the frame")
+
     th, tw = template.shape[:2]
     fh, fw = frame.shape[:2]
     if th > fh or tw > fw:
+        where = f"roi ({fw}x{fh})" if roi is not None else f"frame ({fw}x{fh})"
         raise PerceiveError(
-            f"template ({tw}x{th}) larger than frame ({fw}x{fh}) — "
+            f"template ({tw}x{th}) larger than {where} — "
             "captured at a different resolution than the template was cropped?"
         )
     if float(template.std()) < 1.0:
@@ -61,8 +81,8 @@ def find(frame: np.ndarray, template: np.ndarray, threshold: float = 0.85) -> Ma
         )
     res = cv2.matchTemplate(frame, template, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(res)
-    cx = max_loc[0] + tw // 2
-    cy = max_loc[1] + th // 2
+    cx = ox + max_loc[0] + tw // 2
+    cy = oy + max_loc[1] + th // 2
     return Match(
         found=bool(max_val >= threshold),
         score=float(max_val),
@@ -71,10 +91,14 @@ def find(frame: np.ndarray, template: np.ndarray, threshold: float = 0.85) -> Ma
 
 
 def find_named(
-    frame: np.ndarray, store: TemplateStore, name: str, threshold: float = 0.85
+    frame: np.ndarray,
+    store: TemplateStore,
+    name: str,
+    threshold: float = 0.85,
+    roi: tuple[int, int, int, int] | None = None,
 ) -> Match:
     """Convenience: resolve a template by name from the store, then match."""
-    return find(frame, store.get(name), threshold)
+    return find(frame, store.get(name), threshold, roi=roi)
 
 
 def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None) -> str:

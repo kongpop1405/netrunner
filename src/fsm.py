@@ -5,14 +5,21 @@ import logging
 import time
 
 from .act import Actor
+from .alert import send_alert
 from .capture import grab
-from .config import Config
+from .config import Config, detect_names
 from .device import Device
-from .perceive import TemplateStore, find_named
+from .perceive import Match, TemplateStore, find_named
 
 log = logging.getLogger("netrunner.fsm")
 
 _STOP = "__stop__"
+
+# consecutive polls stuck on the exact same state before we warn it looks like
+# a livelock (e.g. an on_absent chain ping-ponging between states forever, or
+# a rescue loop that never resolves). Deliberately generous so long, expected
+# waits (heart regen, roll animation) don't false-positive.
+_STUCK_STATE_WARN_CYCLES = 100
 
 
 class FsmError(RuntimeError):
@@ -20,11 +27,12 @@ class FsmError(RuntimeError):
 
 
 class Runner:
-    def __init__(self, cfg: Config, device: Device):
+    def __init__(self, cfg: Config, device: Device, *, webhook_url: str | None = None):
         self.cfg = cfg
         self.device = device
         self.store = TemplateStore(cfg.templates_dir)
         self.actor: Actor  # set in run()
+        self.webhook_url = webhook_url
 
     def run(self, *, dry_run: bool = False, max_cycles: int | None = None) -> None:
         self.actor = Actor(
@@ -34,47 +42,144 @@ class Runner:
         state = self.cfg.start_state
         entered_at = time.monotonic()
         cycles = 0
+        same_state_streak = 0
+        stuck_alerted = False
+        absent_streak = 0        # consecutive absent polls in the current state
+        no_act_streak = 0        # consecutive polls without any screen-affecting action
+        no_act_states: set[str] = set()
+        no_act_alerted = False
+        gotos_on_frame = 0       # pure-goto transitions served by the cached frame
         frame = None  # reused across pure-goto transitions; None = must re-grab
         log.info("start state=%s device=%s dry_run=%s", state, self.device.serial, dry_run)
 
-        while True:
-            if max_cycles is not None and cycles >= max_cycles:
-                log.info("reached max_cycles=%d, stopping", max_cycles)
-                return
-            cycles += 1
+        try:
+            while True:
+                if max_cycles is not None and cycles >= max_cycles:
+                    log.info("reached max_cycles=%d, stopping", max_cycles)
+                    return
+                cycles += 1
 
-            spec = self.cfg.states[state]
-            if frame is None:
-                frame = grab(self.device)
-            marker = spec["detect"]
-            m = find_named(frame, self.store, marker, self.cfg.match_threshold)
-            log.debug("state=%s detect=%s found=%s score=%.2f",
-                      state, marker, m.found, m.score)
+                spec = self.cfg.states[state]
+                if frame is None:
+                    frame = grab(self.device)
+                    gotos_on_frame = 0
+                thr = float(spec.get("threshold", self.cfg.match_threshold))
+                m, matched = self._detect(frame, spec, thr)
+                log.debug("state=%s detect=%s found=%s score=%.2f",
+                          state, matched, m.found, m.score)
 
-            if m.found:
-                entered_at = time.monotonic()
-                next_state, acted = self._run_actions(spec.get("on_match", []), frame, state)
+                prev_state = state
+                did_transition = False
+                if m.found:
+                    absent_streak = 0
+                    entered_at = time.monotonic()
+                    on_match = spec.get("on_match", [])
+                    if isinstance(on_match, dict):  # per-template branch (detect list)
+                        on_match = on_match[matched]
+                    next_state, acted = self._run_actions(on_match, frame, state)
+                    if next_state == _STOP:
+                        log.info("stop action reached, ending run")
+                        return
+                    if next_state is not None:
+                        state = next_state
+                        did_transition = True
+                else:
+                    absent_streak += 1
+                    next_state, acted = self._handle_absent(
+                        state, spec, entered_at, frame, absent_streak
+                    )
+                    if next_state == _STOP:
+                        return
+                    if next_state is not None:
+                        state = next_state
+                        entered_at = time.monotonic()
+                        did_transition = True
+
+                if did_transition:
+                    absent_streak = 0
                 if acted:
                     frame = None  # taps/waits changed the screen -> stale
-                if next_state == _STOP:
-                    log.info("stop action reached, ending run")
-                    return
-                if next_state is not None:
-                    state = next_state
-                    continue
-            else:
-                next_state, acted = self._handle_absent(state, spec, entered_at, frame)
-                if acted:
-                    frame = None
-                if next_state == _STOP:
-                    return
-                if next_state is not None:
-                    state = next_state
-                    entered_at = time.monotonic()
+                    no_act_streak = 0
+                    no_act_states.clear()
+                    no_act_alerted = False
+                else:
+                    no_act_streak += 1
+                    no_act_states.add(state)
+
+                if state == prev_state:
+                    same_state_streak += 1
+                else:
+                    same_state_streak = 0
+                    stuck_alerted = False
+                if same_state_streak >= _STUCK_STATE_WARN_CYCLES and not stuck_alerted:
+                    log.warning("state '%s' unchanged for %d consecutive polls — possible livelock",
+                                state, same_state_streak)
+                    send_alert(
+                        self.webhook_url,
+                        "NetRunner: possible livelock",
+                        f"State `{state}` unchanged for {same_state_streak} consecutive polls "
+                        f"(device {self.device.serial}).",
+                    )
+                    stuck_alerted = True
+                # ping-pong livelock: states keep changing (so the same-state counter
+                # never trips) but nothing on screen is ever acted on — e.g. a goto
+                # cycle A→B→A→B waiting for a screen that never comes.
+                if (no_act_streak >= _STUCK_STATE_WARN_CYCLES
+                        and len(no_act_states) > 1 and not no_act_alerted):
+                    cycle = " ⇄ ".join(sorted(no_act_states))
+                    log.warning("no action for %d consecutive polls across states %s "
+                                "— possible goto-cycle livelock", no_act_streak, cycle)
+                    send_alert(
+                        self.webhook_url,
+                        "NetRunner: possible livelock",
+                        f"No screen action for {no_act_streak} consecutive polls while "
+                        f"cycling through `{cycle}` (device {self.device.serial}).",
+                    )
+                    no_act_alerted = True
+
+                if did_transition:
+                    if frame is not None:
+                        gotos_on_frame += 1
+                        if gotos_on_frame > len(self.cfg.states):
+                            # A pure-goto chain longer than the state count must have
+                            # revisited a state on the SAME cached frame — matching is
+                            # deterministic, so it would spin on that stale frame
+                            # forever. Re-grab and pace to the poll cadence instead.
+                            log.debug("pure-goto chain revisited a state on one frame "
+                                      "-> re-grab + sleep")
+                            frame = None
+                            time.sleep(self.cfg.poll_ms / 1000)
                     continue
 
-            frame = None  # sleeping -> screen will have moved on
-            time.sleep(self.cfg.poll_ms / 1000)
+                frame = None  # sleeping -> screen will have moved on
+                time.sleep(self.cfg.poll_ms / 1000)
+        except FsmError as e:
+            log.error("fatal: %s", e)
+            send_alert(
+                self.webhook_url,
+                "NetRunner: bot crashed",
+                f"```{e}```\nlast state: `{state}` (device {self.device.serial})",
+                critical=True,
+            )
+            raise
+
+    def _detect(self, frame, spec: dict, threshold: float) -> tuple[Match, str]:
+        """Match the state's template(s) against the frame.
+
+        `detect` is one filename or a list (any-of: templates are tried in order,
+        first found wins — this is what lets one state watch for several popups
+        instead of a chain of single-detect probe states). Returns the found match
+        and its template name, or the best-scoring miss for logging.
+        """
+        best: Match | None = None
+        best_name = ""
+        for name in detect_names(spec):
+            m = find_named(frame, self.store, name, threshold)
+            if m.found:
+                return m, name
+            if best is None or m.score > best.score:
+                best, best_name = m, name
+        return best, best_name
 
     def _run_actions(self, actions: list[dict], frame, state: str) -> tuple[str | None, bool]:
         """Execute actions. Returns (goto_target_or_None, acted).
@@ -95,7 +200,7 @@ class Runner:
         return None, acted
 
     def _handle_absent(
-        self, state: str, spec: dict, entered_at: float, frame
+        self, state: str, spec: dict, entered_at: float, frame, absent_streak: int
     ) -> tuple[str | None, bool]:
         """Decide what to do when the current state's marker is NOT on screen.
 
@@ -111,8 +216,12 @@ class Runner:
 
           1. timeout_ms elapsed -> stuck. Redirect via the on_absent target if
              there is one, else raise FsmError (better to stop than farm a dead screen).
-          2. on_absent present -> run it (dict goto, or the action list).
-          3. otherwise stay put -> main loop sleeps and re-polls, tolerating brief
+          2. `absent_retries: N` and fewer than N absent polls so far -> stay put
+             (optionally sleeping `absent_wait_ms` first). This replaces the old
+             hand-written retry chains (state_2/_3/...) — the grace window before
+             on_absent fires now lives in one state.
+          3. on_absent present -> run it (dict goto, or the action list).
+          4. otherwise stay put -> main loop sleeps and re-polls, tolerating brief
              transitions (loading spinners) without churn.
         """
         on_absent = spec.get("on_absent")
@@ -136,6 +245,15 @@ class Runner:
                     f"state '{state}' stuck for {elapsed_ms:.0f}ms "
                     f"(timeout {timeout_ms}ms) with no on_absent target"
                 )
+
+        retries = int(spec.get("absent_retries", 0))
+        if absent_streak <= retries:
+            log.debug("state '%s' marker absent — retry %d/%d", state, absent_streak, retries)
+            wait_ms = spec.get("absent_wait_ms")
+            if wait_ms:
+                time.sleep(int(wait_ms) / 1000)
+                return None, True  # slept -> screen may have moved -> frame is stale
+            return None, False
 
         if isinstance(on_absent, list):
             return self._run_actions(on_absent, frame, state)

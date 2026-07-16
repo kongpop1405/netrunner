@@ -112,11 +112,50 @@ class Actor:
             if not self.dry_run:
                 self.device.shell("input", "tap", str(x2), str(y2))
 
+    #: how long a slide is held (ms) when the action doesn't say. Long enough to
+    #: clear a typical low bar, short enough not to eat the next jump cue.
+    slide_hold_ms: int = 550
+    #: jitter (ms) added to the hold so the duration isn't a constant.
+    slide_hold_jitter_ms: int = 90
+
+    def slide(self, cx: int, cy: int, rx: int, ry: int, hold_ms: int | None = None) -> None:
+        """Hold the Slide button: an `input swipe` whose start and end are the same
+        point acts as a press-and-hold for `hold_ms`. Cookie stays crouched for the
+        whole hold, so the duration — not the tap — is what clears the obstacle.
+        """
+        x, y = self._rand_in_zone(cx, cy, rx, ry)
+        ms = hold_ms if hold_ms is not None else self.slide_hold_ms
+        ms += random.randint(-self.slide_hold_jitter_ms, self.slide_hold_jitter_ms)
+        ms = max(120, ms)
+        log.info("slide (%d,%d) hold %dms%s", x, y, ms, " [dry]" if self.dry_run else "")
+        if not self.dry_run:
+            self.device.shell("input", "swipe", str(x), str(y), str(x), str(y), str(ms))
+
     def key(self, keycode: int) -> None:
         """Send an Android keyevent (4 = BACK — dismisses most dialogs safely)."""
         log.info("key %d%s", keycode, " [dry]" if self.dry_run else "")
         if not self.dry_run:
             self.device.shell("input", "keyevent", str(keycode))
+
+    #: per-character delay (seconds) when typing — `input text` blasts the whole
+    #: string instantly, which some IMEs drop characters from. Typing char by char
+    #: at a human cadence is slower but lands every keystroke.
+    type_delay_range: tuple[float, float] = (0.06, 0.14)
+
+    def text(self, value: str) -> None:
+        """Type a string into the focused field, one character at a time.
+
+        The field must already be focused (tap it first). Space is sent as `%s`
+        — `input text` treats a literal space as an argument separator and would
+        otherwise drop everything after it. Config validation guarantees `value`
+        holds only characters this can carry.
+        """
+        log.info("text %r%s", value, " [dry]" if self.dry_run else "")
+        if self.dry_run:
+            return
+        for ch in value:
+            self.device.shell("input", "text", "%s" if ch == " " else ch)
+            time.sleep(random.uniform(*self.type_delay_range))
 
     # --- action dispatch ------------------------------------------------------
 
@@ -154,10 +193,21 @@ class Actor:
         if kind == "key":
             self.key(int(action["code"]))
             return None
+        if kind == "text":
+            self.text(str(action["value"]))
+            return None
         if kind == "jump":
             self.jump(
                 int(action["cx"]), int(action["cy"]),
                 int(action.get("rx", 150)), int(action.get("ry", 55)),
+            )
+            return None
+        if kind == "slide":
+            hold = action.get("hold_ms")
+            self.slide(
+                int(action["cx"]), int(action["cy"]),
+                int(action.get("rx", 150)), int(action.get("ry", 55)),
+                hold_ms=int(hold) if hold is not None else None,
             )
             return None
         if kind == "goto":

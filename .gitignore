@@ -4,5 +4,8 @@ __pycache__/
 .venv/
 venv/
 *.log
+logs/
 captures/
+snaps/
 snap_*.png
+.env
