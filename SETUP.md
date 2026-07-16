@@ -32,26 +32,26 @@ Checklist for getting NetRunner running on a fresh machine. Generic engine docs 
 3. Enable ADB: LDPlayer → Settings → Other → ADB debugging → **Open local connection**.
 4. Port formula: `5555 + 2*instance_index` (index 0 → 5555, index 1 → 5557, …).
 
-## 4. `.env` — your machine's settings
+## 4. `.env` — optional, usually skip this
 
-```
-copy .env.example .env
-```
+adb and the emulator are **auto-detected**: the engine finds adb (`PATH`, then newest
+`C:\LDPlayer\LDPlayer*\adb.exe`) and scans ports 5555/5557/5559/5561 for the one
+running instance. With LDPlayer started, the bots just work — no `.env` needed.
 
-Fill in:
+Create `.env` (copy [.env.example](.env.example)) only for these cases:
 
-| key | what |
+| key | when |
 |-----|------|
-| `ADB_PATH` | full path to adb (or `adb` if on PATH) |
-| `NETRUNNER_DEVICE` | your instance's address, e.g. `127.0.0.1:5555` |
-| `DISCORD_WEBHOOK_URL` | optional — your own channel webhook for crash/livelock alerts |
+| `NETRUNNER_DEVICE` | several instances running at once — pin which one |
+| `ADB_PATH` | adb in a non-standard location |
+| `DISCORD_WEBHOOK_URL` | want crash/livelock alerts in your Discord channel |
 
-`.env` is git-ignored — never commit it. Precedence everywhere: CLI flag > `.env` > config JSON.
+`.env` is git-ignored — never commit it. Precedence: CLI flag > `.env` > auto-detect > config JSON.
 
 ## 5. Verify before first run (gate)
 
 ```
-python -m pytest tests/          # all 48 must pass
+python -m pytest tests/          # all 57 must pass
 python main.py --list-devices    # your instance shows as 'device'
 python main.py --config config/cookierun/coinrun.json --dry-run -v --max-cycles 5
 ```
@@ -73,7 +73,8 @@ re-crop templates from your own screen with `tools/snap.py` (see README "Add a n
 - **First live run of any bot = smoke test**: cap it with `--max-cycles`, watch it.
 - **Never touch the emulator while a bot runs** — taps land on whatever's on screen.
 - **adb stuck `offline` > 1 minute** despite reconnects: don't debug it. Create a fresh
-  LDPlayer instance, set resolution, update `NETRUNNER_DEVICE` in `.env`. (Root cause
-  never isolated; two incidents, only a Windows restart or a new instance cleared it.)
+  LDPlayer instance and set resolution — auto-detect picks up the new port by itself
+  (clear `NETRUNNER_DEVICE` from `.env` if you had pinned it). (Root cause never
+  isolated; two incidents, only a Windows restart or a new instance cleared it.)
 - Known open item: the "Connection lost!" popup has no template/state yet — see the
   bottom of [RUN.md](RUN.md) for the crop-and-wire recipe when it's caught on screen.

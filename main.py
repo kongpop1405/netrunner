@@ -6,8 +6,11 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import logging
 import os
+import re
+import shutil
 import sys
 
 from dotenv import load_dotenv
@@ -16,6 +19,61 @@ from src import config as cfgmod
 from src.alert import setup_file_logging
 from src.device import AdbError, Device, connect, list_devices
 from src.fsm import Runner
+
+_LDPLAYER_ADB_GLOBS = (
+    r"C:\LDPlayer\LDPlayer*\adb.exe",
+    r"C:\Program Files\LDPlayer\LDPlayer*\adb.exe",
+    r"D:\LDPlayer\LDPlayer*\adb.exe",
+)
+
+# LDPlayer instance ports: 5555 + 2*index
+_PROBE_PORTS = (5555, 5557, 5559, 5561)
+
+
+def _find_adb() -> str:
+    """Locate adb: ADB_PATH from .env > adb on PATH > newest LDPlayer install."""
+    env_path = os.environ.get("ADB_PATH")
+    if env_path:
+        return env_path
+    if shutil.which("adb"):
+        return "adb"
+
+    def version_key(path: str) -> int:
+        m = re.search(r"LDPlayer(\d+)", path, re.IGNORECASE)
+        return int(m.group(1)) if m else 0
+
+    hits = [p for pattern in _LDPLAYER_ADB_GLOBS for p in glob.glob(pattern)]
+    if hits:
+        return max(hits, key=version_key)
+    return "adb"  # let the first adb call raise with a clear error
+
+
+def _detect_device(adb: str, hint: str | None) -> str | None:
+    """Find the one running LDPlayer instance; None if none, AdbError if ambiguous.
+
+    LDPlayer dual-lists each instance as both `emulator-NNNN` and `127.0.0.1:NNNN+1`,
+    so prefer the TCP entries to avoid counting one instance twice.
+    """
+    probe = [hint] if hint and ":" in hint else []
+    probe += [f"127.0.0.1:{p}" for p in _PROBE_PORTS]
+    serials = list_devices(adb=adb)
+    if not serials:
+        for address in dict.fromkeys(probe):
+            try:
+                connect(address, adb=adb)
+            except AdbError:
+                continue
+        serials = list_devices(adb=adb)
+    tcp = [s for s in serials if s.startswith("127.0.0.1:")]
+    candidates = tcp or serials
+    if not candidates:
+        return None
+    if len(candidates) > 1:
+        raise AdbError(
+            "multiple devices found: " + ", ".join(candidates)
+            + " — pick one with --device or NETRUNNER_DEVICE in .env"
+        )
+    return candidates[0]
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -57,10 +115,14 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     _setup_logging(args.verbose)
 
-    # machine-specific bits live in .env; CLI flag > .env > config/default
-    adb = args.adb or os.environ.get("ADB_PATH") or "adb"
+    # machine-specific bits live in .env; CLI flag > .env > auto-detect
+    adb = args.adb or _find_adb()
 
     if args.list_devices:
+        try:
+            _detect_device(adb, hint=None)  # probe common ports so a fresh boot shows up
+        except AdbError:
+            pass  # multiple devices is fine when just listing
         try:
             serials = list_devices(adb=adb)
         except AdbError as e:
@@ -84,11 +146,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"config error: {e}", file=sys.stderr)
         return 2
 
-    address = args.device or os.environ.get("NETRUNNER_DEVICE") or cfg.device
+    address = args.device or os.environ.get("NETRUNNER_DEVICE")
     if not address:
-        print("error: no device given (set 'device' in config, NETRUNNER_DEVICE in .env, "
-              "or pass --device)", file=sys.stderr)
+        try:
+            address = _detect_device(adb, hint=cfg.device)
+        except AdbError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+    if not address:
+        print("error: no running emulator found. Start LDPlayer (ADB debugging on), "
+              "or pass --device / set NETRUNNER_DEVICE in .env", file=sys.stderr)
         return 2
+    logging.getLogger("netrunner").info("device: %s  adb: %s", address, adb)
 
     if args.start_state:
         if args.start_state not in cfg.states:

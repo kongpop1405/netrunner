@@ -1,18 +1,10 @@
 @echo off
 chcp 65001 >nul
 setlocal
-
-set "REPO=%~dp0"
-cd /d "%REPO%"
-
-rem machine-specific settings come from .env (copy .env.example) — fallbacks below
-if exist ".env" for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do set "%%a=%%b"
-if not defined ADB_PATH set "ADB_PATH=adb"
-if not defined NETRUNNER_DEVICE set "NETRUNNER_DEVICE=127.0.0.1:5555"
+cd /d "%~dp0"
 
 echo ============================================
 echo   NetRunner - Send-Life to friends
-echo   device %NETRUNNER_DEVICE%
 echo ============================================
 echo.
 echo Precondition: home screen, Friends tab open
@@ -24,9 +16,7 @@ echo list as needed. Stops automatically at the
 echo bottom of the list.  Stop early: Ctrl+C
 echo.
 
-"%ADB_PATH%" connect %NETRUNNER_DEVICE%
-
-python main.py --config config/cookierun/sendlife.json --adb "%ADB_PATH%" --device %NETRUNNER_DEVICE% --max-cycles 300
+python main.py --config config/cookierun/sendlife.json --max-cycles 300
 
 echo.
 echo bot stopped.

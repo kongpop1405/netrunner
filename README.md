@@ -23,28 +23,22 @@ New machine? Follow [SETUP.md](SETUP.md) (onboarding checklist). Day-to-day bot 
 pip install -r requirements.txt
 ```
 
-## Connect LDPlayer over ADB
+## Connecting to LDPlayer — auto-detected
 
-LDPlayer instances listen on ports `5555, 5557, 5559, ...` (port + 2 per instance).
+adb and the emulator are found automatically: adb from `PATH` or the newest
+`C:\LDPlayer\LDPlayer*\adb.exe`, the instance by scanning ports `5555, 5557, 5559, 5561`
+(port = `5555 + 2*instance_index`). Start LDPlayer with ADB debugging enabled and run —
+no configuration needed.
 
-```bash
-adb connect 127.0.0.1:5555
-adb devices          # confirm the emulator shows up
-```
+Overrides (optional, via `.env` — copy [.env.example](.env.example); git-ignored, never commit):
 
-Use that address as `"device"` in your config (or pass `--device`).
-
-## Machine settings — `.env`
-
-Machine-specific values live in `.env` (copy [.env.example](.env.example); git-ignored, never commit):
-
-| key | what |
+| key | when |
 |-----|------|
-| `ADB_PATH` | adb binary path (skip if `adb` is on PATH) |
-| `NETRUNNER_DEVICE` | your instance's adb address — overrides the config's `"device"` |
-| `DISCORD_WEBHOOK_URL` | optional crash/livelock alerts |
+| `NETRUNNER_DEVICE` | several instances running — pin which one the bot drives |
+| `ADB_PATH` | adb in a non-standard location |
+| `DISCORD_WEBHOOK_URL` | crash/livelock alerts to a Discord channel |
 
-Read by `main.py` (python-dotenv) and every `run_*.bat`. Precedence: CLI flag > `.env` > config JSON.
+Precedence: CLI flag (`--device`/`--adb`) > `.env` > auto-detect > config JSON.
 
 ## Quick start
 

@@ -2,22 +2,22 @@
 
 Day-to-day bot commands. New machine? Start at [SETUP.md](SETUP.md).
 
-Machine-specific settings (`ADB_PATH`, `NETRUNNER_DEVICE`, `DISCORD_WEBHOOK_URL`) live in
-`.env` — main.py and every `run_*.bat` read it, so commands below need no `--adb`/`--device`.
-Precedence: CLI flag > `.env` > config JSON (configs ship with the generic `127.0.0.1:5555`).
+adb + device are **auto-detected** (adb from PATH / newest `C:\LDPlayer\LDPlayer*`, device by
+scanning ports 5555-5561) — commands below need no `--adb`/`--device`. `.env` is optional and
+only pins overrides. Precedence: CLI flag > `.env` > auto-detect > config JSON.
 
 ## Verified environment (2026-07-10)
 
 - Python 3.10.11, `opencv-python` 4.13, `numpy` 2.2.6, `requests`, `python-dotenv` — installed.
-- **LDPlayer14**, instance `LDPlayer-1` (index 1), device `127.0.0.1:5557` @ 1920x1080, `device` state — set via `.env` `NETRUNNER_DEVICE`.
-- Bundled adb: `C:\LDPlayer\LDPlayer14\adb.exe` — set via `.env` `ADB_PATH`.
+- **LDPlayer14**, instance `LDPlayer-1` (index 1), device `127.0.0.1:5557` @ 1920x1080, `device` state — auto-detected.
+- Bundled adb: `C:\LDPlayer\LDPlayer14\adb.exe` — auto-detected.
 - The original index-0 `LDPlayer` instance's adbd got stuck permanently offline (TCP handshake
   never completed even after kill-server/regen-key/instance-reboot — root cause never isolated,
   only a full Windows restart cleared it once, and a second incident needed a brand new instance).
   If `adb devices` shows a device stuck `offline` for more than a minute despite reconnects,
   don't sink more time into that instance — create a fresh one in LDMultiPlayer, set its
   resolution to 1920x1080 (`ldconsole modify --index N --resolution 1920,1080,240`, instance
-  must be stopped first), and update `NETRUNNER_DEVICE` in `.env` to its port (`5555 + 2*index`).
+  must be stopped first) — auto-detect finds the new port by itself (clear any `NETRUNNER_DEVICE` pin in `.env`).
 - Dry-run smoke test passed on the new device/port (2026-07-10).
 
 ## Engine upgrade (2026-07-16) — not yet live-verified
@@ -44,7 +44,7 @@ run since** — treat the first live run of each bot as a smoke test (`--max-cyc
   one cached frame; the engine now forces a re-grab + poll-sleep once a goto chain revisits
   a state, and fires a "possible livelock" Discord alert if states keep flipping with no
   action for ~100 polls (same threshold as the same-state warning).
-- **Tests**: `python -m pytest tests/` (48 tests — perceive/config/fsm/act).
+- **Tests**: `python -m pytest tests/` (57 tests — perceive/config/fsm/act/cli).
 
 ## cd into repo first
 
@@ -145,7 +145,7 @@ python main.py --config config/cookierun/boxrun_ep3.json
 
 - Cookie Run open and sitting on **home** (Episode banner + Play!). `start_state: "home"`.
 - Resume mid-loop: add `--start-state <state>` (must be a defined state).
-- `--device` not needed — `.env` `NETRUNNER_DEVICE` (or the config's `127.0.0.1:5555` default) covers it.
+- `--device` not needed — the running instance is auto-detected (pin via `.env` `NETRUNNER_DEVICE` only with multiple instances).
 
 ### Heart gate (check_heart)
 
@@ -159,7 +159,7 @@ Multi-Buy fires **only when Double Coins is not already equipped**. On every boo
 
 | flag | effect |
 |------|--------|
-| `--adb <path>` | adb binary (default: `.env` `ADB_PATH`, else `adb` on PATH) |
+| `--adb <path>` | adb binary (default: auto-detect — PATH, then newest LDPlayer install) |
 | `--dry-run` | run FSM, send no taps |
 | `--max-cycles N` | stop after N poll cycles |
 | `--start-state S` | override config `start_state` (resume) |
