@@ -15,8 +15,17 @@ Checklist for getting NetRunner running on a fresh machine. Generic engine docs 
 
 ## 2. Python
 
-- Python **3.10+**
-- `pip install -r requirements.txt` (opencv-python, numpy, requests, python-dotenv)
+- Python **3.10+** from [python.org](https://www.python.org/downloads/) — tick
+  **"Add python.exe to PATH"** in the installer.
+- If typing `python` opens the Microsoft Store instead: Settings → Apps → Advanced app
+  settings → App execution aliases → turn **off** both `python.exe` entries.
+
+## 2b. One-click install
+
+Double-click **`install.bat`**. It checks Python, installs the dependencies, verifies
+they load, and writes everything to `install-log.txt`. If any step shows `[X]`, send
+that log file. (Manual equivalent: `pip install -r requirements.txt`; add
+`requirements-dev.txt` for tests + OCR.)
 
 ## 3. LDPlayer
 
@@ -52,6 +61,7 @@ three questions and it generates the `.env` content to copy/download. Cases that
 ## 5. Verify before first run (gate)
 
 ```
+python -m pip install -r requirements-dev.txt   # pytest (+ optional OCR)
 python -m pytest tests/          # all 57 must pass
 python main.py --list-devices    # your instance shows as 'device'
 python main.py --config config/cookierun/coinrun.json --dry-run -v --max-cycles 5

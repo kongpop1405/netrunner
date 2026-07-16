@@ -5,6 +5,7 @@ __pycache__/
 venv/
 *.log
 logs/
+install-log.txt
 captures/
 snaps/
 snap_*.png

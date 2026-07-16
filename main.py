@@ -143,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cfg = cfgmod.load(args.config)
     except cfgmod.ConfigError as e:
+        logging.getLogger("netrunner").error("config error: %s", e)
         print(f"config error: {e}", file=sys.stderr)
         return 2
 
@@ -151,11 +152,14 @@ def main(argv: list[str] | None = None) -> int:
         try:
             address = _detect_device(adb, hint=cfg.device)
         except AdbError as e:
+            logging.getLogger("netrunner").error("%s", e)
             print(f"error: {e}", file=sys.stderr)
             return 2
     if not address:
-        print("error: no running emulator found. Start LDPlayer (ADB debugging on), "
-              "or pass --device / set NETRUNNER_DEVICE in .env", file=sys.stderr)
+        msg = ("no running emulator found. Start LDPlayer (ADB debugging on), "
+               "or pass --device / set NETRUNNER_DEVICE in .env")
+        logging.getLogger("netrunner").error("%s", msg)
+        print(f"error: {msg}", file=sys.stderr)
         return 2
     logging.getLogger("netrunner").info("device: %s  adb: %s", address, adb)
 
@@ -174,11 +178,16 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run, max_cycles=args.max_cycles
         )
     except AdbError as e:
+        logging.getLogger("netrunner").error("adb error: %s", e)
         print(f"adb error: {e}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         print("\ninterrupted, stopping.")
         return 0
+    except Exception:  # noqa: BLE001 — top-level guard so crashes reach the log file
+        logging.getLogger("netrunner").exception("unhandled crash")
+        print("crashed — full traceback saved to the log file", file=sys.stderr)
+        return 3
     return 0
 
 

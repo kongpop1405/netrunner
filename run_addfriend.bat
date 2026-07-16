@@ -3,6 +3,18 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
+set "PY=python"
+where py >nul 2>&1 && set "PY=py"
+
+%PY% -c "import cv2, numpy, dotenv" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo   [X] Not set up yet. Double-click install.bat first.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo ============================================
 echo   NetRunner - Add Friends (Find tab)
 echo ============================================
@@ -29,8 +41,14 @@ echo.
 echo Sending %FRIENDS% request(s)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
 echo.
 
-python main.py --config config/cookierun/addfriend.json --max-cycles %CYCLES%
+%PY% main.py --config config/cookierun/addfriend.json --max-cycles %CYCLES%
+set "RC=%ERRORLEVEL%"
 
 echo.
-echo bot stopped.
+if not "%RC%"=="0" (
+    echo   bot exited with an error ^(code %RC%^).
+    echo   The details were saved to logs\ - send today's log file.
+) else (
+    echo   bot stopped.
+)
 pause

@@ -3,6 +3,18 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
+set "PY=python"
+where py >nul 2>&1 && set "PY=py"
+
+%PY% -c "import cv2, numpy, dotenv" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo   [X] Not set up yet. Double-click install.bat first.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo ============================================
 echo   NetRunner - Send-Life to friends
 echo ============================================
@@ -16,8 +28,14 @@ echo list as needed. Stops automatically at the
 echo bottom of the list.  Stop early: Ctrl+C
 echo.
 
-python main.py --config config/cookierun/sendlife.json --max-cycles 300
+%PY% main.py --config config/cookierun/sendlife.json --max-cycles 300
+set "RC=%ERRORLEVEL%"
 
 echo.
-echo bot stopped.
+if not "%RC%"=="0" (
+    echo   bot exited with an error ^(code %RC%^).
+    echo   The details were saved to logs\ - send today's log file.
+) else (
+    echo   bot stopped.
+)
 pause

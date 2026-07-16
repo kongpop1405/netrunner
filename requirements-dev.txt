@@ -1,0 +1,5 @@
+-r requirements.txt
+# optional OCR — also needs the Tesseract binary installed separately
+pytesseract>=0.3.10
+# tests
+pytest>=8
