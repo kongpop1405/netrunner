@@ -13,19 +13,26 @@ Checklist for getting NetRunner running on a fresh machine. Generic engine docs 
 - OneDrive-synced folders churn on `logs/` and `snaps/` writes and can lock files
   mid-run. Keep the repo outside any synced folder.
 
-## 2. Python
+## 2. One-click install
 
-- Python **3.10+** from [python.org](https://www.python.org/downloads/) — tick
-  **"Add python.exe to PATH"** in the installer.
-- If typing `python` opens the Microsoft Store instead: Settings → Apps → Advanced app
-  settings → App execution aliases → turn **off** both `python.exe` entries.
+Double-click **`install.bat`**. It:
 
-## 2b. One-click install
+- **installs Python automatically** if it's missing (via winget, or by downloading the
+  official installer) — no need to visit python.org yourself,
+- installs the Python dependencies and verifies they load,
+- writes every step to `install-log.txt`.
 
-Double-click **`install.bat`**. It checks Python, installs the dependencies, verifies
-they load, and writes everything to `install-log.txt`. If any step shows `[X]`, send
-that log file. (Manual equivalent: `pip install -r requirements.txt`; add
-`requirements-dev.txt` for tests + OCR.)
+If any step shows `[X]`, send that log file. First run may take a few minutes while
+Python downloads; after Python installs it continues on its own.
+
+<details>
+<summary>Manual equivalent / if auto-install can't run</summary>
+
+Install Python **3.10+** from [python.org](https://www.python.org/downloads/), ticking
+**"Add python.exe to PATH"**. If typing `python` opens the Microsoft Store: Settings →
+Apps → Advanced app settings → App execution aliases → turn **off** both `python.exe`
+entries. Then `pip install -r requirements.txt` (add `requirements-dev.txt` for tests + OCR).
+</details>
 
 ## 3. LDPlayer
 

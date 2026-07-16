@@ -11,7 +11,8 @@ echo ============================================
 echo   NetRunner - one-click installer
 echo ============================================
 echo.
-echo A full log is written to install-log.txt
+echo This installs everything you need - including Python if it's
+echo missing. A full log is written to install-log.txt
 echo (send that file if anything below fails).
 echo.
 
@@ -62,19 +63,18 @@ echo [3] python>> "%LOG%"
 rem Try candidates in order; accept the first that prints a real "Python 3.x".
 rem A Microsoft Store stub is on PATH as py/python but prints nothing, so we
 rem verify the version string rather than trusting `where`.
-set "PY="
-set "PYVER="
-for %%C in ("py" "python") do call :try_python %%~C
+call :locate_python
 if not defined PY (
-    rem PATH has nothing usable — look for a real install that just wasn't added to PATH
-    for /d %%D in ("%LocalAppData%\Programs\Python\Python3*") do call :try_python "%%D\python.exe"
-    for /d %%D in ("C:\Python3*") do call :try_python "%%D\python.exe"
+    echo   Python not found - downloading and installing it now...
+    echo   [3] python not found, attempting auto-install>> "%LOG%"
+    call :auto_install_python
+    call :locate_python
 )
 
 if not defined PY (
-    echo   [X] Python not found ^(or only the Microsoft Store placeholder is present^).
+    echo   [X] Could not install Python automatically.
     call :python_help
-    echo   MISSING or STUB python; last version string: [!PYVER!]>> "%LOG%"
+    echo   AUTO-INSTALL FAILED; last version string: [!PYVER!]>> "%LOG%"
     echo   FIX: install from python.org, tick "Add python.exe to PATH",>> "%LOG%"
     echo        disable Store aliases, re-run install.bat>> "%LOG%"
     set "FAIL=1"
@@ -147,6 +147,19 @@ pause
 exit /b %FAIL%
 
 rem ---------------------------------------------------------------------------
+rem Find a real Python: try py/python on PATH, then common install dirs.
+:locate_python
+set "PY="
+set "PYVER="
+for %%C in ("py" "python") do call :try_python %%~C
+if not defined PY (
+    for /d %%D in ("%LocalAppData%\Programs\Python\Python3*") do call :try_python "%%D\python.exe"
+    for /d %%D in ("C:\Python3*") do call :try_python "%%D\python.exe"
+    for /d %%D in ("%ProgramFiles%\Python3*") do call :try_python "%%D\python.exe"
+)
+exit /b 0
+
+rem ---------------------------------------------------------------------------
 rem Probe one python candidate; on success set PY + PYVER. No-op if PY already set.
 :try_python
 if defined PY exit /b 0
@@ -158,6 +171,50 @@ echo !V! | findstr /i "Python 3" >nul
 if errorlevel 1 exit /b 0
 set "PY=%CAND%"
 set "PYVER=!V!"
+exit /b 0
+
+rem ---------------------------------------------------------------------------
+rem Download + install Python unattended. Tries winget first (built into Win 10/11),
+rem then falls back to fetching the official installer and running it silently.
+:auto_install_python
+where winget >nul 2>&1
+if not errorlevel 1 (
+    echo   Using winget ^(this can take a few minutes^)...
+    echo   winget install Python.Python.3.12>> "%LOG%"
+    winget install --id Python.Python.3.12 -e --source winget ^
+        --accept-package-agreements --accept-source-agreements ^
+        --silent --scope user >> "%LOG%" 2>&1
+    call :refresh_path
+    call :locate_python
+    if defined PY exit /b 0
+    echo   winget did not yield a working Python; trying direct download...>> "%LOG%"
+)
+
+rem --- fallback: download the official installer with PowerShell ---
+set "PYURL=https://www.python.org/ftp/python/3.12.7/python-3.12.7-amd64.exe"
+set "PYEXE=%TEMP%\python-netrunner-setup.exe"
+echo   Downloading %PYURL%...
+echo   download %PYURL%>> "%LOG%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "try { Invoke-WebRequest -Uri '%PYURL%' -OutFile '%PYEXE%' -UseBasicParsing } catch { exit 1 }" >> "%LOG%" 2>&1
+if errorlevel 1 (
+    echo   [X] Download failed ^(no internet?^).>> "%LOG%"
+    exit /b 1
+)
+echo   Installing Python ^(silent, per-user, adding to PATH^)...
+echo   run installer silent>> "%LOG%"
+"%PYEXE%" /quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1 >> "%LOG%" 2>&1
+del "%PYEXE%" >nul 2>&1
+call :refresh_path
+exit /b 0
+
+rem ---------------------------------------------------------------------------
+rem Re-read PATH from the registry so a just-installed Python is visible without
+rem reopening the terminal.
+:refresh_path
+for /f "tokens=2,*" %%A in ('reg query "HKCU\Environment" /v PATH 2^>nul ^| findstr /i "PATH"') do set "USERPATH=%%B"
+for /f "tokens=2,*" %%A in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH 2^>nul ^| findstr /i "PATH"') do set "SYSPATH=%%B"
+set "PATH=%SYSPATH%;%USERPATH%"
 exit /b 0
 
 rem ---------------------------------------------------------------------------
