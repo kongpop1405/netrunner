@@ -14,7 +14,7 @@
         { "type": "wait", "ms": 3000 },
         { "type": "goto", "state": "await_shop" }
       ],
-      "on_absent": { "goto": "probe_sendlife" },
+      "on_absent": { "goto": "probe_dailycheckin" },
       "timeout_ms": 20000
     },
     "await_shop": {
@@ -28,8 +28,19 @@
       "on_absent": { "goto": "running" },
       "timeout_ms": 8000
     },
+    "probe_dailycheckin": {
+      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 965, "y": 985 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "home" }
+      ],
+      "on_absent": { "goto": "probe_sendlife" },
+      "timeout_ms": 8000
+    },
     "probe_sendlife": {
-      "_note": "Head of the modal-peeling chain, reached whenever Play! is not visible. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next.",
+      "_note": "Reached whenever Play! is not visible and no Daily Check-in popup was on screen. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next.",
       "detect": "sendlife_marker.png",
       "on_match": [
         { "type": "tap_xy", "x": 727, "y": 688 },
@@ -357,7 +368,7 @@
       "on_match": [
         { "type": "goto", "state": "home" }
       ],
-      "on_absent": { "goto": "probe_sendlife" },
+      "on_absent": { "goto": "probe_dailycheckin" },
       "timeout_ms": 15000
     }
   }
