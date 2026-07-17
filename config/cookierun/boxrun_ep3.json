@@ -34,6 +34,17 @@
       "on_match": [
         { "type": "tap_xy", "x": 965, "y": 985 },
         { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "probe_treasurereward" }
+      ],
+      "on_absent": { "goto": "probe_treasurereward" },
+      "timeout_ms": 8000
+    },
+    "probe_treasurereward": {
+      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch (Choco Dip Sticks / Crystal Crown etc.), also covering Play!. Same stall class as the check-in: no dismiss -> bot loses home. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Reached from BOTH the check-in dismiss (popups queue) and directly when only this one shows.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 960, "y": 850 },
+        { "type": "wait", "ms": 1500 },
         { "type": "goto", "state": "home" }
       ],
       "on_absent": { "goto": "probe_sendlife" },
