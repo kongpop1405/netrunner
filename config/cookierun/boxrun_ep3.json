@@ -169,21 +169,21 @@
       ],
       "on_absent": [
         { "type": "tap_xy", "x": 1365, "y": 931 },
-        { "type": "wait", "ms": 3700 },
+        { "type": "wait", "ms": 4800 },
         { "type": "goto", "state": "await_faststart" }
       ],
       "timeout_ms": 1500000
     },
     "await_faststart": {
-      "_note": "Right after Play, the run loads and shows 'Tap to activate Fast Start Boost!' with a blue-arrow button. faststart_btn.png is that button's blue-arrow disc + green glow (CV: prompt=1.000; mid-run tray icon 0.197, bonustime 0.255, shop 0.335 — no false-positive). check_heart waits 3700ms after Play: a 10-run test showed the prompt appears ~3.7s in, so at 3000ms the first check missed 100% of the time. The tap is tap_template, NOT a fixed (985,515): the prompt's arrow drifts a little between runs, and a fixed tap that lands beside it silently wastes the boost — tap_template hits wherever the button actually rendered. Retries widened to 5 x ~500ms (~2.5s of extra window) since the prompt lingers a few seconds and a missed catch costs a whole run's fast start. Verify via faststart_check rather than assuming the tap took.",
+      "_note": "Right after Play the run loads and shows 'Tap to activate Fast Start Boost!' — a blue-arrow button in a green frame at a FIXED (985,515). faststart_btn.png is that button (CV: prompt=1.000; mid-run tray icon 0.197, bonustime 0.255, shop 0.335 — no false-positive). TIMING IS THE WHOLE GAME HERE: a live frame-by-frame capture showed the prompt appears at ~5.6s after Play and lingers only ~2s. The old 3700ms pre-wait + 500ms poll gap meant the first 1-2 detects fired BEFORE the prompt (score 0.24) and the window often closed before a hit landed — the boost was silently lost even though the log looked fine. Fixes: check_heart now pre-waits 4800ms so the first detect lands near prompt onset, and absent_wait_ms is 250ms so we poll ~2x per grab and can't miss a 2s window. Tap is tap_template on the same faststart_btn; the button does NOT drift (fixed 985,515 confirmed live) so a fixed tap would also work, but tap_template self-corrects for free. Real activation = a blue jet trail behind the cookie; faststart_check only confirms the button left the screen, which is necessary but not sufficient, so timing above is what actually matters.",
       "detect": "faststart_btn.png",
       "on_match": [
         { "type": "tap_template", "template": "faststart_btn.png" },
-        { "type": "wait", "ms": 700 },
+        { "type": "wait", "ms": 500 },
         { "type": "goto", "state": "faststart_check" }
       ],
-      "absent_retries": 5,
-      "absent_wait_ms": 500,
+      "absent_retries": 10,
+      "absent_wait_ms": 250,
       "on_absent": { "goto": "running" },
       "timeout_ms": 12000
     },
