@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import time
 
-from .act import Actor
+from .act import ActError, Actor
 from .alert import send_alert
 from .capture import grab
 from .config import Config, detect_names
@@ -223,7 +223,15 @@ class Runner:
         for action in actions:
             if action.get("type") not in ("goto", "stop"):
                 acted = True
-            result = self.actor.run(action, frame)
+            try:
+                result = self.actor.run(action, frame)
+            except ActError as e:
+                # A tap_template whose target vanished between the detect and the
+                # tap (a prompt that auto-dismissed, an animation finishing) is a
+                # missed opportunity, not a fatal error — skip the rest of this
+                # action list and let the next poll re-read the screen.
+                log.warning("action failed in state '%s', skipping rest: %s", state, e)
+                return None, acted
             if result is not None:
                 return result, acted  # goto target or _STOP
         return None, acted

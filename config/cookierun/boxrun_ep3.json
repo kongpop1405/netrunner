@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 3 — plays runs to collect Mystery Boxes ('?' boxes picked up mid-run, opened on the Mystery Box screen after Result). PRECONDITION: Episode 3 selected on home BEFORE starting — the bot only taps Play!, it does NOT navigate episode selection (future episodes get their own boxrun_epN.json). BOOST RULE: every run must be played with the +17% base speed Random Boost equipped. On each boost-shop entry the loop routes probe_speed first: if speedbase17_banner ('+17% base speed' pill) is already on the panel, skip buying; else buy_speed opens the Multi picker (where +17% base speed is PRE-TICKED by the game) and taps Multi-Buy, which auto-rolls, spending coins, until the +17% boost lands. This mirrors coinrun.json's Double-Coins multi-buy but pins SPEED instead of coins, and additionally: (a) taps the 'Tap to activate Fast Start Boost!' prompt at run start (faststart_btn), and (b) does NOT tap the Cookie Relay Boost (the coin bot's center-screen 960,540 relay tap is removed — box farming doesn't need it). Coins exhausted mid-roll -> insufficient_coins cancels and force_play runs with whatever we have. Templates + coords reused from coinrun.json (same device, same 1920x1080) except the two new ones (faststart_btn.png, speedbase17_banner.png). Loop: home->Play->await_shop->probe_speed->buy_speed(Multi->Multi-Buy->wait_roll)->start_run(verify pill)->check_heart->Play->await_faststart(tap)->run(jump/slide chain)->run_result->mystery_box->reveal->home. IN-RUN PATTERN: 3 jump : 1 slide (J->J->S->J) so overhead bars (only slide clears them) are covered blind alongside pits (jump). Ratio + slide hold_ms are the first knobs to tune after a live Episode-3 test.",
+  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 3 — plays runs to collect Mystery Boxes ('?' boxes picked up mid-run, opened on the Mystery Box screen after Result). PRECONDITION: Episode 3 selected on home BEFORE starting — the bot only taps Play!, it does NOT navigate episode selection (future episodes get their own boxrun_epN.json). BOOST RULE: every run must be played with the +17% base speed Random Boost equipped. On each boost-shop entry the loop routes probe_speed first: if speedbase17_banner ('+17% base speed' pill) is already on the panel, skip buying; else buy_speed opens the Multi picker (where +17% base speed is PRE-TICKED by the game) and taps Multi-Buy, which auto-rolls, spending coins, until the +17% boost lands. This mirrors coinrun.json's Double-Coins multi-buy but pins SPEED instead of coins, and additionally taps the 'Tap to activate Fast Start Boost!' prompt at run start (faststart_btn, via tap_template + a faststart_check verify pass, since a fixed tap beside the drifting arrow silently wasted the boost). The Cookie Relay Boost tap (960,540) fires once per 4-hop cycle from guard_not_shop, gated behind both guards so it can't land on the home leaderboard. Coins exhausted mid-roll -> insufficient_coins cancels and force_play runs with whatever we have. Templates + coords reused from coinrun.json (same device, same 1920x1080) except the two new ones (faststart_btn.png, speedbase17_banner.png). Loop: home->Play->await_shop->probe_speed->buy_speed(Multi->Multi-Buy->wait_roll)->start_run(verify pill)->check_heart->Play->await_faststart->faststart_check->run(jump/slide chain)->run_result->mystery_box->reveal->home. IN-RUN PATTERN: 3 jump : 1 slide (J->J->S->J) so overhead bars (only slide clears them) are covered blind alongside pits (jump). Ratio + slide hold_ms are the first knobs to tune after a live Episode-3 test.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -153,17 +153,28 @@
       "timeout_ms": 1500000
     },
     "await_faststart": {
-      "_note": "Right after Play, the run loads and shows 'Tap to activate Fast Start Boost!' with the blue-arrow button at (985,515). faststart_btn.png is the button's blue-arrow disc + green glow (CV: prompt=1.000 @985,515; mid-run tray icon 0.197, bonustime 0.255, shop 0.335 — no false-positive). check_heart now waits 3700ms after Play (up from 3000ms): a 10-run test showed the prompt appears ~3.7s in, so at 3000ms the first check missed 100% of the time and the catch always landed on the +700ms retry. Present -> tap it (985,515) -> running. Absent -> 2 retries (~700ms apart via absent_wait_ms) cover a slow load, then fall through to running. The prompt auto-dismisses after a few seconds, so a miss just means no fast-start that run — not a crash.",
+      "_note": "Right after Play, the run loads and shows 'Tap to activate Fast Start Boost!' with a blue-arrow button. faststart_btn.png is that button's blue-arrow disc + green glow (CV: prompt=1.000; mid-run tray icon 0.197, bonustime 0.255, shop 0.335 — no false-positive). check_heart waits 3700ms after Play: a 10-run test showed the prompt appears ~3.7s in, so at 3000ms the first check missed 100% of the time. The tap is tap_template, NOT a fixed (985,515): the prompt's arrow drifts a little between runs, and a fixed tap that lands beside it silently wastes the boost — tap_template hits wherever the button actually rendered. Retries widened to 5 x ~500ms (~2.5s of extra window) since the prompt lingers a few seconds and a missed catch costs a whole run's fast start. Verify via faststart_check rather than assuming the tap took.",
       "detect": "faststart_btn.png",
       "on_match": [
-        { "type": "tap_xy", "x": 985, "y": 515 },
-        { "type": "wait", "ms": 800 },
-        { "type": "goto", "state": "running" }
+        { "type": "tap_template", "template": "faststart_btn.png" },
+        { "type": "wait", "ms": 700 },
+        { "type": "goto", "state": "faststart_check" }
       ],
-      "absent_retries": 2,
-      "absent_wait_ms": 700,
+      "absent_retries": 5,
+      "absent_wait_ms": 500,
       "on_absent": { "goto": "running" },
-      "timeout_ms": 8000
+      "timeout_ms": 12000
+    },
+    "faststart_check": {
+      "_note": "Did the Fast Start tap actually land? Button still on screen -> the tap missed (or the prompt was mid-animation) -> tap it again and re-check. Gone -> either it activated or the prompt expired; either way the run is underway, so proceed. absent_retries is 0 here on purpose: one clean 'button gone' reading is enough. The self-loop is bounded by timeout_ms -> running, so a stuck prompt can never trap the bot.",
+      "detect": "faststart_btn.png",
+      "on_match": [
+        { "type": "tap_template", "template": "faststart_btn.png" },
+        { "type": "wait", "ms": 600 },
+        { "type": "goto", "state": "faststart_check" }
+      ],
+      "on_absent": { "goto": "running" },
+      "timeout_ms": 5000
     },
     "running": {
       "_note": "In-run (auto-play). Result popup up -> run over. Not up -> we MIGHT still be running, but could equally be on home or in the shop, so DON'T tap yet: hand off to the guard chain.",
@@ -184,13 +195,14 @@
       "timeout_ms": 8000
     },
     "guard_not_shop": {
-      "_note": "Guard 2/2: in the boost shop -> resume via boost_shop. Neither Play! nor shop visible -> accept 'mid-run' and fire the first jump, then enter the fast-jump chain (jump_2..jump_4). NO Cookie Relay Boost tap — box farming skips the relay (the coin bot's center-screen 960,540 relay tap is intentionally removed here; it added leaderboard-mistap risk with no box benefit).",
+      "_note": "Guard 2/2: in the boost shop -> resume via boost_shop. Neither Play! nor shop visible -> accept 'mid-run' and fire the first jump plus the Cookie Relay Boost tap (960,540), then enter the fast-jump chain (jump_2..jump_4). The relay fires ONLY here — once per 4-hop cycle — because the tap sits at screen centre: if the run has already ended without us noticing, that same tap lands on the home leaderboard and opens the Friend's Info popup stack. Both guards ran on this frame, so we know we're mid-run before it fires, and the jump zone (~238,940) doesn't overlap the relay, so both are safe together.",
       "detect": "boostshop_marker.png",
       "on_match": [
         { "type": "goto", "state": "boost_shop" }
       ],
       "on_absent": [
         { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
+        { "type": "tap_xy", "x": 960, "y": 540 },
         { "type": "goto", "state": "jump_2" }
       ],
       "timeout_ms": 8000

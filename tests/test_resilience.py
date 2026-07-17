@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import src.fsm as fsm
+from src.act import ActError
 from src.config import Config
 from src.device import AdbError, Device
 from src.perceive import Match
@@ -113,6 +114,34 @@ class TestFsmTolerance:
         runner = fsm.Runner(_cfg(states, "a"), _FakeDevice())
         with pytest.raises(AdbError, match="device offline"):
             runner.run(max_cycles=50)
+
+    def test_tap_template_miss_does_not_crash(self, monkeypatch):
+        """A prompt that vanishes between detect and tap costs the action, not the run."""
+        _patch_find(monkeypatch, {"a.png"})
+        monkeypatch.setattr(fsm, "grab",
+                            lambda device, retries=2: np.zeros((10, 10, 3), dtype=np.uint8))
+
+        class BoomActor:
+            def __init__(self, *a, **kw):
+                pass
+
+            def run(self, action, frame):
+                if action["type"] == "tap_template":
+                    raise ActError(
+                        "tap_template 'gone.png' not on screen (best score 0.11 < 0.82)"
+                    )
+                return action["state"] if action["type"] == "goto" else None
+
+        monkeypatch.setattr(fsm, "Actor", BoomActor)
+        states = {"a": {
+            "detect": "a.png",
+            "on_match": [
+                {"type": "tap_template", "template": "gone.png"},
+                {"type": "goto", "state": "a"},
+            ],
+        }}
+        runner = fsm.Runner(_cfg(states, "a"), _FakeDevice())
+        runner.run(max_cycles=3)  # must not raise
 
     def test_streak_resets_after_a_good_cycle(self, monkeypatch):
         """Scattered failures below the tolerance must never accumulate into a stop."""
