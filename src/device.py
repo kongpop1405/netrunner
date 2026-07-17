@@ -1,7 +1,11 @@
 """ADB device wrapper — connect, enumerate, run shell/binary commands."""
 from __future__ import annotations
 
+import logging
 import subprocess
+import time
+
+logger = logging.getLogger("netrunner.device")
 
 
 class AdbError(RuntimeError):
@@ -10,6 +14,12 @@ class AdbError(RuntimeError):
 
 class Device:
     """One ADB target (an LDPlayer instance). Wraps `adb -s <serial> ...`."""
+
+    #: A busy emulator (level load, GC pause) can stall a single adb command for
+    #: seconds. Those stalls are transient, so retry before giving up — without
+    #: this, one hiccup killed a multi-hour farm run.
+    retries: int = 2
+    retry_backoff_s: float = 1.0
 
     def __init__(self, serial: str, adb: str = "adb", timeout: float = 15.0):
         self.serial = serial
@@ -20,21 +30,39 @@ class Device:
 
     def _run(self, args: list[str], *, binary: bool) -> bytes | str:
         cmd = [self.adb, "-s", self.serial, *args]
-        try:
-            proc = subprocess.run(
-                cmd,
-                capture_output=True,
-                timeout=self.timeout,
-                text=not binary,
-            )
-        except FileNotFoundError as e:
-            raise AdbError(f"adb not found on PATH (tried '{self.adb}')") from e
-        except subprocess.TimeoutExpired as e:
-            raise AdbError(f"adb timed out: {' '.join(cmd)}") from e
-        if proc.returncode != 0:
-            err = proc.stderr if isinstance(proc.stderr, str) else proc.stderr.decode(errors="replace")
-            raise AdbError(f"adb failed ({proc.returncode}): {' '.join(cmd)}\n{err.strip()}")
-        return proc.stdout
+        last_err: Exception | None = None
+        for attempt in range(self.retries + 1):
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=self.timeout,
+                    text=not binary,
+                )
+            except FileNotFoundError as e:
+                raise AdbError(f"adb not found on PATH (tried '{self.adb}')") from e
+            except subprocess.TimeoutExpired as e:
+                last_err = e
+                logger.warning("adb timed out (attempt %d/%d): %s",
+                               attempt + 1, self.retries + 1, " ".join(cmd))
+            else:
+                if proc.returncode == 0:
+                    return proc.stdout
+                err = (proc.stderr if isinstance(proc.stderr, str)
+                       else proc.stderr.decode(errors="replace"))
+                last_err = AdbError(
+                    f"adb failed ({proc.returncode}): {' '.join(cmd)}\n{err.strip()}"
+                )
+                logger.warning("adb failed (attempt %d/%d): %s",
+                               attempt + 1, self.retries + 1, err.strip())
+            if attempt < self.retries:
+                time.sleep(self.retry_backoff_s * (attempt + 1))
+
+        if isinstance(last_err, subprocess.TimeoutExpired):
+            raise AdbError(
+                f"adb timed out after {self.retries + 1} attempts: {' '.join(cmd)}"
+            ) from last_err
+        raise last_err  # type: ignore[misc]
 
     def shell(self, *args: str) -> str:
         """Run `adb shell <args>` and return decoded stdout."""

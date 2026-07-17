@@ -8,12 +8,18 @@ from .act import Actor
 from .alert import send_alert
 from .capture import grab
 from .config import Config, detect_names
-from .device import Device
+from .device import AdbError, Device
 from .perceive import Match, TemplateStore, find_named
 
 log = logging.getLogger("netrunner.fsm")
 
 _STOP = "__stop__"
+
+# Consecutive cycles allowed to fail with an adb error before we give up. Device
+# retries already cover a brief stall; this covers a longer one (the emulator
+# swapping, a heavy level load) so a multi-hour farm survives it instead of
+# dying on one timed-out tap.
+_ADB_FAIL_TOLERANCE = 5
 
 # consecutive polls stuck on the exact same state before we warn it looks like
 # a livelock (e.g. an on_absent chain ping-ponging between states forever, or
@@ -45,6 +51,7 @@ class Runner:
         same_state_streak = 0
         stuck_alerted = False
         absent_streak = 0        # consecutive absent polls in the current state
+        adb_fail_streak = 0      # consecutive cycles lost to adb errors
         no_act_streak = 0        # consecutive polls without any screen-affecting action
         no_act_states: set[str] = set()
         no_act_alerted = False
@@ -60,40 +67,51 @@ class Runner:
                 cycles += 1
 
                 spec = self.cfg.states[state]
-                if frame is None:
-                    frame = grab(self.device)
-                    gotos_on_frame = 0
-                thr = float(spec.get("threshold", self.cfg.match_threshold))
-                m, matched = self._detect(frame, spec, thr)
-                log.debug("state=%s detect=%s found=%s score=%.2f",
-                          state, matched, m.found, m.score)
+                try:
+                    if frame is None:
+                        frame = grab(self.device)
+                        gotos_on_frame = 0
+                    thr = float(spec.get("threshold", self.cfg.match_threshold))
+                    m, matched = self._detect(frame, spec, thr)
+                    log.debug("state=%s detect=%s found=%s score=%.2f",
+                              state, matched, m.found, m.score)
 
-                prev_state = state
-                did_transition = False
-                if m.found:
-                    absent_streak = 0
-                    entered_at = time.monotonic()
-                    on_match = spec.get("on_match", [])
-                    if isinstance(on_match, dict):  # per-template branch (detect list)
-                        on_match = on_match[matched]
-                    next_state, acted = self._run_actions(on_match, frame, state)
-                    if next_state == _STOP:
-                        log.info("stop action reached, ending run")
-                        return
-                    if next_state is not None:
-                        state = next_state
-                        did_transition = True
-                else:
-                    absent_streak += 1
-                    next_state, acted = self._handle_absent(
-                        state, spec, entered_at, frame, absent_streak
-                    )
-                    if next_state == _STOP:
-                        return
-                    if next_state is not None:
-                        state = next_state
+                    prev_state = state
+                    did_transition = False
+                    if m.found:
+                        absent_streak = 0
                         entered_at = time.monotonic()
-                        did_transition = True
+                        on_match = spec.get("on_match", [])
+                        if isinstance(on_match, dict):  # per-template branch (detect list)
+                            on_match = on_match[matched]
+                        next_state, acted = self._run_actions(on_match, frame, state)
+                        if next_state == _STOP:
+                            log.info("stop action reached, ending run")
+                            return
+                        if next_state is not None:
+                            state = next_state
+                            did_transition = True
+                    else:
+                        absent_streak += 1
+                        next_state, acted = self._handle_absent(
+                            state, spec, entered_at, frame, absent_streak
+                        )
+                        if next_state == _STOP:
+                            return
+                        if next_state is not None:
+                            state = next_state
+                            entered_at = time.monotonic()
+                            did_transition = True
+                except AdbError as e:
+                    adb_fail_streak += 1
+                    log.warning("adb error on cycle %d (%d/%d before giving up): %s",
+                                cycles, adb_fail_streak, _ADB_FAIL_TOLERANCE, e)
+                    if adb_fail_streak >= _ADB_FAIL_TOLERANCE:
+                        raise
+                    frame = None  # whatever we had is unusable; re-grab next cycle
+                    time.sleep(self.cfg.poll_ms / 1000)
+                    continue
+                adb_fail_streak = 0
 
                 if did_transition:
                     absent_streak = 0
@@ -159,6 +177,17 @@ class Runner:
                 self.webhook_url,
                 "NetRunner: bot crashed",
                 f"```{e}```\nlast state: `{state}` (device {self.device.serial})",
+                critical=True,
+            )
+            raise
+        except AdbError as e:
+            log.error("adb unusable after %d consecutive failures: %s",
+                      _ADB_FAIL_TOLERANCE, e)
+            send_alert(
+                self.webhook_url,
+                "NetRunner: lost the emulator",
+                f"```{e}```\nadb failed {_ADB_FAIL_TOLERANCE} cycles in a row; "
+                f"last state: `{state}` (device {self.device.serial})",
                 critical=True,
             )
             raise
