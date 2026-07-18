@@ -90,16 +90,21 @@ def _wait_adb_ready(adb_path: str, address: str, boot_timeout: float) -> None:
     while, then `device`; and even then the Android side may still be booting.
     We gate on sys.boot_completed so the game launch doesn't race the boot.
     """
-    dev = Device(address, adb=adb_path, timeout=10.0)
     deadline = time.time() + boot_timeout
+    # Poll adb directly, NOT via Device.shell: during boot every call fails with
+    # 'device offline', and Device's retry+warn would spam three warnings per
+    # poll. Offline-until-ready is the expected path here, so keep it quiet.
     while time.time() < deadline:
         subprocess.run([adb_path, "connect", address], capture_output=True, text=True)
         try:
-            out = dev.shell("getprop", "sys.boot_completed")
-            if out.strip() == "1":
+            proc = subprocess.run(
+                [adb_path, "-s", address, "shell", "getprop", "sys.boot_completed"],
+                capture_output=True, text=True, timeout=10.0,
+            )
+            if proc.returncode == 0 and proc.stdout.strip() == "1":
                 return
-        except Exception:
-            pass  # not up yet
+        except subprocess.TimeoutExpired:
+            pass  # a hung getprop during boot — just retry
         time.sleep(2.0)
     raise LauncherError(
         f"{address} did not finish booting within {boot_timeout:.0f}s "
