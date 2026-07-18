@@ -21,7 +21,7 @@ echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% main.py --config config/cookierun/coinrun.json
+%PY% main.py --config config/cookierun/coinrun.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

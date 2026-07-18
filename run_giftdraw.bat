@@ -40,7 +40,7 @@ echo.
 echo Opening %BOXES% box(es)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
 echo.
 
-%PY% main.py --config config/cookierun/giftdraw.json --max-cycles %CYCLES%
+%PY% main.py --config config/cookierun/giftdraw.json --launch --max-cycles %CYCLES%
 set "RC=%ERRORLEVEL%"
 
 echo.

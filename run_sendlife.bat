@@ -28,7 +28,7 @@ echo list as needed. Stops automatically at the
 echo bottom of the list.  Stop early: Ctrl+C
 echo.
 
-%PY% main.py --config config/cookierun/sendlife.json --max-cycles 300
+%PY% main.py --config config/cookierun/sendlife.json --launch --max-cycles 300
 set "RC=%ERRORLEVEL%"
 
 echo.

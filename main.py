@@ -130,6 +130,14 @@ def main(argv: list[str] | None = None) -> int:
                          "else 'adb' on PATH). LDPlayer ships one, e.g. "
                          r"C:\LDPlayer\LDPlayer14\adb.exe")
     ap.add_argument("--list-devices", action="store_true", help="list attached devices and exit")
+    ap.add_argument("--launch", action="store_true",
+                    help="auto-launch: bring the LDPlayer instance up and start Cookie Run "
+                         "before farming (idempotent — safe on every run)")
+    ap.add_argument("--instance", type=int, default=None,
+                    help="LDPlayer instance index to --launch (adb port = 5555 + 2*index). "
+                         "Default: derive from --device/NETRUNNER_DEVICE, else 0")
+    ap.add_argument("--boot-timeout", type=float, default=120.0,
+                    help="seconds to wait for a launched instance to finish booting (default 120)")
     ap.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     args = ap.parse_args(argv)
 
@@ -169,6 +177,26 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     address = args.device or os.environ.get("NETRUNNER_DEVICE")
+
+    if args.launch:
+        from src.launcher import LauncherError, address_for_index, ensure_ready
+        index = args.instance
+        if index is None:
+            # derive from an explicit port (5555 + 2*index), else default instance 0
+            port = None
+            if address and ":" in address:
+                try:
+                    port = int(address.rsplit(":", 1)[1])
+                except ValueError:
+                    port = None
+            index = (port - 5555) // 2 if port and port >= 5555 else 0
+        try:
+            address = ensure_ready(index, adb, boot_timeout=args.boot_timeout)
+        except LauncherError as e:
+            logging.getLogger("netrunner").error("launch failed: %s", e)
+            print(f"launch failed: {e}", file=sys.stderr)
+            return 2
+
     if not address:
         try:
             address = _detect_device(adb, hint=cfg.device)

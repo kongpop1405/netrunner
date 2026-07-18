@@ -23,7 +23,7 @@ echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% main.py --config config/cookierun/boxrun_ep3.json
+%PY% main.py --config config/cookierun/boxrun_ep3.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

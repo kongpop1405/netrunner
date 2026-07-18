@@ -41,7 +41,7 @@ echo.
 echo Sending %FRIENDS% request(s)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
 echo.
 
-%PY% main.py --config config/cookierun/addfriend.json --max-cycles %CYCLES%
+%PY% main.py --config config/cookierun/addfriend.json --launch --max-cycles %CYCLES%
 set "RC=%ERRORLEVEL%"
 
 echo.
