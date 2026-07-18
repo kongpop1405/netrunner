@@ -14,8 +14,41 @@
         { "type": "wait", "ms": 1200 },
         { "type": "goto", "state": "confirm_dialog" }
       ],
-      "on_absent": { "goto": "scroll_list" },
+      "on_absent": { "goto": "peel_popups" },
       "timeout_ms": 8000
+    },
+    "peel_popups": {
+      "_note": "No Send-Life icon visible — before deciding the list is exhausted, rule out a popup covering it. Cookie Run drops modals at any time, not just at launch (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up rewards, friend-info), and any of them hides the friends list. Each popup peels to its own confirm and the list is still underneath, so we return to scan (not home). This is a mini modal chain: dailycheckin(OK 965,985) -> treasure(Confirm 960,850) -> congrats(Confirm 954,847) -> levelup(Confirm 954,847). None present -> genuinely no icon on screen -> scroll_list. Shared templates/coords with boxrun_ep3.json.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 965, "y": 985 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "scan" }
+      ],
+      "on_absent": { "goto": "peel_treasure" },
+      "timeout_ms": 6000
+    },
+    "peel_treasure": {
+      "_note": "Power+ Treasure Rewards popup. Confirm (960,850) -> scan. Absent -> peel_congrats.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 960, "y": 850 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "scan" }
+      ],
+      "on_absent": { "goto": "peel_congrats" },
+      "timeout_ms": 6000
+    },
+    "peel_congrats": {
+      "_note": "Congratulations! / reward popup (also covers level-up rewards — same green Confirm button). Confirm (954,847) -> scan. Absent -> no popup at all -> scroll_list to look for more rows.",
+      "detect": "congrats_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 954, "y": 847 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "scan" }
+      ],
+      "on_absent": { "goto": "scroll_list" },
+      "timeout_ms": 6000
     },
     "confirm_dialog": {
       "_note": "'Send <name> a free Life? (+3 Gift Points)' dialog. Detect via the name-agnostic '(+3 Gift Points)' line (a per-friend name crop would only match one friend). Tap Confirm (1189,687 — CV verified, green/right) — NEVER Cancel, this loop's whole purpose is to send. If the dialog didn't actually open (e.g. a stray double-match), fall through to message_sent/scan via absent so we don't get stuck.",

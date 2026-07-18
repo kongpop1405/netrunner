@@ -49,11 +49,53 @@
         { "type": "wait", "ms": 2500 },
         { "type": "goto", "state": "gift_draw" }
       ],
+      "on_absent": { "goto": "peel_popups" }
+    },
+    "peel_popups": {
+      "_note": "Before the blind-tap backstop, rule out a launch/reward modal layered over the Gift Draw popup. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the popup and NOT matching giftreward_confirm. Peel whichever is present back to gift_draw (the popup is still underneath). None present -> fall to blind_confirm, the original (962,853) backstop for an unknown Confirm. Shared templates/coords with boxrun_ep3.json.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 965, "y": 985 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "gift_draw" }
+      ],
+      "on_absent": { "goto": "peel_treasure" },
+      "timeout_ms": 6000
+    },
+    "peel_treasure": {
+      "_note": "Power+ Treasure Rewards. Confirm (960,850) -> gift_draw. Absent -> peel_congrats.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 960, "y": 850 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "gift_draw" }
+      ],
+      "on_absent": { "goto": "peel_congrats" },
+      "timeout_ms": 6000
+    },
+    "peel_congrats": {
+      "_note": "Congratulations! / level-up reward popup. Confirm (954,847) -> gift_draw. Absent -> blind_confirm (the original treasure-Confirm backstop).",
+      "detect": "congrats_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 954, "y": 847 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "gift_draw" }
+      ],
+      "on_absent": { "goto": "blind_confirm" },
+      "timeout_ms": 6000
+    },
+    "blind_confirm": {
+      "_note": "No known popup matched -> last-ditch blind tap of the treasure-reward Confirm spot (962,853, from a 2026-07-08 user screenshot), then verify via rescue_check. This is the original rescue on_absent action, kept as the final backstop.",
+      "detect": "giftdraw_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "gift_draw" }
+      ],
       "on_absent": [
         { "type": "tap_xy", "x": 962, "y": 853 },
         { "type": "wait", "ms": 2500 },
         { "type": "goto", "state": "rescue_check" }
-      ]
+      ],
+      "timeout_ms": 6000
     },
     "rescue_check": {
       "_note": "Did the blind tap bring the Gift Draw popup back? Present -> resume the loop. Absent -> one grace retry (popup fade ~1.8s can outlast the 2.5s wait on a slow frame), then stop cleanly via done rather than risk blind-tapping an unknown screen again.",

@@ -36,6 +36,48 @@
       "on_match": [
         { "type": "goto", "state": "do_refresh" }
       ],
+      "on_absent": { "goto": "peel_popups" },
+      "timeout_ms": 15000
+    },
+    "peel_popups": {
+      "_note": "Find tab still not visible after tapping it — before assuming a Friend's Info screen covers us, rule out a launch/reward modal. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the social popup. Peel whichever is present, then re-enter via open_find (the popup was on top of the Friends UI, which is still open underneath). None present -> close_info, the original Friend's Info X-tap recovery. Shared templates/coords with boxrun_ep3.json.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 965, "y": 985 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "open_find" }
+      ],
+      "on_absent": { "goto": "peel_treasure" },
+      "timeout_ms": 6000
+    },
+    "peel_treasure": {
+      "_note": "Power+ Treasure Rewards. Confirm (960,850) -> open_find. Absent -> peel_congrats.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 960, "y": 850 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "open_find" }
+      ],
+      "on_absent": { "goto": "peel_congrats" },
+      "timeout_ms": 6000
+    },
+    "peel_congrats": {
+      "_note": "Congratulations! / level-up reward popup. Confirm (954,847) -> open_find. Absent -> close_info (the original Friend's Info recovery).",
+      "detect": "congrats_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 954, "y": 847 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "open_find" }
+      ],
+      "on_absent": { "goto": "close_info" },
+      "timeout_ms": 6000
+    },
+    "close_info": {
+      "_note": "No popup matched -> a 'Friend's Info' screen (opened by a stray tap on an already-requested row) is probably covering the popup -> tap its X (1640,107 — verified live) and loop back via open_find. This is the original check_find absent recovery.",
+      "detect": "findtab_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "do_refresh" }
+      ],
       "on_absent": [
         { "type": "tap_xy", "x": 1640, "y": 107 },
         { "type": "wait", "ms": 1200 },
