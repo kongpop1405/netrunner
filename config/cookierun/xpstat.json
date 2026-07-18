@@ -14,7 +14,7 @@
         { "type": "wait", "ms": 3000 },
         { "type": "goto", "state": "await_shop" }
       ],
-      "on_absent": { "goto": "probe_sendlife" },
+      "on_absent": { "goto": "probe_dailycheckin" },
       "timeout_ms": 20000
     },
     "await_shop": {
@@ -36,6 +36,28 @@
         { "type": "goto", "state": "check_heart" }
       ],
       "on_absent": { "goto": "running" },
+      "timeout_ms": 8000
+    },
+    "probe_dailycheckin": {
+      "_note": "New head of the modal-peeling chain. 'Daily Check-in' calendar pops once/day at launch over home, hiding Play!; no dismiss stalls the bot. Marker self=1.000, in-run=0.232. Present -> OK (965,985) -> probe_treasurereward. Absent -> probe_treasurereward. Shared with boxrun_ep3.json.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 965, "y": 985 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "probe_treasurereward" }
+      ],
+      "on_absent": { "goto": "probe_treasurereward" },
+      "timeout_ms": 8000
+    },
+    "probe_treasurereward": {
+      "_note": "'Power+ Treasure Rewards' popup stacks after Daily Check-in at launch, also covers Play!. Marker self=1.000, in-run=0.31, vs dailycheckin=0.40. Present -> Confirm (960,850) -> home. Absent -> probe_sendlife. Shared with boxrun_ep3.json.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        { "type": "tap_xy", "x": 960, "y": 850 },
+        { "type": "wait", "ms": 1500 },
+        { "type": "goto", "state": "home" }
+      ],
+      "on_absent": { "goto": "probe_sendlife" },
       "timeout_ms": 8000
     },
     "probe_sendlife": {
@@ -241,7 +263,7 @@
       "on_match": [
         { "type": "goto", "state": "home" }
       ],
-      "on_absent": { "goto": "probe_sendlife" },
+      "on_absent": { "goto": "probe_dailycheckin" },
       "timeout_ms": 15000
     }
   }
