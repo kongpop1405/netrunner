@@ -83,6 +83,57 @@ def address_for_index(index: int) -> str:
     return f"127.0.0.1:{ADB_PORT_BASE + 2 * index}"
 
 
+def running_instances(ldconsole: Path) -> list[int]:
+    """Indices of every LDPlayer instance currently up (pid != -1), in list order."""
+    out = []
+    for line in _ld(ldconsole, "list2").splitlines():
+        parts = line.split(",")
+        if len(parts) >= 6 and parts[0].strip().isdigit() and parts[5].strip() not in ("-1", ""):
+            out.append(int(parts[0].strip()))
+    return out
+
+
+def resolve_index(adb_path: str, requested: int | None, hint_address: str | None) -> int:
+    """Pick which instance --launch should target.
+
+    Priority: an explicit --instance wins. Otherwise reuse whatever instance is
+    ALREADY running (so we never spawn a second window next to a live one) —
+    this is the common case where the user left one emulator open. Only when
+    nothing is running do we fall back to the index implied by the address, or 0.
+    A running instance is preferred over the config's stale device port, which
+    is why this beats deriving from hint_address first.
+    """
+    if requested is not None:
+        return requested
+    ldconsole = _ldconsole_path(adb_path)
+    up = running_instances(ldconsole)
+    if len(up) == 1:
+        logger.info("reusing the running LDPlayer instance %d", up[0])
+        return up[0]
+    if len(up) > 1:
+        # several open — disambiguate by the requested address if it points at one
+        if hint_address and ":" in hint_address:
+            try:
+                port = int(hint_address.rsplit(":", 1)[1])
+                idx = (port - ADB_PORT_BASE) // 2
+                if idx in up:
+                    return idx
+            except ValueError:
+                pass
+        logger.warning("multiple instances running %s; using %d "
+                       "(set --instance to choose)", up, up[0])
+        return up[0]
+    # none running -> derive from address, else default 0
+    if hint_address and ":" in hint_address:
+        try:
+            port = int(hint_address.rsplit(":", 1)[1])
+            if port >= ADB_PORT_BASE:
+                return (port - ADB_PORT_BASE) // 2
+        except ValueError:
+            pass
+    return 0
+
+
 def _wait_adb_ready(adb_path: str, address: str, boot_timeout: float) -> None:
     """Poll `adb connect` + getprop until the instance answers as a live device.
 

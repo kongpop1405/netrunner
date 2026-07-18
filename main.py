@@ -179,18 +179,9 @@ def main(argv: list[str] | None = None) -> int:
     address = args.device or os.environ.get("NETRUNNER_DEVICE")
 
     if args.launch:
-        from src.launcher import LauncherError, address_for_index, ensure_ready
-        index = args.instance
-        if index is None:
-            # derive from an explicit port (5555 + 2*index), else default instance 0
-            port = None
-            if address and ":" in address:
-                try:
-                    port = int(address.rsplit(":", 1)[1])
-                except ValueError:
-                    port = None
-            index = (port - 5555) // 2 if port and port >= 5555 else 0
+        from src.launcher import LauncherError, ensure_ready, resolve_index
         try:
+            index = resolve_index(adb, args.instance, address)
             address = ensure_ready(index, adb, boot_timeout=args.boot_timeout)
         except LauncherError as e:
             logging.getLogger("netrunner").error("launch failed: %s", e)
