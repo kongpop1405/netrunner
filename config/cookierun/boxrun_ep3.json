@@ -261,9 +261,35 @@
       ],
       "on_absent": [
         { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
-        { "type": "goto", "state": "check_shop_after_run" }
+        { "type": "goto", "state": "check_box" }
       ],
       "timeout_ms": 20000
+    },
+    "check_box": {
+      "_note": "Once per 4-hop cycle: did we pick up a Mystery Box this run? The '[?] xN' counter appears top-left (boxcounter_marker at a fixed 118,360) the instant a box is collected and stays there for the rest of the run — so checking once per cycle can't miss it, it just bounds the reaction to one cycle. Present -> the run has served its only purpose (box farming), so quit_run bails out immediately instead of running to death, turning a ~4-5 min run into ~40s. Absent -> no box yet, keep running via check_shop_after_run. Counter self=1.000, no-box in-run=0.345 — clean separation.",
+      "detect": "boxcounter_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "quit_run" }
+      ],
+      "on_absent": { "goto": "check_shop_after_run" },
+      "timeout_ms": 8000
+    },
+    "quit_run": {
+      "_note": "Box collected -> bail out via the pause menu to bank it now. Sequence (coords CV-verified live): pause button (1790,55) -> pause menu 'Quit' (960,640) -> confirm dialog 'Quit' (960,570, NOT Cancel at 960,755). Quitting drops straight to the Result popup with the box credited (Consumed Life is spent either way, so quitting loses nothing a full run would have kept). Hand to run_result -> the existing Mystery Box open/reveal chain banks it. Waits are generous (1200-1500ms) because each tap triggers a menu/dialog fade the next tap must land after.",
+      "detect": "result_marker.png",
+      "on_match": [
+        { "type": "goto", "state": "run_result" }
+      ],
+      "on_absent": [
+        { "type": "tap_xy", "x": 1790, "y": 55 },
+        { "type": "wait", "ms": 1200 },
+        { "type": "tap_xy", "x": 960, "y": 640 },
+        { "type": "wait", "ms": 1200 },
+        { "type": "tap_xy", "x": 960, "y": 570 },
+        { "type": "wait", "ms": 2500 },
+        { "type": "goto", "state": "run_result" }
+      ],
+      "timeout_ms": 15000
     },
     "check_shop_after_run": {
       "_note": "Result popup not up yet — still running, home is back, or we're in the shop. Try home; absent -> walk the probe chain.",
