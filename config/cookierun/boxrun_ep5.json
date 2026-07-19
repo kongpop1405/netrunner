@@ -1,0 +1,797 @@
+{
+  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 5 — plays runs to the end (till death) collecting Mystery Boxes passively; NO boost purchase, Fast Start ONLY. PRECONDITION: Episode 5 selected on home BEFORE starting (bot only taps Play!). Fast Start is spammed (985,515) after leaving home — on the shop path from check_heart after its Play tap, on the direct-run path from await_shop absent. Boxes collected mid-run open on the Mystery Box screen after Result. Loop: home->Play->await_shop->(shop->check_heart | direct->spam)->check_heart(Play+FastStart spam)->run(NO jump/slide; QUIT at 2nd box via check_box->quit_run, else die)->run_result->mystery_box->reveal->home. home Play coord may differ from ep6 (1650) — verify live for Episode 5.",
+  "device": "127.0.0.1:5555",
+  "templates_dir": "templates/cookierun",
+  "poll_ms": 600,
+  "match_threshold": 0.82,
+  "start_state": "home",
+  "states": {
+    "home": {
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). Play! at (1650,970) -> await_shop. No home-spam and no after_play gate: after_play misread the Play! button showing THROUGH the shop fade (~0.87) as a missed tap and double-tapped Play, which closed the shop. Fast Start is spammed later (await_shop absent = direct run, or check_heart = shop path) — always AFTER we have left home, so it can never hit the leaderboard.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1650,
+          "y": 970
+        },
+        {
+          "type": "wait",
+          "ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "await_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_dailycheckin"
+      },
+      "timeout_ms": 20000
+    },
+    "await_shop": {
+      "_note": "After Play, poll for the boost shop. ep5 buys NOTHING (Fast Start only), so shop present -> check_heart directly. Absent after retries = direct run (Play went straight in) -> spam the Fast Start spot (985,515) across the prompt window (safe: off home) -> running. NO-BUY GUARD: the Fast Start spam (985,515) only fires on the direct-run branch (await_shop ABSENT = no shop on screen), never while the shop is up — so it can never land on the HP-potion (~340,875) or Timepiece/clock (~570,875) boost tiles the user forbids buying. When the shop IS present we go straight to check_heart and tap only Play (1365,931), far from those tiles.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "absent_retries": 6,
+      "absent_wait_ms": 700,
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ]
+    },
+    "probe_dailycheckin": {
+      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 965,
+          "y": 985
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "probe_treasurereward"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_treasurereward"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_treasurereward": {
+      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch (Choco Dip Sticks / Crystal Crown etc.), also covering Play!. Same stall class as the check-in: no dismiss -> bot loses home. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Reached from BOTH the check-in dismiss (popups queue) and directly when only this one shows.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 850
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_sendlife": {
+      "_note": "Reached whenever Play! is not visible and no Daily Check-in popup was on screen. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "boost_shop"
+      },
+      "timeout_ms": 8000
+    },
+    "boost_shop": {
+      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_magnet to ensure Magnetic Aura is equipped before Play.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000
+    },
+    "check_heart": {
+      "_note": "SINGLE Play gate. heart_empty present -> wait 30s self-loop until a heart regenerates. Absent (>=1 heart) -> tap Play, then SPAM-TAP the Fast Start button spot (985,515) every ~400ms from the load screen through the whole prompt window and into the run. Blind spam instead of detect+tap: the prompt appears ~5.6s after Play and lingers only ~2s, so a fixed cadence of taps across 0-8s can never miss it, and taps that land before/after the prompt are harmless (empty run area). Ends at running. Its Play tap is (1365,931) and the Fast Start spam is (985,515) — both well clear of the HP-potion (~340,875) and clock (~570,875) boost tiles, so the run is never charged for a boost. NEVER add taps in the 250-680 x / 800-960 y zone here.",
+      "detect": "heart_empty.png",
+      "on_match": [
+        {
+          "type": "wait",
+          "ms": 30000
+        },
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1365,
+          "y": 931
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
+      "timeout_ms": 1500000
+    },
+    "running": {
+      "_note": "In-run (auto-play). Result popup up -> run over. Not up -> we MIGHT still be running, but could equally be on home or in the shop, so DON'T tap yet: hand off to the guard chain.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_home"
+      },
+      "timeout_ms": 300000
+    },
+    "guard_not_home": {
+      "_note": "Guard 1/2 before any in-run tap: Play! on screen -> we're on home, not running.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_shop"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_shop": {
+      "_note": "Guard 2/2: shop -> boost_shop. Mid-run -> check_box to see if we have 2 boxes yet. ep5 does NOT jump/slide/relay (user requirement) — but it DOES quit early once the box counter reads x2, so a run ends the moment the 2nd box is collected instead of waiting for death.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "boost_shop"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "goto",
+          "state": "check_box"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "check_shop_after_run": {
+      "_note": "Result popup not up yet — still running, home is back, or we're in the shop. Try home; absent -> walk the probe chain.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_boostshop"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_boostshop": {
+      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to probe_speed.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "boost_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_congrats"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_congrats": {
+      "_note": "Level-up 'Congratulations!' popup (free reward). Confirm (956,846) is safe/free.",
+      "detect": "congrats_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 956,
+          "y": 846
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_levelup"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_levelup": {
+      "_note": "Separate 'Level Up' popup (gems/coins/score-bonus, distinct from the Congratulations ticket popup). Confirm (959,969) is safe/free.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_rankingrewards"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_rankingrewards": {
+      "_note": "SAFETY NET: gold 'Ranking Rewards' season popup opened by a stray leaderboard tap. X at (1672,135), free/safe.",
+      "detect": "rankingrewards_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1672,
+          "y": 135
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_giftdraw"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_giftdraw": {
+      "_note": "SAFETY NET: 'Gift Draw' popup over home. Tap X (1685,170) — never Draw; the farm loop must not auto-consume gift draws.",
+      "detect": "giftdraw_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1685,
+          "y": 170
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_friendinfo"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_friendinfo": {
+      "_note": "SAFETY NET: 'Friend's ___' popup family (can stack 2 layers). Tap inner X (1552,117) then outer X (1633,107) each pass, self-loop until the ribbon is gone.",
+      "detect": "friendinfo_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1552,
+          "y": 117
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 1633,
+          "y": 107
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "probe_friendinfo"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 15000
+    },
+    "run_result": {
+      "_note": "Result popup after a run. Tap OK (702,940) — NOT 'Show Off'. After OK the Mystery Box screen appears on runs that collected a '?' box — the whole point of this bot — handled by mystery_box.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 702,
+          "y": 940
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box"
+      },
+      "timeout_ms": 8000
+    },
+    "mystery_box": {
+      "_note": "After Result-OK we either land on home, or the 'Mystery Box' screen blocks it. Detect the BOX screen positively. Present -> tap the closed box (960,540) and read the reward. Absent -> home (or a modal; home's probe chain handles it).",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 20000
+    },
+    "mystery_box_reveal": {
+      "_note": "Reward reveal can show MULTIPLE ingredients — one Confirm tap only advances to the next item. Self-loop: keep tapping Confirm (959,960) while the 'Mystery Box' title is still up; fall through to mystery_box_recheck once it's gone.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 15000
+    },
+    "mystery_box_recheck": {
+      "_note": "After collecting the box: Play! visible -> home is clear, continue the loop. Not visible -> something still covers it; go through probe_sendlife, never blind-tap.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_dailycheckin"
+      },
+      "timeout_ms": 15000
+    },
+    "check_box": {
+      "_note": "Has the Mystery Box counter reached x2? boxcount2_marker matches ONLY the \"x2\" reading (x2-only crop, jelly background excluded: x2 frames 0.90-1.00, x1 frames 0.60-0.68 — clean split at 0.82). Present -> quit_run to bail immediately with 2 boxes. Absent (0 or 1 box) -> wait, then running to keep polling (the cookie will either collect the 2nd box or eventually die).",
+      "detect": "boxcount2_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "quit_run"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "quit_run": {
+      "_note": "2 boxes collected -> bail via the pause menu. pause (1790,55) -> menu Quit (960,640) -> confirm Quit (960,570, NOT Cancel 960,755) -> Result with both boxes credited -> run_result opens/reveals them. Generous waits (1200-2500ms) for each menu/dialog fade. Coords reused from boxrun_ep6.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1790,
+          "y": 55
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 640
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 570
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "timeout_ms": 15000
+    }
+  }
+}
