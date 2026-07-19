@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 5 — plays runs to the end (till death) collecting Mystery Boxes passively; NO boost purchase, Fast Start ONLY. PRECONDITION: Episode 5 selected on home BEFORE starting (bot only taps Play!). Fast Start is spammed (985,515) after leaving home — on the shop path from check_heart after its Play tap, on the direct-run path from await_shop absent. Boxes collected mid-run open on the Mystery Box screen after Result. Loop: home->Play->await_shop->(shop->check_heart | direct->spam)->check_heart(Play+FastStart spam)->run(NO jump/slide; QUIT at 2nd box via check_box->quit_run, else die)->run_result->mystery_box->reveal->home. home Play coord may differ from ep6 (1650) — verify live for Episode 5.",
+  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 6 v2 — like ep5 (Fast Start, NO jump/slide/relay, quit at box target) but BUYS 3 boosts (HP potion + clock + x2) each run and quits at the 3rd box (x3 template DEFERRED — temporarily quits at 2nd). PRECONDITION: Episode 6 selected on home. Loop: home->Play->await_shop->buy_boosts(340/570/800,655)->check_heart(Play+FastStart spam)->run(no control)->check_box(x3?->quit_run | else die)->result->box->home.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -30,12 +30,12 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "After Play, poll for the boost shop. ep5 buys NOTHING (Fast Start only), so shop present -> check_heart directly. Absent after retries = direct run (Play went straight in) -> spam the Fast Start spot (985,515) across the prompt window (safe: off home) -> running. NO-BUY GUARD: the Fast Start spam (985,515) only fires on the direct-run branch (await_shop ABSENT = no shop on screen), never while the shop is up — so it can never land on the HP-potion (~340,875) or Timepiece/clock (~570,875) boost tiles the user forbids buying. When the shop IS present we go straight to check_heart and tap only Play (1365,931), far from those tiles.",
+      "_note": "After Play, poll for the boost shop. Shop present -> buy_boosts (buy all 3: HP potion, clock, x2). Absent = direct run (boost already equipped / shop skipped) -> spam Fast Start -> running.",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "check_heart"
+          "state": "buy_boosts"
         }
       ],
       "absent_retries": 6,
@@ -172,6 +172,47 @@
           "state": "running"
         }
       ]
+    },
+    "buy_boosts": {
+      "_note": "Buy the 3 boosts in the \"Buy some Boosts!\" top row: HP potion (340,655), clock (570,655), x2 (800,655). Each tile is 800 coins; a tile already bought (green check) just no-ops on re-tap, so tapping all 3 every entry is safe. These y=655 tiles are far from the Fast Start spam (985,515) and Play taps. Then check_heart.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 340,
+          "y": 655
+        },
+        {
+          "type": "wait",
+          "ms": 600
+        },
+        {
+          "type": "tap_xy",
+          "x": 570,
+          "y": 655
+        },
+        {
+          "type": "wait",
+          "ms": 600
+        },
+        {
+          "type": "tap_xy",
+          "x": 800,
+          "y": 655
+        },
+        {
+          "type": "wait",
+          "ms": 600
+        },
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -752,7 +793,7 @@
       "timeout_ms": 15000
     },
     "check_box": {
-      "_note": "Has the Mystery Box counter reached x2? boxcount2_marker matches ONLY the \"x2\" reading (x2-only crop, jelly background excluded: x2 frames 0.90-1.00, x1 frames 0.60-0.68 — clean split at 0.82). Present -> quit_run to bail immediately with 2 boxes. Absent (0 or 1 box) -> wait, then running to keep polling (the cookie will either collect the 2nd box or eventually die).",
+      "_note": "TARGET: quit at the 3rd box (user spec). x3 template (boxcount3_marker) is NOT captured yet — DEFERRED — so this TEMPORARILY detects boxcount2_marker (quits at the 2nd box). To finish: capture an x3 counter frame (run with boosts+jump), crop boxcount3_marker (x3-only, jelly bg excluded), and swap the detect here to boxcount3_marker.png. Rest of the flow (buy 3 boosts, Fast Start, no jump, quit_run) is final.",
       "detect": "boxcount2_marker.png",
       "on_match": [
         {
