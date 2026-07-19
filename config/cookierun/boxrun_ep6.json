@@ -7,7 +7,7 @@
   "start_state": "home",
   "states": {
     "home": {
-      "_note": "Main menu, detected by the episode-independent 'Play!' button (home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). NO Fast Start spam here — spamming 985,515 while still on home lands on a leaderboard friend row and opens the Send-Life dialog. After Play, verify we actually left home in after_play before spamming.",
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). Play! at (1650,970) -> await_shop. No home-spam and no after_play gate: after_play misread the Play! button showing THROUGH the shop fade (~0.87) as a missed tap and double-tapped Play, which closed the shop. Fast Start is spammed later (await_shop absent = direct run, or check_heart = shop path) — always AFTER we have left home, so it can never hit the leaderboard.",
       "detect": "home_play_marker.png",
       "on_match": [
         {
@@ -17,11 +17,11 @@
         },
         {
           "type": "wait",
-          "ms": 2500
+          "ms": 3000
         },
         {
           "type": "goto",
-          "state": "after_play"
+          "state": "await_shop"
         }
       ],
       "on_absent": {
@@ -30,7 +30,7 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "After Play+FastStart-spam from home, poll for the boost shop (appears only when NO boost is equipped). Present -> probe_magnet. Absent after retries -> running (direct run, boost still equipped; Fast Start was already spammed in home).",
+      "_note": "After Play, poll for the boost shop. It settles to 1.00 within ~1s WHEN Play was tapped on a stable home; if home was still fading the tap can miss, so retry 6x/700ms. Shop present -> probe_magnet. Absent after retries = direct run (boost still equipped, no shop) -> spam the Fast Start spot (985,515) across the prompt window (safe now: we are off home) -> running.",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
@@ -38,11 +38,140 @@
           "state": "probe_magnet"
         }
       ],
-      "absent_retries": 4,
+      "absent_retries": 6,
       "absent_wait_ms": 700,
-      "on_absent": {
-        "goto": "running"
-      }
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ]
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -153,12 +282,12 @@
       "timeout_ms": 10000
     },
     "wait_roll": {
-      "_note": "The game's self-rolling multi-buy is in progress (multibuy_marker / Multi-Buy UI still on screen, CV 1.000 @960,860). Do NOTHING — no taps — just wait and self-loop so we never interrupt the roll. The game keeps rolling until +17% speed lands, then the roll UI disappears. Marker absent -> roll finished -> read the pill in start_run. Generous timeout because several rolls can chain; on timeout fall through to start_run anyway (nocoins handling downstream).",
-      "detect": "multibuy_marker.png",
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until Magnetic Aura lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (Magnetic-Aura-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe.",
+      "detect": "rollstop_marker.png",
       "on_match": [
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -166,9 +295,9 @@
         }
       ],
       "on_absent": {
-        "goto": "check_boost_result"
+        "goto": "start_run"
       },
-      "timeout_ms": 45000
+      "timeout_ms": 60000
     },
     "check_boost_result": {
       "_note": "Auto-roll finished, picker closed back to the boost shop. Check 'Not enough Coins!' first (balance ran dry mid-roll) -> cancel. Otherwise read the pill in start_run. We do NOT re-roll here — the game rolled to completion.",
@@ -222,7 +351,7 @@
       "timeout_ms": 8000
     },
     "start_run": {
-      "_note": "SPEED ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Pill present -> the roll landed Magnetic Aura -> check_heart -> Play. Pill ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-Magnetic Aura path is the nocoins escape (insufficient_coins -> force_play).",
+      "_note": "SPEED ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Pill present -> the roll landed Magnetic Aura -> check_heart -> Play. Pill ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-Magnetic Aura path is the nocoins escape (insufficient_coins -> force_play). RETRY GRACE (4x800ms): after Multi-Buy the roll animation + banner render take ~2-3s; checking instantly read a still-fading banner (0.6) and looped back into buy_magnet, re-rolling and burning coins. Same class of fix as probe_magnet.",
       "detect": "magneticaura_banner.png",
       "on_match": [
         {
@@ -233,7 +362,9 @@
       "on_absent": {
         "goto": "retry_buy"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "absent_retries": 4,
+      "absent_wait_ms": 800
     },
     "retry_buy": {
       "_note": "Re-buy gate: we ended up without the +17% speed boost and must roll again. Check the wallet FIRST so we never spin on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play — the ONLY sanctioned Play-without-speed path). No popup -> coins remain, loop back into buy_speed. Termination is natural (each roll drains coins until the game raises nocoins); a genuinely stuck loop trips the engine's 100-poll livelock warning.",
@@ -852,148 +983,6 @@
         "goto": "running"
       },
       "timeout_ms": 8000
-    },
-    "after_play": {
-      "_note": "Gate between Play and the Fast Start spam. If home_play is STILL on screen, the Play tap missed (home was mid-fade) — go back to home to retap; spamming now would hit the leaderboard. If home is gone, we are loading into a run or the shop, so it is safe to spam the Fast Start spot (985,515) across the prompt window, then await_shop sorts shop vs direct-run.",
-      "detect": "home_play_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "home"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "goto",
-          "state": "await_shop"
-        }
-      ]
     }
   }
 }
