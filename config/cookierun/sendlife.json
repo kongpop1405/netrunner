@@ -10,130 +10,322 @@
       "_note": "Look for ANY visible Send-Life icon (green pill, heart+mail glyph) among the currently rendered rows — matchTemplate finds whichever instance scores highest, so it doesn't matter which row. Already-sent rows show a green CHECK instead (different glyph, won't match). Tap it via tap_template so we hit the icon wherever it sits on screen.",
       "detect": "sendlife_icon.png",
       "on_match": [
-        { "type": "tap_template", "template": "sendlife_icon.png", "threshold": 0.85 },
-        { "type": "wait", "ms": 1200 },
-        { "type": "goto", "state": "confirm_dialog" }
+        {
+          "type": "tap_template",
+          "template": "sendlife_icon.png",
+          "threshold": 0.85
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "confirm_dialog"
+        }
       ],
-      "on_absent": { "goto": "peel_popups" },
+      "on_absent": {
+        "goto": "peel_popups"
+      },
       "timeout_ms": 8000
     },
     "peel_popups": {
       "_note": "No Send-Life icon visible — before deciding the list is exhausted, rule out a popup covering it. Cookie Run drops modals at any time, not just at launch (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up rewards, friend-info), and any of them hides the friends list. Each popup peels to its own confirm and the list is still underneath, so we return to scan (not home). This is a mini modal chain: dailycheckin(OK 965,985) -> treasure(Confirm 960,850) -> congrats(Confirm 954,847) -> levelup(Confirm 954,847). None present -> genuinely no icon on screen -> scroll_list. Shared templates/coords with boxrun_ep3.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 965, "y": 985 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "scan" }
+        {
+          "type": "tap_xy",
+          "x": 965,
+          "y": 985
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "scan"
+        }
       ],
-      "on_absent": { "goto": "peel_treasure" },
+      "on_absent": {
+        "goto": "peel_treasure"
+      },
       "timeout_ms": 6000
     },
     "peel_treasure": {
       "_note": "Power+ Treasure Rewards popup. Confirm (960,850) -> scan. Absent -> peel_congrats.",
       "detect": "treasurereward_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 960, "y": 850 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "scan" }
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 850
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "scan"
+        }
       ],
-      "on_absent": { "goto": "peel_congrats" },
+      "on_absent": {
+        "goto": "peel_congrats"
+      },
       "timeout_ms": 6000
     },
     "peel_congrats": {
       "_note": "Congratulations! / reward popup (also covers level-up rewards — same green Confirm button). Confirm (954,847) -> scan. Absent -> no popup at all -> scroll_list to look for more rows.",
       "detect": "congrats_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 954, "y": 847 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "scan" }
+        {
+          "type": "tap_xy",
+          "x": 954,
+          "y": 847
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "scan"
+        }
       ],
-      "on_absent": { "goto": "scroll_list" },
+      "on_absent": {
+        "goto": "scroll_list"
+      },
       "timeout_ms": 6000
     },
     "confirm_dialog": {
-      "_note": "'Send <name> a free Life? (+3 Gift Points)' dialog. Detect via the name-agnostic '(+3 Gift Points)' line (a per-friend name crop would only match one friend). Tap Confirm (1189,687 — CV verified, green/right) — NEVER Cancel, this loop's whole purpose is to send. If the dialog didn't actually open (e.g. a stray double-match), fall through to message_sent/scan via absent so we don't get stuck.",
+      "_note": "Send-Life confirm dialog, NEW format \"Send <name> a free Life?\" (no Gift Points line). Detect the name-agnostic \"a free Life?\" text (self=1.000). Tap Confirm (1189,687 — green/right); NEVER Cancel. Absent -> confirm_dialog_gp checks the OLD format \"...(+3 Gift Points)\" before giving up, so both dialog versions are handled (the game dropped the Gift Points line in a patch; older accounts/regions may still show it).",
       "detect": "sendlife_confirm_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1189, "y": 687 },
-        { "type": "wait", "ms": 1200 },
-        { "type": "goto", "state": "message_sent" }
+        {
+          "type": "tap_xy",
+          "x": 1189,
+          "y": 687
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "message_sent"
+        }
       ],
-      "on_absent": { "goto": "message_sent" },
+      "on_absent": {
+        "goto": "confirm_dialog_gp"
+      },
+      "timeout_ms": 6000
+    },
+    "confirm_dialog_gp": {
+      "_note": "Send-Life confirm dialog, OLD format with the \"(+3 Gift Points)\" line (sendlife_confirm_gp_marker). Same Confirm coord (1189,687). Present -> tap Confirm -> message_sent. Absent -> neither dialog format is up (a stray double-match, or it already closed) -> message_sent/scan so we never get stuck.",
+      "detect": "sendlife_confirm_gp_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1189,
+          "y": 687
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "message_sent"
+        }
+      ],
+      "on_absent": {
+        "goto": "message_sent"
+      },
       "timeout_ms": 6000
     },
     "message_sent": {
       "_note": "'Message sent!' confirmation popup. Tap its Confirm (957,685) to close, returning to the friends list with that row now showing a green check instead of the send icon. Then back to scan for the next one.",
       "detect": "messagesent_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 957, "y": 685 },
-        { "type": "wait", "ms": 1000 },
-        { "type": "goto", "state": "scan" }
+        {
+          "type": "tap_xy",
+          "x": 957,
+          "y": 685
+        },
+        {
+          "type": "wait",
+          "ms": 1000
+        },
+        {
+          "type": "goto",
+          "state": "scan"
+        }
       ],
-      "on_absent": { "goto": "scan" },
+      "on_absent": {
+        "goto": "scan"
+      },
       "timeout_ms": 6000
     },
     "scroll_list": {
       "_note": "No Send-Life icon visible in the current viewport — either all visible rows are already sent/checked/OFF, or we've scrolled past them. Swipe the list up (reveal lower rows) then re-scan. A run of consecutive already-handled rows (checks + gift-OFF friends) can span MANY screens back to back, so a single swipe-and-recheck is not enough evidence of bottom-of-list -> chain into scroll_retry, which keeps swiping (up to 6 total attempts) before concluding we're truly at the bottom. Each swipe is a fresh attempt, so a long OFF-streak just costs a few extra swipes instead of a false stop.",
       "detect": "sendlife_icon.png",
       "on_match": [
-        { "type": "goto", "state": "scan" }
+        {
+          "type": "goto",
+          "state": "scan"
+        }
       ],
       "on_absent": [
-        { "type": "swipe", "x1": 650, "y1": 850, "x2": 650, "y2": 400, "ms": 400 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "scroll_retry_1" }
+        {
+          "type": "swipe",
+          "x1": 650,
+          "y1": 850,
+          "x2": 650,
+          "y2": 400,
+          "ms": 400
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "scroll_retry_1"
+        }
       ],
       "timeout_ms": 20000
     },
     "scroll_retry_1": {
       "_note": "Recheck after swipe #1. Found -> resume scanning. Still absent -> swipe again (attempt #2) rather than giving up — long OFF/checked streaks need several swipes to clear.",
       "detect": "sendlife_icon.png",
-      "on_match": [ { "type": "goto", "state": "scan" } ],
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
       "on_absent": [
-        { "type": "swipe", "x1": 650, "y1": 850, "x2": 650, "y2": 400, "ms": 400 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "scroll_retry_2" }
+        {
+          "type": "swipe",
+          "x1": 650,
+          "y1": 850,
+          "x2": 650,
+          "y2": 400,
+          "ms": 400
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "scroll_retry_2"
+        }
       ],
       "timeout_ms": 5000
     },
     "scroll_retry_2": {
       "_note": "Swipe attempt #3.",
       "detect": "sendlife_icon.png",
-      "on_match": [ { "type": "goto", "state": "scan" } ],
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
       "on_absent": [
-        { "type": "swipe", "x1": 650, "y1": 850, "x2": 650, "y2": 400, "ms": 400 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "scroll_retry_3" }
+        {
+          "type": "swipe",
+          "x1": 650,
+          "y1": 850,
+          "x2": 650,
+          "y2": 400,
+          "ms": 400
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "scroll_retry_3"
+        }
       ],
       "timeout_ms": 5000
     },
     "scroll_retry_3": {
       "_note": "Swipe attempt #4.",
       "detect": "sendlife_icon.png",
-      "on_match": [ { "type": "goto", "state": "scan" } ],
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
       "on_absent": [
-        { "type": "swipe", "x1": 650, "y1": 850, "x2": 650, "y2": 400, "ms": 400 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "scroll_retry_4" }
+        {
+          "type": "swipe",
+          "x1": 650,
+          "y1": 850,
+          "x2": 650,
+          "y2": 400,
+          "ms": 400
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "scroll_retry_4"
+        }
       ],
       "timeout_ms": 5000
     },
     "scroll_retry_4": {
       "_note": "Swipe attempt #5. If this and the next both miss, a swipe is producing no further list movement (the list itself has stopped scrolling, not just a long OFF-streak) -> genuinely at the bottom.",
       "detect": "sendlife_icon.png",
-      "on_match": [ { "type": "goto", "state": "scan" } ],
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
       "on_absent": [
-        { "type": "swipe", "x1": 650, "y1": 850, "x2": 650, "y2": 400, "ms": 400 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "scroll_retry_5" }
+        {
+          "type": "swipe",
+          "x1": 650,
+          "y1": 850,
+          "x2": 650,
+          "y2": 400,
+          "ms": 400
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "scroll_retry_5"
+        }
       ],
       "timeout_ms": 5000
     },
     "scroll_retry_5": {
       "_note": "Swipe attempt #6 (final). Still nothing after 6 consecutive swipes -> the list has stopped moving -> bottom of the friends list reached -> stop.",
       "detect": "sendlife_icon.png",
-      "on_match": [ { "type": "goto", "state": "scan" } ],
-      "on_absent": [ { "type": "stop" } ],
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "stop"
+        }
+      ],
       "timeout_ms": 5000
     }
   }
