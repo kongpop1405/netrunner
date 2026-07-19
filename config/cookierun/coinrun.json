@@ -249,12 +249,12 @@
       "timeout_ms": 10000
     },
     "wait_roll": {
-      "_note": "The game's self-rolling multi-buy is in progress (multibuy_marker / Stop UI still on screen). Do NOTHING — no taps — just wait and self-loop so we never tap Stop and never re-buy. The game keeps rolling until Double Coins lands, then the roll UI disappears. Marker absent -> roll finished -> go read the banner. timeout_ms is generous because several rolls can chain for many seconds; on timeout fall through to start_run anyway (nocoins/other handling downstream).",
-      "detect": "multibuy_marker.png",
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_ep6. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe.",
+      "detect": "rollstop_marker.png",
       "on_match": [
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -262,9 +262,9 @@
         }
       ],
       "on_absent": {
-        "goto": "check_boost_result"
+        "goto": "start_run"
       },
-      "timeout_ms": 45000
+      "timeout_ms": 60000
     },
     "check_boost_result": {
       "_note": "The game's auto-roll finished and the picker closed back to the boost shop. Check for 'Not enough Coins!' first (balance ran dry mid-roll) -> cancel. Otherwise read the banner in start_run. We DO NOT re-roll here — the game already rolled to completion; start_run just Plays with whatever landed.",
