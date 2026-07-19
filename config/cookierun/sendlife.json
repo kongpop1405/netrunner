@@ -1,8 +1,8 @@
 {
-  "_comment": "Cookie Run OvenBreak — auto Send-Life to friends (Friends tab, home screen). Precondition: sit on home with the Friends tab already selected (default tab) so the leaderboard/friends list with per-row Send-Life icons is visible. Loop: scan for any visible green Send-Life icon -> tap it -> confirm the 'Send <name> a free Life?' dialog -> confirm the 'Message sent!' popup -> back to scan. When no icon is visible, swipe the list up to reveal more rows and re-scan; if still nothing after the swipe, the list is exhausted -> stop. All coords verified live @1920x1080.",
+  "_comment": "Cookie Run OvenBreak — auto Send-Life to friends (Friends tab, home screen). Precondition: sit on home with the Friends tab already selected (default tab) so the leaderboard/friends list with per-row Send-Life icons is visible. Loop: scan for any visible green Send-Life icon -> tap it -> confirm the 'Send <name> a free Life?' dialog -> confirm the 'Message sent!' popup -> back to scan. When no icon is visible, swipe the list up to reveal more rows and re-scan; if still nothing after the swipe, the list is exhausted -> stop. SPEED-TUNED: poll_ms 400 and waits trimmed (scan 700, confirm 800, message_sent 700, scroll 1200) — each still covers its animation (dialog/popup fade ~1s, list reload ~1.2s) but the loop cycles ~35% faster. All coords verified live @1920x1080.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
-  "poll_ms": 600,
+  "poll_ms": 400,
   "match_threshold": 0.85,
   "start_state": "scan",
   "states": {
@@ -17,7 +17,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 700
         },
         {
           "type": "goto",
@@ -40,7 +40,7 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": 1000
         },
         {
           "type": "goto",
@@ -63,7 +63,7 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": 1000
         },
         {
           "type": "goto",
@@ -86,7 +86,7 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": 1000
         },
         {
           "type": "goto",
@@ -109,7 +109,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -132,7 +132,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -155,7 +155,7 @@
         },
         {
           "type": "wait",
-          "ms": 1000
+          "ms": 700
         },
         {
           "type": "goto",
@@ -187,7 +187,7 @@
         },
         {
           "type": "wait",
-          "ms": 1800
+          "ms": 1200
         },
         {
           "type": "goto",
@@ -216,7 +216,7 @@
         },
         {
           "type": "wait",
-          "ms": 1800
+          "ms": 1200
         },
         {
           "type": "goto",
@@ -245,7 +245,7 @@
         },
         {
           "type": "wait",
-          "ms": 1800
+          "ms": 1200
         },
         {
           "type": "goto",
@@ -274,7 +274,7 @@
         },
         {
           "type": "wait",
-          "ms": 1800
+          "ms": 1200
         },
         {
           "type": "goto",
@@ -303,7 +303,7 @@
         },
         {
           "type": "wait",
-          "ms": 1800
+          "ms": 1200
         },
         {
           "type": "goto",
