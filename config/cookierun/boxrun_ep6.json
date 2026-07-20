@@ -601,12 +601,58 @@
       "timeout_ms": 8000
     },
     "guard_not_shop": {
-      "_note": "Guard 2/2: in the boost shop -> resume via boost_shop. Neither Play! nor shop visible -> accept 'mid-run' and fire the first jump plus the Cookie Relay Boost tap (960,540), then enter the fast-jump chain (jump_2..jump_4). The relay fires ONLY here — once per 4-hop cycle — because the tap sits at screen centre: if the run has already ended without us noticing, that same tap lands on the home leaderboard and opens the Friend's Info popup stack. Both guards ran on this frame, so we know we're mid-run before it fires, and the jump zone (~238,940) doesn't overlap the relay, so both are safe together.",
+      "_note": "Guard 2/2: in the boost shop -> resume via boost_shop. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
           "state": "boost_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_sendlife": {
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_levelup"
+      },
+      "timeout_ms": 6000
+    },
+    "guard_not_levelup": {
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
         }
       ],
       "on_absent": [
@@ -627,7 +673,7 @@
           "state": "jump_2"
         }
       ],
-      "timeout_ms": 8000
+      "timeout_ms": 6000
     },
     "jump_2": {
       "_note": "Hop 2/4 — jump. One capture per hop, spent on the only mid-run question: result popup up? If not, jump again.",

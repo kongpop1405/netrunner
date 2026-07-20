@@ -10,22 +10,43 @@
       "_note": "Same contract as coinrun.json home: Play! visible = safe to tap (1431,963), absent = a modal covers home -> peel via probe_sendlife, never blind-tap.",
       "detect": "home_play_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1431, "y": 963 },
-        { "type": "wait", "ms": 3000 },
-        { "type": "goto", "state": "await_shop" }
+        {
+          "type": "tap_xy",
+          "x": 1431,
+          "y": 963
+        },
+        {
+          "type": "wait",
+          "ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "await_shop"
+        }
       ],
-      "on_absent": { "goto": "probe_dailycheckin" },
+      "on_absent": {
+        "goto": "probe_dailycheckin"
+      },
       "timeout_ms": 20000
     },
     "await_shop": {
       "_note": "Shop fade-in settle hop 1/2 (see coinrun.json for the double-tap bug this prevents). Shop up -> straight to the heart gate — no boost buying in this config.",
       "detect": "boostshop_marker.png",
       "on_match": [
-        { "type": "goto", "state": "check_heart" }
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
       ],
       "on_absent": [
-        { "type": "wait", "ms": 1200 },
-        { "type": "goto", "state": "await_shop_2" }
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "await_shop_2"
+        }
       ],
       "timeout_ms": 8000
     },
@@ -33,64 +54,126 @@
       "_note": "Settle hop 2/2. Still no shop -> we're genuinely elsewhere; let the guard chain locate us.",
       "detect": "boostshop_marker.png",
       "on_match": [
-        { "type": "goto", "state": "check_heart" }
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
       ],
-      "on_absent": { "goto": "running" },
+      "on_absent": {
+        "goto": "running"
+      },
       "timeout_ms": 8000
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. 'Daily Check-in' calendar pops once/day at launch over home, hiding Play!; no dismiss stalls the bot. Marker self=1.000, in-run=0.232. Present -> OK (965,985) -> probe_treasurereward. Absent -> probe_treasurereward. Shared with boxrun_ep3.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 965, "y": 985 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "probe_treasurereward" }
+        {
+          "type": "tap_xy",
+          "x": 965,
+          "y": 985
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "probe_treasurereward"
+        }
       ],
-      "on_absent": { "goto": "probe_treasurereward" },
+      "on_absent": {
+        "goto": "probe_treasurereward"
+      },
       "timeout_ms": 8000
     },
     "probe_treasurereward": {
       "_note": "'Power+ Treasure Rewards' popup stacks after Daily Check-in at launch, also covers Play!. Marker self=1.000, in-run=0.31, vs dailycheckin=0.40. Present -> Confirm (960,850) -> home. Absent -> probe_sendlife. Shared with boxrun_ep3.json.",
       "detect": "treasurereward_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 960, "y": 850 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "home" }
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 850
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_sendlife" },
+      "on_absent": {
+        "goto": "probe_sendlife"
+      },
       "timeout_ms": 8000
     },
     "probe_sendlife": {
       "_note": "Send-a-Life dialog over home: Cancel (727,688), never Confirm.",
       "detect": "sendlife_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 727, "y": 688 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "home" }
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "boost_shop" },
+      "on_absent": {
+        "goto": "boost_shop"
+      },
       "timeout_ms": 8000
     },
     "boost_shop": {
       "_note": "In the shop outside the home->Play path (bot started here, or run ended into it). No buying — heart gate, then Play.",
       "detect": "boostshop_marker.png",
       "on_match": [
-        { "type": "goto", "state": "check_heart" }
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
       ],
-      "on_absent": { "goto": "running" },
+      "on_absent": {
+        "goto": "running"
+      },
       "timeout_ms": 8000
     },
     "check_heart": {
       "_note": "Play gate, identical to coinrun.json: heart_empty.png (separator + leftmost heart gray) present = 0 hearts -> 30s wait self-loop under a 25-min timeout; absent -> tap Play (1365,931). HARD RULE: never buy hearts.",
       "detect": "heart_empty.png",
       "on_match": [
-        { "type": "wait", "ms": 30000 },
-        { "type": "goto", "state": "check_heart" }
+        {
+          "type": "wait",
+          "ms": 30000
+        },
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
       ],
       "on_absent": [
-        { "type": "tap_xy", "x": 1365, "y": 931 },
-        { "type": "wait", "ms": 6000 },
-        { "type": "goto", "state": "running" }
+        {
+          "type": "tap_xy",
+          "x": 1365,
+          "y": 931
+        },
+        {
+          "type": "wait",
+          "ms": 6000
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
       ],
       "timeout_ms": 1500000
     },
@@ -98,50 +181,142 @@
       "_note": "Result up -> run over. Absent -> guard chain decides whether it is safe to jump (never tap before ruling out home/shop).",
       "detect": "result_marker.png",
       "on_match": [
-        { "type": "goto", "state": "run_result" }
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
       ],
-      "on_absent": { "goto": "guard_not_home" },
+      "on_absent": {
+        "goto": "guard_not_home"
+      },
       "timeout_ms": 300000
     },
     "guard_not_home": {
       "detect": "home_play_marker.png",
       "on_match": [
-        { "type": "goto", "state": "home" }
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "guard_not_shop" },
+      "on_absent": {
+        "goto": "guard_not_shop"
+      },
       "timeout_ms": 8000
     },
     "guard_not_shop": {
-      "_note": "Neither home nor shop visible -> we are mid-run: jump. NO Cookie Relay tap in this config (960,540 removed) — it's a farm booster, and cutting it removes the stray-leaderboard-tap failure mode entirely.",
+      "_note": "Neither home nor shop visible -> we are mid-run: jump. NO Cookie Relay tap in this config (960,540 removed) — it's a farm booster, and cutting it removes the stray-leaderboard-tap failure mode entirely. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
       "detect": "boostshop_marker.png",
       "on_match": [
-        { "type": "goto", "state": "boost_shop" }
+        {
+          "type": "goto",
+          "state": "boost_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_sendlife": {
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_levelup"
+      },
+      "timeout_ms": 6000
+    },
+    "guard_not_levelup": {
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
       "on_absent": [
-        { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
-        { "type": "goto", "state": "jump_2" }
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "goto",
+          "state": "jump_2"
+        }
       ],
-      "timeout_ms": 8000
+      "timeout_ms": 6000
     },
     "jump_2": {
       "detect": "result_marker.png",
       "on_match": [
-        { "type": "goto", "state": "run_result" }
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
       ],
       "on_absent": [
-        { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
-        { "type": "goto", "state": "jump_3" }
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "goto",
+          "state": "jump_3"
+        }
       ],
       "timeout_ms": 20000
     },
     "jump_3": {
       "detect": "result_marker.png",
       "on_match": [
-        { "type": "goto", "state": "run_result" }
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
       ],
       "on_absent": [
-        { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
-        { "type": "goto", "state": "jump_4" }
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "goto",
+          "state": "jump_4"
+        }
       ],
       "timeout_ms": 20000
     },
@@ -149,121 +324,251 @@
       "_note": "Last fast-jump hop, then one housekeeping pass through the probe chain (popups don't expire; sweeping every 4th jump is enough — measured in coinrun.json).",
       "detect": "result_marker.png",
       "on_match": [
-        { "type": "goto", "state": "run_result" }
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
       ],
       "on_absent": [
-        { "type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55 },
-        { "type": "goto", "state": "check_shop_after_run" }
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "goto",
+          "state": "check_shop_after_run"
+        }
       ],
       "timeout_ms": 20000
     },
     "check_shop_after_run": {
       "detect": "home_play_marker.png",
       "on_match": [
-        { "type": "goto", "state": "home" }
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_boostshop" },
+      "on_absent": {
+        "goto": "probe_boostshop"
+      },
       "timeout_ms": 15000
     },
     "probe_boostshop": {
       "detect": "boostshop_marker.png",
       "on_match": [
-        { "type": "goto", "state": "boost_shop" }
+        {
+          "type": "goto",
+          "state": "boost_shop"
+        }
       ],
-      "on_absent": { "goto": "probe_congrats" },
+      "on_absent": {
+        "goto": "probe_congrats"
+      },
       "timeout_ms": 15000
     },
     "probe_congrats": {
       "_note": "Level-up Congratulations popup — Confirm (956,846) is free/safe. EXPECTED to fire during this measurement (that's the event we're counting toward).",
       "detect": "congrats_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 956, "y": 846 },
-        { "type": "wait", "ms": 2000 },
-        { "type": "goto", "state": "home" }
+        {
+          "type": "tap_xy",
+          "x": 956,
+          "y": 846
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_levelup" },
+      "on_absent": {
+        "goto": "probe_levelup"
+      },
       "timeout_ms": 15000
     },
     "probe_levelup": {
       "_note": "Separate Level Up reward popup — Confirm (959,969) free/safe.",
       "detect": "levelup_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 959, "y": 969 },
-        { "type": "wait", "ms": 2000 },
-        { "type": "goto", "state": "home" }
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_rankingrewards" },
+      "on_absent": {
+        "goto": "probe_rankingrewards"
+      },
       "timeout_ms": 15000
     },
     "probe_rankingrewards": {
       "detect": "rankingrewards_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1672, "y": 135 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "home" }
+        {
+          "type": "tap_xy",
+          "x": 1672,
+          "y": 135
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_giftdraw" },
+      "on_absent": {
+        "goto": "probe_giftdraw"
+      },
       "timeout_ms": 15000
     },
     "probe_giftdraw": {
       "detect": "giftdraw_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1685, "y": 170 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "home" }
+        {
+          "type": "tap_xy",
+          "x": 1685,
+          "y": 170
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_friendinfo" },
+      "on_absent": {
+        "goto": "probe_friendinfo"
+      },
       "timeout_ms": 15000
     },
     "probe_friendinfo": {
       "detect": "friendinfo_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1552, "y": 117 },
-        { "type": "wait", "ms": 900 },
-        { "type": "tap_xy", "x": 1633, "y": 107 },
-        { "type": "wait", "ms": 1200 },
-        { "type": "goto", "state": "probe_friendinfo" }
+        {
+          "type": "tap_xy",
+          "x": 1552,
+          "y": 117
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 1633,
+          "y": 107
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "probe_friendinfo"
+        }
       ],
-      "on_absent": { "goto": "running" },
+      "on_absent": {
+        "goto": "running"
+      },
       "timeout_ms": 15000
     },
     "run_result": {
       "_note": "Run over. OK (702,940), never 'Show Off'. Every hit here = +1 completed run in the stats — count 'tap (702,940)' lines in the day log.",
       "detect": "result_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 702, "y": 940 },
-        { "type": "wait", "ms": 2500 },
-        { "type": "goto", "state": "mystery_box" }
+        {
+          "type": "tap_xy",
+          "x": 702,
+          "y": 940
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box"
+        }
       ],
-      "on_absent": { "goto": "mystery_box" },
+      "on_absent": {
+        "goto": "mystery_box"
+      },
       "timeout_ms": 8000
     },
     "mystery_box": {
       "detect": "mysterybox_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 960, "y": 540 },
-        { "type": "wait", "ms": 2000 },
-        { "type": "goto", "state": "mystery_box_reveal" }
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
       ],
-      "on_absent": { "goto": "home" },
+      "on_absent": {
+        "goto": "home"
+      },
       "timeout_ms": 20000
     },
     "mystery_box_reveal": {
       "detect": "mysterybox_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 959, "y": 960 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "mystery_box_reveal" }
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
       ],
-      "on_absent": { "goto": "mystery_box_recheck" },
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
       "timeout_ms": 15000
     },
     "mystery_box_recheck": {
       "detect": "home_play_marker.png",
       "on_match": [
-        { "type": "goto", "state": "home" }
+        {
+          "type": "goto",
+          "state": "home"
+        }
       ],
-      "on_absent": { "goto": "probe_dailycheckin" },
+      "on_absent": {
+        "goto": "probe_dailycheckin"
+      },
       "timeout_ms": 15000
     }
   }

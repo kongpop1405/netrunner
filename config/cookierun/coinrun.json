@@ -404,12 +404,58 @@
       "timeout_ms": 8000
     },
     "guard_not_shop": {
-      "_note": "Guard 2/2: are we in the boost shop? If so resume the buy loop rather than tapping. Only when neither Play! nor the shop is visible do we accept 'we are mid-run' and fire the jump + Cookie Relay Boost taps — a random point in the left jump zone (~238,940), ~35% of the time a quick double-jump, plus the relay icon at mid-screen (~960,540). The two zones don't overlap, so both are safe to fire together once we know we're actually in a run. The guards ran on the SAME capture as `running`, so reaching here costs nothing extra; the jump is the first thing that invalidates the frame. Hand off to the fast-jump chain (jump_2..jump_4) instead of straight back to the probe chain: measured on 10,204 real jumps, routing every single jump through check_shop_after_run + the 6 probe states cost a second full capture (~850ms) and stretched the median jump gap to 3s — longer than the ~1.5-2s a pit stays on screen, so the bot was missing pits structurally. The probes only ever fired on 0.8% of cycles (84 popups all day), so they do not need to run every cycle.",
+      "_note": "Guard 2/2: are we in the boost shop? If so resume the buy loop rather than tapping. Only when neither Play! nor the shop is visible do we accept 'we are mid-run' and fire the jump + Cookie Relay Boost taps — a random point in the left jump zone (~238,940), ~35% of the time a quick double-jump, plus the relay icon at mid-screen (~960,540). The two zones don't overlap, so both are safe to fire together once we know we're actually in a run. The guards ran on the SAME capture as `running`, so reaching here costs nothing extra; the jump is the first thing that invalidates the frame. Hand off to the fast-jump chain (jump_2..jump_4) instead of straight back to the probe chain: measured on 10,204 real jumps, routing every single jump through check_shop_after_run + the 6 probe states cost a second full capture (~850ms) and stretched the median jump gap to 3s — longer than the ~1.5-2s a pit stays on screen, so the bot was missing pits structurally. The probes only ever fired on 0.8% of cycles (84 popups all day), so they do not need to run every cycle. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
           "state": "boost_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_sendlife": {
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_levelup"
+      },
+      "timeout_ms": 6000
+    },
+    "guard_not_levelup": {
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
         }
       ],
       "on_absent": [
@@ -430,7 +476,7 @@
           "state": "jump_2"
         }
       ],
-      "timeout_ms": 8000
+      "timeout_ms": 6000
     },
     "jump_2": {
       "_note": "Fast-jump hop 2/4. One capture per hop, and that capture is spent on the single question that matters mid-run: has the result popup appeared? If not, jump again immediately. NO relay tap here — the relay icon sits at screen centre (960,540) and, when the run has actually ended without us noticing, that tap lands on the home leaderboard and opens the Friend's Info popup stack. Firing it once per four jumps instead of once per jump cuts that exposure ~4x while still triggering the boost (10,297 relay taps all day for one boost each run is wild overkill).",
