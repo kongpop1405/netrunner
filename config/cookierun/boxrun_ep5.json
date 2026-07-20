@@ -538,6 +538,29 @@
         }
       ],
       "on_absent": {
+        "goto": "guard_not_levelup"
+      },
+      "timeout_ms": 6000
+    },
+    "guard_not_levelup": {
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop when the cookie gains enough XP during a run — same class of bug as Send-Life: it sits on top of whatever screen is under it and the mid-run guard chain would otherwise never route through the home popup-peel chain to dismiss it. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> check_box.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
         "goto": "check_box"
       },
       "timeout_ms": 6000
