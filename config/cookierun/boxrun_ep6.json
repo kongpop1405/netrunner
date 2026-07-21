@@ -903,17 +903,8 @@
       "detect": "mysterybox_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
-        },
-        {
-          "type": "wait",
-          "ms": 2000
-        },
-        {
           "type": "goto",
-          "state": "mystery_box_reveal"
+          "state": "mb_gate"
         }
       ],
       "on_absent": {
@@ -926,17 +917,8 @@
       "detect": "mysterybox_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 1800
-        },
-        {
           "type": "goto",
-          "state": "mystery_box_reveal"
+          "state": "mb_reveal_gate"
         }
       ],
       "on_absent": {
@@ -1053,7 +1035,7 @@
       "timeout_ms": 8000
     },
     "guard_not_inactive": {
-      "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged).",
+      "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged). RELAY FIX: Cookie Relay button is bottom-left in-run (~490,955), NOT center (960,540) — the old coord tapped empty field/coins so the relay never fired.",
       "detect": "inactive_marker.png",
       "on_match": [
         {
@@ -1080,8 +1062,8 @@
         },
         {
           "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "x": 490,
+          "y": 955
         },
         {
           "type": "goto",
@@ -1170,6 +1152,76 @@
         "goto": "home"
       },
       "timeout_ms": 30000
+    },
+    "mb_gate": {
+      "_note": "Inactive gate before the box tap. The Mystery Box title ribbon scores 1.00 through an overlaid 'inactive -> restart' popup, so the box/Confirm tap would land on the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login. Absent -> run the original tap (unchanged).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "mb_reveal_gate": {
+      "_note": "Inactive gate before the reveal Confirm tap. The Mystery Box title ribbon scores 1.00 through an overlaid 'inactive -> restart' popup, so the box/Confirm tap would land on the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login. Absent -> run the original tap (unchanged).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "timeout_ms": 6000
     }
   }
 }

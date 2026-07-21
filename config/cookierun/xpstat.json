@@ -499,17 +499,8 @@
       "detect": "mysterybox_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
-        },
-        {
-          "type": "wait",
-          "ms": 2000
-        },
-        {
           "type": "goto",
-          "state": "mystery_box_reveal"
+          "state": "mb_gate"
         }
       ],
       "on_absent": {
@@ -521,17 +512,8 @@
       "detect": "mysterybox_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 1800
-        },
-        {
           "type": "goto",
-          "state": "mystery_box_reveal"
+          "state": "mb_reveal_gate"
         }
       ],
       "on_absent": {
@@ -711,6 +693,76 @@
         "goto": "home"
       },
       "timeout_ms": 30000
+    },
+    "mb_gate": {
+      "_note": "Inactive gate before the box tap. The Mystery Box title ribbon scores 1.00 through an overlaid 'inactive -> restart' popup, so the box/Confirm tap would land on the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login. Absent -> run the original tap (unchanged).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "mb_reveal_gate": {
+      "_note": "Inactive gate before the reveal Confirm tap. The Mystery Box title ribbon scores 1.00 through an overlaid 'inactive -> restart' popup, so the box/Confirm tap would land on the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login. Absent -> run the original tap (unchanged).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "timeout_ms": 6000
     }
   }
 }

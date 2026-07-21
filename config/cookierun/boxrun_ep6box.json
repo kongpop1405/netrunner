@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 5 — plays runs to the end (till death) collecting Mystery Boxes passively; NO boost purchase, Fast Start ONLY. PRECONDITION: Episode 5 selected on home BEFORE starting (bot only taps Play!). Fast Start is spammed (985,515) after leaving home — on the shop path from check_heart after its Play tap, on the direct-run path from await_shop absent. Boxes collected mid-run open on the Mystery Box screen after Result. Loop: home->Play->await_shop->(shop->check_heart | direct->spam)->check_heart(Play+FastStart spam)->run(NO jump/slide; QUIT at 2nd box via check_box->quit_run, else die)->run_result->mystery_box->reveal->home. home Play coord may differ from ep6 (1650) — verify live for Episode 5.",
+  "_comment": "Cookie Run BOX-FARM, EPISODE 6 (Plum Blossom Palace) — ep5 behavior on ep6 art. Plays with Fast Start ONLY, NO jump/slide (uncontrolled cookie so box pickups at fixed lanes are never missed), and QUITS at the 2nd Mystery Box. Because a no-input run triggers the game's 'inactive -> restart' popup, a pause keep-alive taps Pause periodically from the running loop; the pause menu both resets the idle timer AND freezes the box counter so it can be read (x2 -> Quit, else Continue). PRECONDITION: Episode 6 selected on home. Home Play at (1330,930). Box counter art differs from ep5 so ep6_boxcounter_marker / ep6_boxcount2_marker are used. NOTE: ep6_boxcount2 is currently cropped from the Result screen (placeholder) — swap with an in-run x2 frame for best accuracy. Inactive/Send-Life/Level-Up guards + login recovery inherited from ep5.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -41,8 +41,8 @@
       "on_absent": [
         {
           "type": "tap_xy",
-          "x": 1650,
-          "y": 970
+          "x": 1330,
+          "y": 930
         },
         {
           "type": "wait",
@@ -783,19 +783,15 @@
       "timeout_ms": 15000
     },
     "check_box": {
-      "_note": "STAGE 1 of the quit gate: is the Mystery Box counter even on screen? boxcounter_marker is the wooden \"?\" box icon (present for x1, x2, ... — CV: present ~0.9+, absent ~0.35). Absent -> no box collected yet -> running (never quit). Present -> check_box2 reads the digit. This guards against the x2-only crop false-matching jelly/coin noise mid-run and quitting with zero boxes (seen live).",
-      "detect": "boxcounter_marker.png",
+      "_note": "IN-RUN box presence (no pause). ep6_boxcounter_marker present = at least one box collected. Absent -> running (0 boxes; we deliberately do NOT pause with no box, so the pause fires once PER box as the user asked — the trade-off is a no-box run can idle-kick, which recover_login handles). Present -> pause_read to read the digit.",
+      "detect": "ep6_boxcounter_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "check_box2"
+          "state": "pause_read"
         }
       ],
       "on_absent": [
-        {
-          "type": "wait",
-          "ms": 1500
-        },
         {
           "type": "goto",
           "state": "running"
@@ -803,30 +799,8 @@
       ],
       "timeout_ms": 8000
     },
-    "check_box2": {
-      "_note": "STAGE 2: the box counter IS on screen (check_box confirmed) — does it read x2? boxcount2_marker (x2-only digit crop). Present -> quit_run (2 boxes, bail). Absent -> only 1 box so far -> running to keep polling. Because we only reach here with a real counter on screen, a stray jelly/coin can no longer trigger a false quit. THRESHOLD 0.95 (not the global 0.82): the small x2 digit crop can score ~0.85 on an x1 counter (the 1 and 2 share strokes), which false-quit at 1 box live. x2 self-matches at 1.00, so 0.95 clears x1 while still catching a real x2.",
-      "detect": "boxcount2_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "quit_run"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "goto",
-          "state": "running"
-        }
-      ],
-      "timeout_ms": 8000,
-      "threshold": 0.95
-    },
     "quit_run": {
-      "_note": "2 boxes collected -> bail via the pause menu. pause (1790,55) -> menu Quit (960,640) -> confirm Quit (960,570, NOT Cancel 960,755) -> Result with both boxes credited -> run_result opens/reveals them. Generous waits (1200-2500ms) for each menu/dialog fade. Coords reused from boxrun_ep6.",
+      "_note": "2 boxes -> bail via the pause menu. Pause (1790,55) -> Quit (955,640) -> Result (both boxes credited). ep6 pause menu has no separate confirm dialog (Continue/Quit only), so no extra tap. Reused by read_boxcount's quit branch conceptually.",
       "detect": "result_marker.png",
       "on_match": [
         {
@@ -842,21 +816,12 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 1300
         },
         {
           "type": "tap_xy",
-          "x": 960,
+          "x": 955,
           "y": 640
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 570
         },
         {
           "type": "wait",
@@ -1079,6 +1044,89 @@
         }
       ],
       "timeout_ms": 6000
+    },
+    "read_boxcount": {
+      "_note": "Paused: read the frozen counter. ep6_boxcount2_marker present -> 2 boxes -> Quit (955,640) -> run_result. Absent -> 1 box -> Continue (955,430) to resume, then cooldown_run runs a stretch WITHOUT re-checking so we pause exactly once at box 1; a later box (x2) is caught when normal check_box resumes. threshold 0.9. NOTE: ep6_boxcount2 is a Result-screen placeholder — capture an in-run x2 and swap.",
+      "detect": "ep6_boxcount2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 955,
+          "y": 640
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 955,
+          "y": 430
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "cooldown_run"
+        }
+      ],
+      "timeout_ms": 8000,
+      "threshold": 0.9
+    },
+    "pause_read": {
+      "_note": "The single pause for the current box level. A box is on the counter -> tap Pause (1790,55) to freeze the counter (also resets the idle timer), then read_boxcount reads the sharp digit.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1790,
+          "y": 55
+        },
+        {
+          "type": "wait",
+          "ms": 1300
+        },
+        {
+          "type": "goto",
+          "state": "read_boxcount"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "cooldown_run": {
+      "_note": "Post-box-1 cooldown. The x1 counter is still on screen, so returning straight to check_box would pause again immediately. Wait out a run stretch (single wait), then resume running. If a 2nd box lands during/after this, the next check_box->pause_read reads x2 and quits. Bail early if the run already ended (result_marker).",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": 6000
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
+      "timeout_ms": 10000
     }
   }
 }
