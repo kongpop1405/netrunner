@@ -11,17 +11,8 @@
       "detect": "home_play_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
-          "x": 1650,
-          "y": 970
-        },
-        {
-          "type": "wait",
-          "ms": 3000
-        },
-        {
           "type": "goto",
-          "state": "await_shop"
+          "state": "verify_no_popup"
         }
       ],
       "on_absent": {
@@ -950,8 +941,8 @@
       "timeout_ms": 6000
     },
     "recover_login": {
-      "_note": "Login recovery. The 'You've been inactive -> game will restart!' popup (probe_inactive/guard_not_inactive) restarts the game to the DevPlay title, which no other state detects -> the bot used to hang here. Detect the account picker (login_marker: 'You already have an account!' + CookieRun logo, name-agnostic). Present -> tap DevPlay Login (960,950), wait, tap the top saved account row (1100,490), wait out the ~12s login+home load, then re-enter at start_state. Absent -> title still loading or already home -> go to start_state and let its normal detection take over.",
-      "detect": "login_marker.png",
+      "_note": "Login recovery step 1 (DevPlay title). After the inactive-restart the game reopens on the DevPlay title with the orange 'DevPlay Login' button (devplaylogin_marker, self=1.0). Present -> tap it (960,950) to open the account picker, wait for the fade, hand to recover_pick. Absent -> we may already be at the picker (or past login) -> recover_pick.",
+      "detect": "devplaylogin_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -962,6 +953,55 @@
           "type": "wait",
           "ms": 4000
         },
+        {
+          "type": "goto",
+          "state": "recover_pick"
+        }
+      ],
+      "on_absent": {
+        "goto": "recover_pick"
+      },
+      "timeout_ms": 30000
+    },
+    "verify_no_popup": {
+      "_note": "Play-tap gate. The 'You've been inactive -> restart' popup overlays home/shop while Play! still scores ~0.87 through it, so home.on_match would tap Play INTO the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login re-auths. Absent -> no popup, run the real Play tap (original home.on_match body).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1650,
+          "y": 970
+        },
+        {
+          "type": "wait",
+          "ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "await_shop"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_pick": {
+      "_note": "Login recovery step 2 (account picker). login_marker = 'You already have an account!' + CookieRun logo (name-agnostic). Present -> tap the top saved account row (1100,490), wait out the ~12s login + home load, re-enter start_state (home). Absent -> the picker isn't up (login already completed, or the title is still animating) -> go to start_state and let its own detection settle; if we're still on the title, home will be absent and the probe chain loops us back to recover_login.",
+      "detect": "login_marker.png",
+      "on_match": [
         {
           "type": "tap_xy",
           "x": 1100,
