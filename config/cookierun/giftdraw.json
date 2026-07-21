@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run OvenBreak — auto Gift Draw box opener. Standalone loop (separate from coinrun.json run-grind). Precondition: sit on the OPEN 'Gift Draw' popup (home -> tap the Rewards gift-box icon, badge shows remaining draws). Loop: gift_draw(tap Draw) -> pick_box(tap a box) -> reward(tap Confirm) -> back to gift_draw. Repeats until draws run out (Draw greys, pick_box never appears -> pick_box absent -> done closes the popup and stops). RARE CASE: a treasure reward shows a 'Congratulations! Treasure received!' popup whose Confirm may not match giftreward_confirm.png (and can also appear layered OVER the Gift Draw popup). The old self-loop on_absent + timeout_ms design made the engine raise FsmError there (timeout with goto==self) and die with the popup stuck on screen. Fixed with absent_retries grace windows (one retry ~= absent_wait_ms + poll_ms + capture ~= 1.4s) that fall through to a 'rescue' state which blind-taps the treasure-popup Confirm spot. All coords verified live @1920x1080 except the rescue blind-tap (estimated from a user screenshot 2026-07-08 — popup too rare to reproduce live).",
+  "_comment": "Cookie Run OvenBreak — auto Gift Draw box opener. Standalone loop (separate from coinrun.json run-grind). Precondition: sit on the OPEN 'Gift Draw' popup (home -> tap the Rewards gift-box icon, badge shows remaining draws). Loop: gift_draw(tap Draw) -> pick_box(tap a box) -> reward(tap Draw again when present, else Confirm). Most cycles hit the 'Draw again' branch and skip straight from reward back to pick_box, bypassing gift_draw's Draw tap entirely; only the layout without Draw again routes back through gift_draw. Repeats until draws run out (Draw greys or Draw again stops appearing, pick_box never appears -> pick_box absent -> done closes the popup and stops). RARE CASE: a treasure reward shows a 'Congratulations! Treasure received!' popup whose Confirm may not match giftreward_confirm.png (and can also appear layered OVER the Gift Draw popup). The old self-loop on_absent + timeout_ms design made the engine raise FsmError there (timeout with goto==self) and die with the popup stuck on screen. Fixed with absent_retries grace windows (one retry ~= absent_wait_ms + poll_ms + capture ~= 1.4s) that fall through to a 'rescue' state which blind-taps the treasure-popup Confirm spot. All coords verified live @1920x1080 except the rescue blind-tap (estimated from a user screenshot 2026-07-08 — popup too rare to reproduce live).",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -10,90 +10,207 @@
       "_note": "The 'Gift Draw' popup is open (teal ribbon title). Tap the green Draw button (1385,915 — it carries the remaining-draws counter badge) to spend 1 gift box. Marker ABSENT is usually the post-Confirm transition still settling (~1-2s fade) — tolerated by absent_retries (3 retries ~= 4s grace). A SUSTAINED absence means something unexpected covers the popup (e.g. the rare 'Treasure received!' popup layering on top) -> rescue, never a self-goto timeout (that raises FsmError and strands the screen).",
       "detect": "giftdraw_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1385, "y": 915 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "pick_box" }
+        {
+          "type": "tap_xy",
+          "x": 1385,
+          "y": 915
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "pick_box"
+        }
       ],
       "absent_retries": 3,
       "absent_wait_ms": 400,
-      "on_absent": { "goto": "rescue" }
+      "on_absent": {
+        "goto": "probe_inactive"
+      }
     },
     "pick_box": {
-      "_note": "'Pick a gift box!' screen — 5 boxes, ALL give a random reward (choice is cosmetic). Always tap the top-left yellow box (500,510), then wait through the box-open + reward reveal burst animation (~3.5s) before checking the reveal. If this marker is ABSENT it means the Draw tap opened nothing = draws exhausted (Draw greyed) -> on timeout go to done. A brief absence right after tapping Draw is tolerated by self-looping until the screen renders or the timeout fires. (Self-goto timeout is safe HERE because on_absent is a dict goto to a DIFFERENT state — done.)",
+      "_note": "'Pick a gift box!' screen — 5 boxes, ALL give a random reward (choice is cosmetic). Always tap the bottom-right green box (1190,830) — closest to the Draw button spot, minimizes finger travel between cycles — then wait through the box-open + reward reveal burst animation before checking the reveal. Trimmed 3500ms -> 2000ms -> 1500ms -> 1000ms, each verified live (20 cycles, zero absent-retries). 1000ms is the floor: 700ms was tried 2026-07-20 and missed the reveal often enough to fall through the full rescue chain and burn the cycle budget with no useful taps — do not go below 1000ms without re-verifying live. absent_retries(3x400ms) below covers the remaining margin if the reveal is still settling. If this marker is ABSENT it means the Draw tap opened nothing = draws exhausted (Draw greyed) -> on timeout go to done. A brief absence right after tapping Draw is tolerated by self-looping until the screen renders or the timeout fires. (Self-goto timeout is safe HERE because on_absent is a dict goto to a DIFFERENT state — done.)",
       "detect": "pickbox_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 500, "y": 510 },
-        { "type": "wait", "ms": 3500 },
-        { "type": "goto", "state": "reward" }
+        {
+          "type": "tap_xy",
+          "x": 1190,
+          "y": 830
+        },
+        {
+          "type": "wait",
+          "ms": 1000
+        },
+        {
+          "type": "goto",
+          "state": "reward"
+        }
       ],
-      "on_absent": { "goto": "done" },
+      "on_absent": {
+        "goto": "done"
+      },
       "timeout_ms": 8000
     },
     "reward": {
-      "_note": "Reward reveal ('Congratulations!'). THREE known layouts: (a) cookie — single centered Confirm; (b) item (e.g. 'Double XP') — Confirm LEFT + teal 'Draw again' RIGHT; (c) RARE treasure — 'Treasure received!' popup whose Confirm may render at a different scale and NOT match giftreward_confirm.png. (a)/(b) are handled by tap_template on the green Confirm (NEVER tap 'Draw again' — it re-spends a draw). (c) falls through absent_retries (5 retries ~= 7s on top of pick_box's 3.5s wait) into rescue, which blind-taps the treasure Confirm spot. The old design self-looped here and raised FsmError at timeout, freezing on the treasure popup.",
-      "detect": "giftreward_confirm.png",
-      "on_match": [
-        { "type": "tap_template", "template": "giftreward_confirm.png", "threshold": 0.85 },
-        { "type": "wait", "ms": 2500 },
-        { "type": "goto", "state": "gift_draw" }
+      "_note": "Reward reveal ('Congratulations!'). THREE known layouts: (a) cookie — single centered Confirm, no 'Draw again'; (b) item (e.g. 'Double XP', coins) — Confirm LEFT + teal 'Draw again' RIGHT; (c) RARE treasure — 'Treasure received!' popup whose Confirm may render at a different scale and NOT match giftreward_confirm.png. detect tries drawagain_button.png FIRST (any-of, first-found-wins): when present (layout b) tap it to skip straight back into pick_box — spends the next draw without re-tapping gift_draw's Draw button, one less tap per cycle. Layout (a) has no Draw again button, so detect falls through to giftreward_confirm.png and taps Confirm -> gift_draw as before. (c) falls through absent_retries (5 retries ~= 7s on top of pick_box's 3.5s wait) into rescue, which blind-taps the treasure Confirm spot.",
+      "detect": [
+        "drawagain_button.png",
+        "giftreward_confirm.png"
       ],
+      "on_match": {
+        "drawagain_button.png": [
+          {
+            "type": "tap_template",
+            "template": "drawagain_button.png",
+            "threshold": 0.85
+          },
+          {
+            "type": "wait",
+            "ms": 1000
+          },
+          {
+            "type": "goto",
+            "state": "pick_box"
+          }
+        ],
+        "giftreward_confirm.png": [
+          {
+            "type": "tap_template",
+            "template": "giftreward_confirm.png",
+            "threshold": 0.85
+          },
+          {
+            "type": "wait",
+            "ms": 2500
+          },
+          {
+            "type": "goto",
+            "state": "gift_draw"
+          }
+        ]
+      },
       "absent_retries": 5,
       "absent_wait_ms": 400,
-      "on_absent": { "goto": "rescue" }
+      "on_absent": {
+        "goto": "rescue"
+      }
     },
     "rescue": {
       "_note": "Unknown popup is stuck on screen (reached only after a full retry chain failed). One last template check — the rare 'Treasure received!' popup's Confirm DOES match giftreward_confirm.png (verified live 2026-07-08, score 1.00 at 962,853; the old config froze on it because the popup layers over the Gift Draw popup while the FSM sat in gift_draw's self-loop, not because of a template miss). The blind-tap at (962,853) is the backstop for any FUTURE popup whose Confirm does not match. After the tap, verify recovery via rescue_check instead of assuming.",
       "detect": "giftreward_confirm.png",
       "on_match": [
-        { "type": "tap_template", "template": "giftreward_confirm.png", "threshold": 0.85 },
-        { "type": "wait", "ms": 2500 },
-        { "type": "goto", "state": "gift_draw" }
+        {
+          "type": "tap_template",
+          "template": "giftreward_confirm.png",
+          "threshold": 0.85
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
       ],
-      "on_absent": { "goto": "peel_popups" }
+      "on_absent": {
+        "goto": "peel_popups"
+      }
     },
     "peel_popups": {
       "_note": "Before the blind-tap backstop, rule out a launch/reward modal layered over the Gift Draw popup. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the popup and NOT matching giftreward_confirm. Peel whichever is present back to gift_draw (the popup is still underneath). None present -> fall to blind_confirm, the original (962,853) backstop for an unknown Confirm. Shared templates/coords with boxrun_ep3.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 965, "y": 985 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "gift_draw" }
+        {
+          "type": "tap_xy",
+          "x": 965,
+          "y": 985
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
       ],
-      "on_absent": { "goto": "peel_treasure" },
+      "on_absent": {
+        "goto": "peel_treasure"
+      },
       "timeout_ms": 6000
     },
     "peel_treasure": {
       "_note": "Power+ Treasure Rewards. Confirm (960,850) -> gift_draw. Absent -> peel_congrats.",
       "detect": "treasurereward_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 960, "y": 850 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "gift_draw" }
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 850
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
       ],
-      "on_absent": { "goto": "peel_congrats" },
+      "on_absent": {
+        "goto": "peel_congrats"
+      },
       "timeout_ms": 6000
     },
     "peel_congrats": {
       "_note": "Congratulations! / level-up reward popup. Confirm (954,847) -> gift_draw. Absent -> blind_confirm (the original treasure-Confirm backstop).",
       "detect": "congrats_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 954, "y": 847 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "gift_draw" }
+        {
+          "type": "tap_xy",
+          "x": 954,
+          "y": 847
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
       ],
-      "on_absent": { "goto": "blind_confirm" },
+      "on_absent": {
+        "goto": "blind_confirm"
+      },
       "timeout_ms": 6000
     },
     "blind_confirm": {
       "_note": "No known popup matched -> last-ditch blind tap of the treasure-reward Confirm spot (962,853, from a 2026-07-08 user screenshot), then verify via rescue_check. This is the original rescue on_absent action, kept as the final backstop.",
       "detect": "giftdraw_marker.png",
       "on_match": [
-        { "type": "goto", "state": "gift_draw" }
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
       ],
       "on_absent": [
-        { "type": "tap_xy", "x": 962, "y": 853 },
-        { "type": "wait", "ms": 2500 },
-        { "type": "goto", "state": "rescue_check" }
+        {
+          "type": "tap_xy",
+          "x": 962,
+          "y": 853
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "rescue_check"
+        }
       ],
       "timeout_ms": 6000
     },
@@ -101,24 +218,95 @@
       "_note": "Did the blind tap bring the Gift Draw popup back? Present -> resume the loop. Absent -> one grace retry (popup fade ~1.8s can outlast the 2.5s wait on a slow frame), then stop cleanly via done rather than risk blind-tapping an unknown screen again.",
       "detect": "giftdraw_marker.png",
       "on_match": [
-        { "type": "goto", "state": "gift_draw" }
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
       ],
       "absent_retries": 1,
       "absent_wait_ms": 1500,
-      "on_absent": { "goto": "done" }
+      "on_absent": {
+        "goto": "done"
+      }
     },
     "done": {
       "_note": "Draws exhausted or popup gone. If the Gift Draw popup is still up (marker present) close it via its X (1660,175) then stop. If already gone (marker absent) just stop. Either branch ends the run — never spins.",
       "detect": "giftdraw_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1660, "y": 175 },
-        { "type": "wait", "ms": 1000 },
-        { "type": "stop" }
+        {
+          "type": "tap_xy",
+          "x": 1660,
+          "y": 175
+        },
+        {
+          "type": "wait",
+          "ms": 1000
+        },
+        {
+          "type": "stop"
+        }
       ],
       "on_absent": [
-        { "type": "stop" }
+        {
+          "type": "stop"
+        }
       ],
       "timeout_ms": 5000
+    },
+    "probe_inactive": {
+      "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "rescue"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_login": {
+      "_note": "Login recovery. The 'You've been inactive -> game will restart!' popup (probe_inactive/guard_not_inactive) restarts the game to the DevPlay title, which no other state detects -> the bot used to hang here. Detect the account picker (login_marker: 'You already have an account!' + CookieRun logo, name-agnostic). Present -> tap DevPlay Login (960,950), wait, tap the top saved account row (1100,490), wait out the ~12s login+home load, then re-enter at start_state. Absent -> title still loading or already home -> go to start_state and let its normal detection take over.",
+      "detect": "login_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 950
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "tap_xy",
+          "x": 1100,
+          "y": 490
+        },
+        {
+          "type": "wait",
+          "ms": 12000
+        },
+        {
+          "type": "goto",
+          "state": "gift_draw"
+        }
+      ],
+      "on_absent": {
+        "goto": "gift_draw"
+      },
+      "timeout_ms": 30000
     }
   }
 }

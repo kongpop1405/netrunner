@@ -25,7 +25,7 @@
         }
       ],
       "on_absent": {
-        "goto": "peel_popups"
+        "goto": "probe_inactive"
       },
       "timeout_ms": 8000
     },
@@ -327,6 +327,61 @@
         }
       ],
       "timeout_ms": 5000
+    },
+    "probe_inactive": {
+      "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "peel_popups"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_login": {
+      "_note": "Login recovery. The 'You've been inactive -> game will restart!' popup (probe_inactive/guard_not_inactive) restarts the game to the DevPlay title, which no other state detects -> the bot used to hang here. Detect the account picker (login_marker: 'You already have an account!' + CookieRun logo, name-agnostic). Present -> tap DevPlay Login (960,950), wait, tap the top saved account row (1100,490), wait out the ~12s login+home load, then re-enter at start_state. Absent -> title still loading or already home -> go to start_state and let its normal detection take over.",
+      "detect": "login_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 950
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "tap_xy",
+          "x": 1100,
+          "y": 490
+        },
+        {
+          "type": "wait",
+          "ms": 12000
+        },
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
+      "on_absent": {
+        "goto": "scan"
+      },
+      "timeout_ms": 30000
     }
   }
 }

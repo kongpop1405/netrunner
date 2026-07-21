@@ -10,23 +10,48 @@
       "_note": "If we're sitting on home (Episode banner marker), tap the Friends icon (1203,465 — right panel, orange people glyph) to open the social popup, then make sure the Find tab is selected. If home isn't visible, assume the popup is already open and just verify the tab.",
       "detect": "home_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1203, "y": 465 },
-        { "type": "wait", "ms": 2000 },
-        { "type": "goto", "state": "open_find" }
+        {
+          "type": "tap_xy",
+          "x": 1203,
+          "y": 465
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "open_find"
+        }
       ],
-      "on_absent": { "goto": "open_find" },
+      "on_absent": {
+        "goto": "probe_inactive"
+      },
       "timeout_ms": 10000
     },
     "open_find": {
       "_note": "Refresh button (findtab_marker) is unique to the Find tab. Present -> go refresh FIRST (do_refresh) so every batch starts with 4 fresh all-green rows — this is what guarantees the fixed-coord walk never taps a dark already-sent button (a dark-button tap opens the row's 'Friend's Info' screen, seen live, NOT a no-op). Absent -> popup is on another tab -> tap the Find tab (851,117) and re-check; still absent after that -> maybe a Friend's Info screen is covering us -> close_info.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "goto", "state": "do_refresh" }
+        {
+          "type": "goto",
+          "state": "do_refresh"
+        }
       ],
       "on_absent": [
-        { "type": "tap_xy", "x": 851, "y": 117 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "check_find" }
+        {
+          "type": "tap_xy",
+          "x": 851,
+          "y": 117
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "check_find"
+        }
       ],
       "timeout_ms": 15000
     },
@@ -34,54 +59,108 @@
       "_note": "Second look after tapping the Find tab. Still no Refresh pill -> a 'Friend's Info' screen (opened by a stray tap on an already-requested row) is probably covering the popup -> tap its X (1640,107 — verified live) and loop back. The open_find <-> check_find ping-pong is bounded by --max-cycles.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "goto", "state": "do_refresh" }
+        {
+          "type": "goto",
+          "state": "do_refresh"
+        }
       ],
-      "on_absent": { "goto": "peel_popups" },
+      "on_absent": {
+        "goto": "peel_popups"
+      },
       "timeout_ms": 15000
     },
     "peel_popups": {
       "_note": "Find tab still not visible after tapping it — before assuming a Friend's Info screen covers us, rule out a launch/reward modal. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the social popup. Peel whichever is present, then re-enter via open_find (the popup was on top of the Friends UI, which is still open underneath). None present -> close_info, the original Friend's Info X-tap recovery. Shared templates/coords with boxrun_ep3.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 965, "y": 985 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "open_find" }
+        {
+          "type": "tap_xy",
+          "x": 965,
+          "y": 985
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "open_find"
+        }
       ],
-      "on_absent": { "goto": "peel_treasure" },
+      "on_absent": {
+        "goto": "peel_treasure"
+      },
       "timeout_ms": 6000
     },
     "peel_treasure": {
       "_note": "Power+ Treasure Rewards. Confirm (960,850) -> open_find. Absent -> peel_congrats.",
       "detect": "treasurereward_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 960, "y": 850 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "open_find" }
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 850
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "open_find"
+        }
       ],
-      "on_absent": { "goto": "peel_congrats" },
+      "on_absent": {
+        "goto": "peel_congrats"
+      },
       "timeout_ms": 6000
     },
     "peel_congrats": {
       "_note": "Congratulations! / level-up reward popup. Confirm (954,847) -> open_find. Absent -> close_info (the original Friend's Info recovery).",
       "detect": "congrats_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 954, "y": 847 },
-        { "type": "wait", "ms": 1500 },
-        { "type": "goto", "state": "open_find" }
+        {
+          "type": "tap_xy",
+          "x": 954,
+          "y": 847
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "open_find"
+        }
       ],
-      "on_absent": { "goto": "close_info" },
+      "on_absent": {
+        "goto": "close_info"
+      },
       "timeout_ms": 6000
     },
     "close_info": {
       "_note": "No popup matched -> a 'Friend's Info' screen (opened by a stray tap on an already-requested row) is probably covering the popup -> tap its X (1640,107 — verified live) and loop back via open_find. This is the original check_find absent recovery.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "goto", "state": "do_refresh" }
+        {
+          "type": "goto",
+          "state": "do_refresh"
+        }
       ],
       "on_absent": [
-        { "type": "tap_xy", "x": 1640, "y": 107 },
-        { "type": "wait", "ms": 1200 },
-        { "type": "goto", "state": "open_find" }
+        {
+          "type": "tap_xy",
+          "x": 1640,
+          "y": 107
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "open_find"
+        }
       ],
       "timeout_ms": 15000
     },
@@ -89,56 +168,171 @@
       "_note": "Fixed-coordinate batch walk — each of the 4 rows gets EXACTLY ONE tap per batch, then Refresh. Why not tap_template scanning: every tap raises a center-screen toast (cream box, 'Friend request sent!' or 'This player's friend list is full!' — visually identical frames). A full player's button stays GREEN, so a template scanner would re-tap that same player forever (livelock). The fixed walk taps a full player once, moves on (skips them), and still requests the other 3 rows. Taps on a dark already-sent button are no-ops; a tap landing on a lingering toast just dismisses it. The 1800ms wait lets each toast fade before the next row's tap so it isn't swallowed. detect=findtab_marker (Refresh pill, y~190-265) stays visible above the toast zone (y~420-650), so it anchors every step even mid-toast.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1330, "y": 367 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "req_row2" }
+        {
+          "type": "tap_xy",
+          "x": 1330,
+          "y": 367
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "req_row2"
+        }
       ],
-      "on_absent": { "goto": "open_find" },
+      "on_absent": {
+        "goto": "open_find"
+      },
       "timeout_ms": 10000
     },
     "req_row2": {
       "_note": "Row 2 (y529). See req_row1 for the batch-walk rationale.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1330, "y": 529 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "req_row3" }
+        {
+          "type": "tap_xy",
+          "x": 1330,
+          "y": 529
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "req_row3"
+        }
       ],
-      "on_absent": { "goto": "open_find" },
+      "on_absent": {
+        "goto": "open_find"
+      },
       "timeout_ms": 10000
     },
     "req_row3": {
       "_note": "Row 3 (y691).",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1330, "y": 691 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "req_row4" }
+        {
+          "type": "tap_xy",
+          "x": 1330,
+          "y": 691
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "req_row4"
+        }
       ],
-      "on_absent": { "goto": "open_find" },
+      "on_absent": {
+        "goto": "open_find"
+      },
       "timeout_ms": 10000
     },
     "req_row4": {
       "_note": "Row 4 (y853). Batch complete after this -> refresh for the next 4 candidates.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 1330, "y": 853 },
-        { "type": "wait", "ms": 1800 },
-        { "type": "goto", "state": "do_refresh" }
+        {
+          "type": "tap_xy",
+          "x": 1330,
+          "y": 853
+        },
+        {
+          "type": "wait",
+          "ms": 1800
+        },
+        {
+          "type": "goto",
+          "state": "do_refresh"
+        }
       ],
-      "on_absent": { "goto": "open_find" },
+      "on_absent": {
+        "goto": "open_find"
+      },
       "timeout_ms": 10000
     },
     "do_refresh": {
       "_note": "Batch walked. Tap Refresh (538,226) for a fresh batch of 4, give the list time to reload, then walk again. Refresh also skips past any full-list player whose button stayed green. If the Refresh button isn't visible we're off-screen -> recover via open_find.",
       "detect": "findtab_marker.png",
       "on_match": [
-        { "type": "tap_xy", "x": 538, "y": 226 },
-        { "type": "wait", "ms": 2500 },
-        { "type": "goto", "state": "req_row1" }
+        {
+          "type": "tap_xy",
+          "x": 538,
+          "y": 226
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "req_row1"
+        }
       ],
-      "on_absent": { "goto": "open_find" },
+      "on_absent": {
+        "goto": "open_find"
+      },
       "timeout_ms": 10000
+    },
+    "probe_inactive": {
+      "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "open_find"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_login": {
+      "_note": "Login recovery. The 'You've been inactive -> game will restart!' popup (probe_inactive/guard_not_inactive) restarts the game to the DevPlay title, which no other state detects -> the bot used to hang here. Detect the account picker (login_marker: 'You already have an account!' + CookieRun logo, name-agnostic). Present -> tap DevPlay Login (960,950), wait, tap the top saved account row (1100,490), wait out the ~12s login+home load, then re-enter at start_state. Absent -> title still loading or already home -> go to start_state and let its normal detection take over.",
+      "detect": "login_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 950
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "tap_xy",
+          "x": 1100,
+          "y": 490
+        },
+        {
+          "type": "wait",
+          "ms": 12000
+        },
+        {
+          "type": "goto",
+          "state": "entry"
+        }
+      ],
+      "on_absent": {
+        "goto": "entry"
+      },
+      "timeout_ms": 30000
     }
   }
 }

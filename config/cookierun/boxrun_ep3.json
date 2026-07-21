@@ -25,7 +25,7 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_dailycheckin"
+        "goto": "probe_inactive"
       },
       "timeout_ms": 20000
     },
@@ -528,24 +528,9 @@
           "state": "home"
         }
       ],
-      "on_absent": [
-        {
-          "type": "jump",
-          "cx": 238,
-          "cy": 940,
-          "rx": 175,
-          "ry": 55
-        },
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
-        },
-        {
-          "type": "goto",
-          "state": "jump_2"
-        }
-      ],
+      "on_absent": {
+        "goto": "guard_not_inactive"
+      },
       "timeout_ms": 6000
     },
     "jump_2": {
@@ -909,7 +894,7 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_dailycheckin"
+        "goto": "probe_inactive"
       },
       "timeout_ms": 15000
     },
@@ -1054,6 +1039,122 @@
           "state": "await_shop"
         }
       ]
+    },
+    "probe_inactive": {
+      "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_prevresults"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_prevresults": {
+      "_note": "'Previous Results / You have unreviewed game results' pops after a run that was cut short (e.g. by the inactive-restart). Confirm (950,680) opens the Result screen, then fall through to the normal chain which peels Result/MysteryBox/Congrats. Absent -> probe_dailycheckin (chain unchanged).",
+      "detect": "prevresults_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 950,
+          "y": 680
+        },
+        {
+          "type": "wait",
+          "ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "probe_dailycheckin"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_dailycheckin"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_inactive": {
+      "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "goto",
+          "state": "jump_2"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_login": {
+      "_note": "Login recovery. The 'You've been inactive -> game will restart!' popup (probe_inactive/guard_not_inactive) restarts the game to the DevPlay title, which no other state detects -> the bot used to hang here. Detect the account picker (login_marker: 'You already have an account!' + CookieRun logo, name-agnostic). Present -> tap DevPlay Login (960,950), wait, tap the top saved account row (1100,490), wait out the ~12s login+home load, then re-enter at start_state. Absent -> title still loading or already home -> go to start_state and let its normal detection take over.",
+      "detect": "login_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 950
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "tap_xy",
+          "x": 1100,
+          "y": 490
+        },
+        {
+          "type": "wait",
+          "ms": 12000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 30000
     }
   }
 }
