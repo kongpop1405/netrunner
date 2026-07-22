@@ -3,6 +3,14 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
+rem numpy 2.x's bundled OpenBLAS can fail to allocate its thread-pool memory
+rem on some machines ("Memory allocation still failed after 10 retries") the
+rem moment numpy is imported, well before any real work happens. Capping the
+rem thread pool to 1 avoids that allocation entirely; matchTemplate calls are
+rem tiny single-frame ops so this costs no meaningful speed.
+set "OPENBLAS_NUM_THREADS=1"
+set "OMP_NUM_THREADS=1"
+
 set "LOG=%~dp0install-log.txt"
 echo NetRunner install log  %DATE% %TIME%> "%LOG%"
 echo repo: %~dp0>> "%LOG%"

@@ -45,6 +45,17 @@ class Device:
                 last_err = e
                 logger.warning("adb timed out (attempt %d/%d): %s",
                                attempt + 1, self.retries + 1, " ".join(cmd))
+            except MemoryError as e:
+                # On RAM-starved machines (LDPlayer alone can eat 1.5-3GB), the
+                # subprocess pipe's internal reader thread can fail to allocate
+                # buffer space for one frame's output — usually transient as
+                # other processes free memory a moment later. Retry with a
+                # longer backoff instead of letting one bad capture kill the run.
+                last_err = e
+                logger.warning("adb hit MemoryError (attempt %d/%d), backing off: %s",
+                               attempt + 1, self.retries + 1, " ".join(cmd))
+                time.sleep(self.retry_backoff_s * 2 * (attempt + 1))
+                continue
             else:
                 if proc.returncode == 0:
                     return proc.stdout
