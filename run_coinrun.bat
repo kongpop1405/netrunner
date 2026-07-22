@@ -3,11 +3,15 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
-set "PY=py -3.10"
-where py >nul 2>&1 && py -3.10 -c "1" >nul 2>&1 || set "PY=python"
+set "PY="
+for %%V in ("py -3.10" "py -3.11" "py -3.12" "py -3" "py" "python") do (
+    if not defined PY (
+        %%~V -c "import cv2, numpy, dotenv" >nul 2>&1
+        if not errorlevel 1 set "PY=%%~V"
+    )
+)
 
-%PY% -c "import cv2, numpy, dotenv" >nul 2>&1
-if errorlevel 1 (
+if not defined PY (
     echo.
     echo   [X] Not set up yet. Double-click install.bat first.
     echo.
