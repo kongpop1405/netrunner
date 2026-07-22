@@ -3,8 +3,8 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
-set "PY=python"
-where py >nul 2>&1 && set "PY=py"
+set "PY=py -3.10"
+where py >nul 2>&1 && py -3.10 -c "1" >nul 2>&1 || set "PY=python"
 
 %PY% -c "import cv2, numpy, dotenv" >nul 2>&1
 if errorlevel 1 (
@@ -33,8 +33,8 @@ if errorlevel 1 (
 )
 
 rem 3 cycles/box happy path; a rare treasure popup routes through the retry
-rem chain + rescue (~8 extra cycles), so budget 5/box + a bigger buffer.
-set /a CYCLES=BOXES*5+15
+rem chain + rescue (~8 extra cycles), so budget 4/box + 1 rescue-chain buffer.
+set /a CYCLES=BOXES*4+8
 
 echo.
 echo Opening %BOXES% box(es)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
