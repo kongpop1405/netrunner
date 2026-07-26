@@ -17,9 +17,12 @@ class Device:
 
     #: A busy emulator (level load, GC pause) can stall a single adb command for
     #: seconds. Those stalls are transient, so retry before giving up — without
-    #: this, one hiccup killed a multi-hour farm run.
-    retries: int = 2
-    retry_backoff_s: float = 1.0
+    #: this, one hiccup killed a multi-hour farm run. On RAM-starved machines
+    #: the emulator can freeze for 5-10s at a time, longer than the old 2s max
+    #: backoff covered, so a stall there raced past all 3 attempts and surfaced
+    #: as a fatal AdbError mid-run.
+    retries: int = 4
+    retry_backoff_s: float = 1.5
 
     def __init__(self, serial: str, adb: str = "adb", timeout: float = 15.0):
         self.serial = serial
