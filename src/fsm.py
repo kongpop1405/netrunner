@@ -9,7 +9,7 @@ from .alert import send_alert
 from .capture import grab
 from .config import Config, detect_names
 from .device import AdbError, Device
-from .perceive import Match, TemplateStore, find_named
+from .perceive import Match, PerceiveError, TemplateStore, find_named
 
 log = logging.getLogger("netrunner.fsm")
 
@@ -26,6 +26,17 @@ _ADB_FAIL_TOLERANCE = 5
 # a rescue loop that never resolves). Deliberately generous so long, expected
 # waits (heart regen, roll animation) don't false-positive.
 _STUCK_STATE_WARN_CYCLES = 100
+
+# Consecutive cycles allowed to fail with a perceive-layer OOM (matchTemplate
+# alloc failing on a RAM-starved host) before we give up, mirrors
+# _ADB_FAIL_TOLERANCE. Below this we cooldown-sleep and retry rather than crash.
+_PERCEIVE_FAIL_TOLERANCE = 5
+
+# Cooldown (seconds) after an OOM'd detect cycle, scaled by how many have hit in
+# a row. A tight host won't free memory in one poll interval — backing off gives
+# other processes (LDPlayer itself) room to release before we hammer it again,
+# instead of retrying at the normal poll cadence and thrashing an already-tight host.
+_PERCEIVE_FAIL_COOLDOWN_S = 10
 
 
 class FsmError(RuntimeError):
@@ -52,6 +63,7 @@ class Runner:
         stuck_alerted = False
         absent_streak = 0        # consecutive absent polls in the current state
         adb_fail_streak = 0      # consecutive cycles lost to adb errors
+        perceive_fail_streak = 0  # consecutive cycles lost to perceive-layer OOM
         no_act_streak = 0        # consecutive polls without any screen-affecting action
         no_act_states: set[str] = set()
         no_act_alerted = False
@@ -111,7 +123,26 @@ class Runner:
                     frame = None  # whatever we had is unusable; re-grab next cycle
                     time.sleep(self.cfg.poll_ms / 1000)
                     continue
+                except PerceiveError as e:
+                    perceive_fail_streak += 1
+                    log.warning("perceive error on cycle %d (%d/%d before giving up): %s",
+                                cycles, perceive_fail_streak, _PERCEIVE_FAIL_TOLERANCE, e)
+                    if perceive_fail_streak >= _PERCEIVE_FAIL_TOLERANCE:
+                        raise FsmError(f"perceive layer failed {_PERCEIVE_FAIL_TOLERANCE} "
+                                        f"cycles in a row: {e}")
+                    cooldown = _PERCEIVE_FAIL_COOLDOWN_S * perceive_fail_streak
+                    if perceive_fail_streak == 2:
+                        send_alert(
+                            self.webhook_url,
+                            "NetRunner: host under memory pressure",
+                            f"matchTemplate OOM'd {perceive_fail_streak} cycles in a row "
+                            f"(device {self.device.serial}); cooling down {cooldown}s.",
+                        )
+                    frame = None  # whatever we had is unusable; re-grab next cycle
+                    time.sleep(cooldown)
+                    continue
                 adb_fail_streak = 0
+                perceive_fail_streak = 0
 
                 if did_transition:
                     absent_streak = 0

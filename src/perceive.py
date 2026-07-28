@@ -1,6 +1,7 @@
 """Perception — locate a template PNG on a screen frame; optional OCR."""
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -79,7 +80,22 @@ def find(
             "template is (near-)uniform color — matchTemplate scores would be "
             "meaningless; crop a region with actual detail"
         )
-    res = cv2.matchTemplate(frame, template, cv2.TM_CCOEFF_NORMED)
+    # matchTemplate allocates a (fh-th+1)x(fw-tw+1) float32 result matrix; on a
+    # RAM-starved host (LDPlayer alone can eat 1.5-3GB, same pressure noted in
+    # capture.py) that alloc can transiently fail. Retry with backoff rather than
+    # crashing the whole run over one bad cycle.
+    last: cv2.error | None = None
+    for attempt in range(3):
+        try:
+            res = cv2.matchTemplate(frame, template, cv2.TM_CCOEFF_NORMED)
+            break
+        except cv2.error as e:
+            if "Insufficient memory" not in str(e):
+                raise
+            last = e
+            time.sleep(1.0 * (attempt + 1))
+    else:
+        raise PerceiveError(f"matchTemplate out of memory after 3 attempts: {last}")
     _, max_val, _, max_loc = cv2.minMaxLoc(res)
     cx = ox + max_loc[0] + tw // 2
     cy = oy + max_loc[1] + th // 2
