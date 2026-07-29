@@ -1,0 +1,271 @@
+"""Launch boxrun_toggle.json with Fast Start / Magnet / Jump / Slide switched on or off.
+
+    python tools/run_toggle.py --faststart y --magnet y --jump y --slide y --launch
+
+Patches the loaded Config's states dict in memory before handing it to the
+same Runner main.py uses — the JSON on disk (config/cookierun/boxrun_toggle.json)
+never changes. See RUN.md for what each flag does to the FSM.
+"""
+from __future__ import annotations
+
+import argparse
+import copy
+import logging
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from dotenv import load_dotenv
+
+import main as netrunner_main
+from src import config as cfgmod
+from src.device import AdbError
+from src.fsm import Runner
+
+CONFIG_PATH = "config/cookierun/boxrun_toggle.json"
+
+# (cx, cy) of the Fast Start spam tap — must match check_heart/after_play in
+# boxrun_toggle.json exactly, since we strip these actions out by (x, y) match.
+_FASTSTART_XY = (985, 515)
+
+
+#: warmup_burst jump/slide zone coords — must match jump_2/jump_3's zones exactly
+#: (same Jump/Slide buttons).
+_JUMP_ZONE = dict(cx=238, cy=940, rx=175, ry=55)
+_SLIDE_ZONE = dict(cx=1671, cy=937, rx=175, ry=55)
+
+
+class BoxQuitRunner(Runner):
+    """Runner that quits a run early only after N total boxes have been banked,
+    and (in jump=n+slide=n mode) fires a one-shot warm-up burst at the very
+    start of each run instead of never tapping jump/slide at all.
+
+    check_box's on_match goes straight to quit_run every time boxcounter_marker
+    is seen (i.e. on the run that collects box #1) — there's no OCR reading the
+    "[?] xN" counter's actual number, so the engine can't tell box #1 from #4
+    by itself (see RUN.md). This subclass counts how many times check_box has
+    matched across the whole session and only lets the quit_run goto through
+    once that count reaches quit_after; earlier matches (and ALL matches when
+    quit_after=0, the default — "never quit early") are redirected to
+    check_shop_after_run so the run continues normally instead of bailing on
+    the first box the way the underlying config always did on its own.
+
+    warmup_burst (only when both jump and slide are stripped, see main()):
+    community-reported game bug — a run with ZERO jump/slide taps the whole
+    way through doesn't get counted by the game (no box, no reward), even
+    though blind relay taps kept it alive. guard_not_inactive is a HOUSEKEEPING
+    guard the FSM revisits every ~4 hops for the rest of the run (it's not a
+    one-time entry point) — an earlier version patched its goto in the config
+    itself and ended up firing the 10-tap burst every single cycle instead of
+    once, which is the "bot secretly keeps jumping/sliding mid-loop" bug this
+    fixes. Tracking the one-shot in Python (self._warmup_done, reset per run
+    in run_result) is the only way to tell "first time this run" from "just
+    revisiting the guard chain" — the static FSM has no per-run variables.
+    """
+
+    def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.quit_after = quit_after
+        self.boxes_seen = 0
+        self.warmup_burst = warmup_burst
+        self._warmup_done = False
+        self._box_counted_this_run = False
+
+    def _run_actions(self, actions, frame, state):
+        if state == "check_box":
+            is_quit_goto = any(
+                a.get("type") == "goto" and a.get("state") == "quit_run" for a in actions
+            )
+            if is_quit_goto:
+                log = logging.getLogger("netrunner")
+                # boxcounter_marker.png stays on screen for the rest of the run
+                # once a box is collected (see the state's own _note) — check_box
+                # gets revisited every ~4 hops for the REST of that same run, so
+                # without this guard boxes_seen was incrementing once per revisit
+                # (4 hits in ~10s, all one run's box) instead of once per run.
+                if not self._box_counted_this_run:
+                    self._box_counted_this_run = True
+                    self.boxes_seen += 1
+                if self.quit_after <= 0 or self.boxes_seen < self.quit_after:
+                    log.info("check_box: %d run(s) with a box so far (quit_after=%d) — continuing run",
+                              self.boxes_seen, self.quit_after)
+                    return "check_shop_after_run", False
+                log.info("check_box: %d/%d runs-with-a-box reached — quitting run",
+                          self.boxes_seen, self.quit_after)
+
+        # run_result marks the run as over -> the NEXT time we reach
+        # guard_not_inactive is a new run and needs its own burst, and the
+        # next box seen (if any) belongs to a new run and should count again.
+        if state == "run_result":
+            self._warmup_done = False
+            self._box_counted_this_run = False
+
+        if (self.warmup_burst and not self._warmup_done
+                and state == "guard_not_inactive"
+                and any(a.get("type") == "goto" and a.get("state") == "jump_2" for a in actions)):
+            self._warmup_done = True
+            logging.getLogger("netrunner").info(
+                "warmup_burst: one-shot 10-tap jump/slide burst (jump=n+slide=n run start)")
+            for _ in range(5):
+                self.actor.jump(**_JUMP_ZONE)
+                self.actor.slide(**_SLIDE_ZONE)
+            return "jump_2", True
+
+        return super()._run_actions(actions, frame, state)
+
+
+def _strip_faststart(states: dict) -> None:
+    """Drop every Fast Start spam tap_xy(985,515) + its wait from on_absent lists."""
+    for state in states.values():
+        absent = state.get("on_absent")
+        if not isinstance(absent, list):
+            continue
+        kept = []
+        skip_next_wait = False
+        for action in absent:
+            if skip_next_wait and action.get("type") == "wait":
+                skip_next_wait = False
+                continue
+            skip_next_wait = False
+            if action.get("type") == "tap_xy" and (action.get("x"), action.get("y")) == _FASTSTART_XY:
+                skip_next_wait = True
+                continue
+            kept.append(action)
+        state["on_absent"] = kept
+
+
+def _disable_magnet(states: dict) -> None:
+    """Route straight past the magnet-buy chain: await_shop/boost_shop -> check_heart."""
+    for name in ("await_shop", "boost_shop"):
+        for action in states[name]["on_match"]:
+            if action.get("type") == "goto":
+                action["state"] = "check_heart"
+
+
+def _strip_jump(states: dict) -> None:
+    for name in ("jump_2", "jump_4", "guard_not_inactive"):
+        state = states[name]
+        state["on_absent"] = [a for a in state["on_absent"] if a.get("type") != "jump"]
+
+
+def _strip_slide(states: dict) -> None:
+    state = states["jump_3"]
+    state["on_absent"] = [a for a in state["on_absent"] if a.get("type") != "slide"]
+
+
+_RELAY_XY = (960, 540)
+
+
+def _strip_relay(states: dict) -> None:
+    """Drop the Cookie Relay Boost tap_xy(960,540) from the in-run hop states."""
+    for name in ("jump_2", "jump_3", "jump_4", "guard_not_inactive"):
+        state = states[name]
+        state["on_absent"] = [
+            a for a in state["on_absent"]
+            if not (a.get("type") == "tap_xy" and (a.get("x"), a.get("y")) == _RELAY_XY)
+        ]
+
+
+def _yn(v: str) -> bool:
+    return v.strip().lower() in ("y", "yes", "1", "true")
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="boxrun_toggle launcher")
+    ap.add_argument("--faststart", type=_yn, required=True)
+    ap.add_argument("--magnet", type=_yn, required=True)
+    ap.add_argument("--jump", type=_yn, required=True)
+    ap.add_argument("--slide", type=_yn, required=True)
+    ap.add_argument("--relay", type=_yn, required=True)
+    ap.add_argument("--quit-after-boxes", type=int, default=0,
+                    help="quit a run once this many total boxes have been banked "
+                         "this session (0 = never quit early, default)")
+    ap.add_argument("--device", default=None)
+    ap.add_argument("--adb", default=None)
+    ap.add_argument("--launch", action="store_true")
+    ap.add_argument("--max-cycles", type=int, default=None)
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("-v", "--verbose", action="store_true")
+    args = ap.parse_args(argv)
+
+    load_dotenv()
+    netrunner_main._setup_logging(args.verbose)
+    log = logging.getLogger("netrunner")
+
+    adb = args.adb or netrunner_main._find_adb()
+
+    try:
+        cfg = cfgmod.load(CONFIG_PATH)
+    except cfgmod.ConfigError as e:
+        log.error("config error: %s", e)
+        print(f"config error: {e}", file=sys.stderr)
+        return 2
+
+    states = copy.deepcopy(cfg.states)
+    if not args.faststart:
+        _strip_faststart(states)
+    if not args.magnet:
+        _disable_magnet(states)
+    if not args.jump:
+        _strip_jump(states)
+    if not args.slide:
+        _strip_slide(states)
+    if not args.relay:
+        _strip_relay(states)
+    cfg.states = states
+
+    address = args.device or os.environ.get("NETRUNNER_DEVICE")
+    if args.launch:
+        from src.launcher import LauncherError, ensure_ready, resolve_index
+        try:
+            index = resolve_index(adb, None, address)
+            address = ensure_ready(index, adb, boot_timeout=120.0)
+        except LauncherError as e:
+            log.error("launch failed: %s", e)
+            print(f"launch failed: {e}", file=sys.stderr)
+            return 2
+
+    if not address:
+        try:
+            address = netrunner_main._detect_device(adb, hint=cfg.device)
+        except AdbError as e:
+            log.error("%s", e)
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+    if not address:
+        msg = ("no running emulator found. Start LDPlayer (ADB debugging on), "
+               "or pass --device / set NETRUNNER_DEVICE in .env")
+        log.error("%s", msg)
+        print(f"error: {msg}", file=sys.stderr)
+        return 2
+    log.info("device: %s  adb: %s", address, adb)
+    log.info("flags: faststart=%s magnet=%s jump=%s slide=%s relay=%s quit_after_boxes=%d",
+              args.faststart, args.magnet, args.jump, args.slide, args.relay, args.quit_after_boxes)
+
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+
+    try:
+        device = netrunner_main._resolve_device(address, adb)
+        netrunner_main._check_resolution(device)
+        BoxQuitRunner(
+            cfg, device, webhook_url=webhook_url, quit_after=args.quit_after_boxes,
+            warmup_burst=(not args.jump and not args.slide),
+        ).run(dry_run=args.dry_run, max_cycles=args.max_cycles)
+    except AdbError as e:
+        log.error("adb error: %s", e)
+        print(f"adb error: {e}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("\ninterrupted, stopping.")
+        return 0
+    except Exception:  # noqa: BLE001 — top-level guard so crashes reach the log file
+        log.exception("unhandled crash")
+        print("crashed — full traceback saved to the log file", file=sys.stderr)
+        return 3
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

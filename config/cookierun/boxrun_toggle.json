@@ -1,0 +1,1525 @@
+{
+  "_comment": "Cookie Run BOX-FARM run-grind, TOGGLE variant — same Mystery Box farm loop as boxrun_ep3/ep5/ep6, but every optional action (Fast Start tap, Magnetic Aura boost buy, Jump, Slide) is meant to be patched on/off per-launch by tools/run_toggle.py (see run_boxrun.bat), NOT edited directly in this file. PRECONDITION: pick whichever episode (3/5/6) on home BEFORE starting — the bot only taps Play!, it does not navigate episode selection. BOOST: Magnetic Aura Random Boost (ported from boxrun_ep6 — probe_magnet/buy_magnet/picker/wait_roll/start_run/retry_buy, magneticaura_banner.png, Multi-Buy at 950,880) replaces the ep3 +17% speed chain. Fast Start prompt spam-tap (985,515) lives in check_heart/after_play. Loop: home->Play->await_shop->probe_magnet->buy_magnet(Multi->Multi-Buy->wait_roll)->start_run(verify banner)->check_heart->Play->run(jump/slide J-J-S-J chain)->run_result->mystery_box->reveal->home. run_toggle.py strips the magnet chain, the Fast Start taps, and/or the jump/slide action entries out of the loaded states dict before handing them to the engine's Runner, based on the four Y/N flags asked by run_boxrun.bat.",
+  "device": "127.0.0.1:5555",
+  "templates_dir": "templates/cookierun",
+  "poll_ms": 600,
+  "match_threshold": 0.82,
+  "start_state": "home",
+  "states": {
+    "home": {
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). After Play, an after_play gate verifies we left home before any Fast Start spam — spamming 985,515 while still on home hits the leaderboard and opens Send-Life. Ported from boxrun_ep6.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "verify_no_popup"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_inactive"
+      },
+      "timeout_ms": 20000
+    },
+    "await_shop": {
+      "_note": "Bridge between tapping Play! on home and acting in the boost shop (Play! shows THROUGH the shop fade above threshold — see coinrun.json for the double-tap loop this prevents). Shop up -> probe_magnet (run_toggle.py redirects straight to check_heart when the magnet flag is off). Absent -> one settle-retry (~1.2s via absent_wait_ms), then fall through to running.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "probe_magnet"
+        }
+      ],
+      "absent_retries": 1,
+      "absent_wait_ms": 1200,
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_dailycheckin": {
+      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
+      "detect": "dailycheckin_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 965,
+          "y": 985
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "probe_treasurereward"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_treasurereward"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_treasurereward": {
+      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch (Choco Dip Sticks / Crystal Crown etc.), also covering Play!. Same stall class as the check-in: no dismiss -> bot loses home. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Reached from BOTH the check-in dismiss (popups queue) and directly when only this one shows.",
+      "detect": "treasurereward_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 850
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_sendlife": {
+      "_note": "Reached whenever Play! is not visible and no Daily Check-in popup was on screen. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "boost_shop"
+      },
+      "timeout_ms": 8000
+    },
+    "boost_shop": {
+      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_magnet to ensure Magnetic Aura is equipped before Play (run_toggle.py redirects straight to check_heart when the magnet flag is off).",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "probe_magnet"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_magnet": {
+      "_note": "MAGNET GUARD (ported from boxrun_ep6): run must play with Magnetic Aura equipped. magneticaura_banner (red-gold pill above Play) shows whenever equipped — shop panel takes ~1-2s to render it after Play, so detect with a 3-retry grace (absent_wait_ms 800) before concluding it is absent. Present -> check_heart. Absent after retries -> buy_magnet.",
+      "detect": "magneticaura_banner.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "buy_magnet"
+      },
+      "timeout_ms": 8000,
+      "absent_retries": 3,
+      "absent_wait_ms": 800
+    },
+    "buy_magnet": {
+      "_note": "No Magnetic Aura equipped. The shop opens on the HP-Upgrade view where no Multi toggle exists, so FIRST tap the Random Boost slot (810,875 — the mystery-box tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. Magnetic Aura opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Coords ported from boxrun_ep6 (verified live).",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 810,
+          "y": 875
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 1645,
+          "y": 340
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "picker"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000
+    },
+    "picker": {
+      "_note": "'Pick desired Boosts!' popup. Magnetic Aura stays PRE-TICKED — DO NOT tap any row (each is a toggle; tapping the ticked row un-ticks it). Tap Multi-Buy (950,880) ONCE — the game then AUTO-ROLLS by itself, spending coins repeatedly, until Magnetic Aura lands, then stops on its own. Do NOT re-tap or re-open. Hand to wait_roll to sit still until the roll UI is gone. ABSENT means the picker never opened (Multi tap missed or still animating): one settle-retry (~1.2s), then retry_buy (re-check coins, re-open the buy flow) — NO roll is in flight, so never fall through to Play with no boost.",
+      "detect": "picker_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 950,
+          "y": 880
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "wait_roll"
+        }
+      ],
+      "absent_retries": 1,
+      "absent_wait_ms": 1200,
+      "on_absent": {
+        "goto": "retry_buy"
+      },
+      "timeout_ms": 10000
+    },
+    "wait_roll": {
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_ep6. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe.",
+      "detect": "rollstop_marker.png",
+      "on_match": [
+        {
+          "type": "wait",
+          "ms": 800
+        },
+        {
+          "type": "goto",
+          "state": "wait_roll"
+        }
+      ],
+      "on_absent": {
+        "goto": "start_run"
+      },
+      "timeout_ms": 60000
+    },
+    "check_boost_result": {
+      "_note": "Auto-roll finished, picker closed back to the boost shop. Check 'Not enough Coins!' first (balance ran dry mid-roll) -> cancel. Otherwise read the pill in start_run. We do NOT re-roll here — the game rolled to completion.",
+      "detect": "nocoins_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "insufficient_coins"
+        }
+      ],
+      "on_absent": {
+        "goto": "start_run"
+      },
+      "timeout_ms": 6000
+    },
+    "insufficient_coins": {
+      "_note": "SAFETY: 'Not enough Coins!' popup. Tap Cancel (770,685) — NEVER Confirm (1150,685), which spends gems. Then Play! with whatever boost we have (or none).",
+      "detect": "nocoins_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 770,
+          "y": 685
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "force_play"
+        }
+      ],
+      "on_absent": {
+        "goto": "force_play"
+      },
+      "timeout_ms": 6000
+    },
+    "force_play": {
+      "_note": "Coins exhausted — stop chasing the speed boost, Play! with whatever we have. Still route through check_heart so we don't run on empty hearts.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000
+    },
+    "start_run": {
+      "_note": "MAGNET ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Banner present -> the roll landed Magnetic Aura -> check_heart -> Play. Banner ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-magnet path is the nocoins escape (insufficient_coins -> force_play).",
+      "detect": "magneticaura_banner.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "retry_buy"
+      },
+      "timeout_ms": 8000,
+      "absent_retries": 4,
+      "absent_wait_ms": 800
+    },
+    "retry_buy": {
+      "_note": "Re-buy gate: we ended up without Magnetic Aura and must roll again. Check the wallet FIRST so we never spin on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play — the ONLY sanctioned Play-without-magnet path). No popup -> coins remain, loop back into buy_magnet. Termination is natural (each roll drains coins until the game raises nocoins); a genuinely stuck loop trips the engine's 100-poll livelock warning.",
+      "detect": "nocoins_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "insufficient_coins"
+        }
+      ],
+      "on_absent": {
+        "goto": "buy_magnet"
+      },
+      "timeout_ms": 8000
+    },
+    "check_heart": {
+      "_note": "SINGLE Play gate, reached from probe_magnet/start_run/force_play (all BOOST-SHOP context, Play at 1365,931). heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> wait 30s and self-loop until a heart regenerates (timeout 25 min). HARD RULE: never buy hearts. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_ep6 — more robust than detect+tap which missed when the prompt window was short).",
+      "detect": "heart_empty.png",
+      "on_match": [
+        {
+          "type": "wait",
+          "ms": 30000
+        },
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1365,
+          "y": 931
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
+      "timeout_ms": 1500000
+    },
+    "running": {
+      "_note": "In-run (auto-play). Result popup up -> run over. Not up -> we MIGHT still be running, but could equally be on home or in the shop, so DON'T tap yet: hand off to the guard chain.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_home"
+      },
+      "timeout_ms": 300000
+    },
+    "guard_not_home": {
+      "_note": "Guard 1/2 before any in-run tap: Play! on screen -> we're on home, not running.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_shop"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_shop": {
+      "_note": "Guard 2/2: in the boost shop -> resume via boost_shop. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "boost_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_sendlife": {
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_levelup"
+      },
+      "timeout_ms": 6000
+    },
+    "guard_not_levelup": {
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_inactive"
+      },
+      "timeout_ms": 6000
+    },
+    "jump_2": {
+      "_note": "Hop 2/4 — jump. One capture per hop, spent on the only mid-run question: result popup up? If not, jump again. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "goto",
+          "state": "jump_3"
+        }
+      ],
+      "timeout_ms": 20000
+    },
+    "jump_3": {
+      "_note": "Hop 3/4 — the SLIDE hop of the J->J->S->J anti-collision cycle. Overhead bars are the one obstacle class a jump can never clear; one slide per 4-hop cycle (~every 3-4s) sweeps them without giving up much pit coverage. Slide zone = the 'Slide' button bottom-right (~1671,937), press-and-hold via act.py (default ~550ms clears a typical low bar). Same detect contract: result up -> run over. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "slide",
+          "cx": 1671,
+          "cy": 937,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "goto",
+          "state": "jump_4"
+        }
+      ],
+      "timeout_ms": 20000
+    },
+    "jump_4": {
+      "_note": "Hop 4/4 — jump, last hop before a housekeeping pass through the probe chain (popups don't expire on their own; sweeping every ~4 hops clears them at a quarter of the capture cost). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "goto",
+          "state": "check_box"
+        }
+      ],
+      "timeout_ms": 20000
+    },
+    "check_box": {
+      "_note": "Once per 4-hop cycle: did we pick up a Mystery Box this run? The '[?] xN' counter appears top-left (boxcounter_marker at a fixed 118,360) the instant a box is collected and stays there for the rest of the run — so checking once per cycle can't miss it, it just bounds the reaction to one cycle. Present -> the run has served its only purpose (box farming), so quit_run bails out immediately instead of running to death, turning a ~4-5 min run into ~40s. Absent -> no box yet, keep running via check_shop_after_run. Counter self=1.000, no-box in-run=0.345 — clean separation.",
+      "detect": "boxcounter_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "quit_run"
+        }
+      ],
+      "on_absent": {
+        "goto": "check_shop_after_run"
+      },
+      "timeout_ms": 8000
+    },
+    "quit_run": {
+      "_note": "Box collected -> bail out via the pause menu to bank it now. Sequence (coords CV-verified live): pause button (1790,55) -> pause menu 'Quit' (960,640) -> confirm dialog 'Quit' (960,570, NOT Cancel at 960,755). Quitting drops straight to the Result popup with the box credited (Consumed Life is spent either way, so quitting loses nothing a full run would have kept). Hand to run_result -> the existing Mystery Box open/reveal chain banks it. Waits are generous (1200-1500ms) because each tap triggers a menu/dialog fade the next tap must land after.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1790,
+          "y": 55
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 640
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 570
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "timeout_ms": 15000
+    },
+    "check_shop_after_run": {
+      "_note": "Result popup not up yet — still running, home is back, or we're in the shop. Try home; absent -> walk the probe chain.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_boostshop"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_boostshop": {
+      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to probe_magnet.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "boost_shop"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_congrats"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_congrats": {
+      "_note": "Level-up 'Congratulations!' popup (free reward). Confirm (956,846) is safe/free.",
+      "detect": "congrats_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 956,
+          "y": 846
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_levelup"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_levelup": {
+      "_note": "Separate 'Level Up' popup (gems/coins/score-bonus, distinct from the Congratulations ticket popup). Confirm (959,969) is safe/free.",
+      "detect": "levelup_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 969
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_rankingrewards"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_rankingrewards": {
+      "_note": "SAFETY NET: gold 'Ranking Rewards' season popup opened by a stray leaderboard tap. X at (1672,135), free/safe.",
+      "detect": "rankingrewards_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1672,
+          "y": 135
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_giftdraw"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_giftdraw": {
+      "_note": "SAFETY NET: 'Gift Draw' popup over home. Tap X (1685,170) — never Draw; the farm loop must not auto-consume gift draws.",
+      "detect": "giftdraw_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1685,
+          "y": 170
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_friendinfo"
+      },
+      "timeout_ms": 15000
+    },
+    "probe_friendinfo": {
+      "_note": "SAFETY NET: 'Friend's ___' popup family (can stack 2 layers). Tap inner X (1552,117) then outer X (1633,107) each pass, self-loop until the ribbon is gone.",
+      "detect": "friendinfo_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1552,
+          "y": 117
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 1633,
+          "y": 107
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "probe_friendinfo"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 15000
+    },
+    "run_result": {
+      "_note": "Result popup after a run. Tap OK (702,940) — NOT 'Show Off'. After OK the Mystery Box screen appears on runs that collected a '?' box — the whole point of this bot — handled by mystery_box.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 702,
+          "y": 940
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box"
+      },
+      "timeout_ms": 8000
+    },
+    "mystery_box": {
+      "_note": "After Result-OK we either land on home, or the 'Mystery Box' screen blocks it. Detect the BOX screen positively. Present -> tap the closed box (960,540) and read the reward. Absent -> home (or a modal; home's probe chain handles it).",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "mb_gate"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 20000
+    },
+    "mystery_box_reveal": {
+      "_note": "Reward reveal can show MULTIPLE ingredients — one Confirm tap only advances to the next item. Self-loop: keep tapping Confirm (959,960) while the 'Mystery Box' title is still up; fall through to mystery_box_recheck once it's gone.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "mb_reveal_gate"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 15000
+    },
+    "mystery_box_recheck": {
+      "_note": "After collecting the box: Play! visible -> home is clear, continue the loop. Not visible -> something still covers it; go through probe_sendlife, never blind-tap.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_inactive"
+      },
+      "timeout_ms": 15000
+    },
+    "after_play": {
+      "_note": "Gate between Play and the Fast Start spam. home_play still visible -> Play missed (home was mid-fade) -> back to home to retap (spamming now would hit the leaderboard). home gone -> loading into a run or shop -> safe to spam 985,515 across the prompt window, then await_shop sorts shop vs direct-run. Ported from boxrun_ep6.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "tap_xy",
+          "x": 985,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "await_shop"
+        }
+      ]
+    },
+    "probe_inactive": {
+      "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_settings"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_prevresults": {
+      "_note": "'Previous Results / You have unreviewed game results' pops after a run that was cut short (e.g. by the inactive-restart). Confirm (950,680) opens the Result screen, then fall through to the normal chain which peels Result/MysteryBox/Congrats. Absent -> probe_dailycheckin (chain unchanged).",
+      "detect": "prevresults_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 950,
+          "y": 680
+        },
+        {
+          "type": "wait",
+          "ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "probe_dailycheckin"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_dailycheckin"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_inactive": {
+      "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "jump",
+          "cx": 238,
+          "cy": 940,
+          "rx": 175,
+          "ry": 55
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "goto",
+          "state": "jump_2"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_login": {
+      "_note": "Login recovery step 1 (DevPlay title). After the inactive-restart the game reopens on the DevPlay title with the orange 'DevPlay Login' button (devplaylogin_marker, self=1.0). Present -> tap it (960,950) to open the account picker, wait for the fade, hand to recover_pick. Absent -> we may already be at the picker (or past login) -> recover_pick.",
+      "detect": "devplaylogin_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 950
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_pick"
+        }
+      ],
+      "on_absent": {
+        "goto": "recover_pick"
+      },
+      "timeout_ms": 30000
+    },
+    "verify_no_popup": {
+      "_note": "Play-tap gate. The 'You've been inactive -> restart' popup overlays home/shop while Play! still scores ~0.87 through it, so home.on_match would tap Play INTO the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login re-auths. Absent -> no popup, run the real Play tap (original home.on_match body).",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "verify_no_sendlife"
+      },
+      "timeout_ms": 6000
+    },
+    "recover_pick": {
+      "_note": "Login recovery step 2 (account picker). login_marker = 'You already have an account!' + CookieRun logo (name-agnostic). Present -> tap the top saved account row (1100,490), wait out the ~12s login + home load, re-enter start_state (home). Absent -> the picker isn't up (login already completed, or the title is still animating) -> go to start_state and let its own detection settle; if we're still on the title, home will be absent and the probe chain loops us back to recover_login.",
+      "detect": "login_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1100,
+          "y": 490
+        },
+        {
+          "type": "wait",
+          "ms": 12000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 30000
+    },
+    "mb_gate": {
+      "_note": "Mystery Box screen has (at least) two layouts: a single 'Open all' button (960,965) that opens every box at once, and an older tap-the-box-directly layout (960,540) for a lone/first box. Tapping only one coord could miss the other layout and leave mysterybox_marker matching forever (timeout only fires on the ABSENT path, so a match that never changes has no built-in escape) -> observed live hanging on this screen. Tap BOTH every pass: Open-all first, then box-center, each with its own settle wait, before re-checking via mystery_box_reveal. Harmless if one coord hits nothing.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "mb_reveal_gate": {
+      "_note": "Reveal retry chain step 1/6 (escape hatch). Dual-tap Open-all(960,965) + Confirm(959,960), then hand to retry_2 rather than looping straight back to mystery_box_reveal forever — bounds the whole reveal loop to 6 passes max.",
+      "detect": "inactive_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 953,
+          "y": 690
+        },
+        {
+          "type": "wait",
+          "ms": 4000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mb_reveal_retry_2"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "mb_reveal_retry_2": {
+      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 6000
+    },
+    "mb_reveal_retry_3": {
+      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 6000
+    },
+    "mb_reveal_retry_4": {
+      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 6000
+    },
+    "mb_reveal_retry_5": {
+      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_reveal"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 6000
+    },
+    "mb_reveal_retry_6": {
+      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_recheck rather than looping forever.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mystery_box_recheck"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "timeout_ms": 6000
+    },
+    "verify_no_sendlife": {
+      "_note": "Second Play-tap gate. A 'Send <name> a free Life?' dialog can sit ON TOP of home (or the boost shop) while Play! still scores 1.00 through it, same class of bug as the inactive-popup gate. Present -> Cancel (727,688 — gray/left, NEVER Confirm 1189,687) -> back to home to re-check. Absent -> no popup at all -> run the real Play tap (original verify_no_popup.on_absent body, unchanged).",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 727,
+          "y": 688
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1431,
+          "y": 963
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "after_play"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "probe_settings": {
+      "_note": "User can manually open Game Settings (gear icon, top-right of home) at any time, on any tab (Options/Notifications/Performance/Game Info) -- no marker recognized this screen before, so the bot sat frozen matching nothing. Detect the teal 'Game Settings' title ribbon (shared by all 4 tabs); close via X (1671,145) -> home re-checks. Absent -> continue the normal chain.",
+      "detect": "gamesettings_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1671,
+          "y": 145
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_fortunebakery"
+      },
+      "timeout_ms": 6000
+    },
+    "probe_fortunebakery": {
+      "_note": "'Fortune Bakery' popup (fortune-cookie dough picker) can sit over home, covering Play!, with no auto-buy risk on our side (we never tap Select Dough). Detected by the teal 'Fortune Bakery' banner (fortunebakery_marker.png). Close via X (1633,301 — scaled from a 1217x703 screenshot ratio, NOT yet CV-verified live; re-crop/re-measure on first live catch if the tap misses). Absent -> probe_prevresults (chain unchanged).",
+      "detect": "fortunebakery_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1633,
+          "y": 301
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_prevresults"
+      },
+      "timeout_ms": 8000
+    }
+  }
+}

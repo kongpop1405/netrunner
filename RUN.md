@@ -139,6 +139,36 @@ Manual equivalent:
 
 ```powershell
 python main.py --config config/cookierun/boxrun_ep3.json
+
+## Box Farm — Toggle (`run_boxrun.bat`)
+
+Double-click **`run_boxrun.bat`** — asks 6 questions (Fast Start tap? Buy Magnetic Aura? Jump? Slide? Cookie Relay Boost tap? — all default `y` on Enter — then Quit after how many boxes banked?, default `0`), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_ep3`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+
+**Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
+
+What each flag strips when answered `n`:
+
+- **Fast Start (n)** — removes the `tap_xy(985,515)` spam + its `wait` from `check_heart`/`after_play`'s `on_absent` lists; the Play tap and trailing `goto` stay.
+- **Magnet (n)** — redirects `await_shop`/`boost_shop`'s `on_match` straight to `check_heart`, skipping the whole `probe_magnet → buy_magnet → picker → wait_roll → start_run` Magnetic-Aura-buy chain (ported from `boxrun_ep6`, Multi-Buy at 950,880).
+- **Jump (n)** — drops the `jump` action from `jump_2`/`jump_4`/`guard_not_inactive`'s `on_absent` lists, leaving only the Cookie Relay tap (960,540) + `goto`.
+- **Slide (n)** — drops the `slide` action from `jump_3`'s `on_absent` list.
+- **Relay (n)** — drops the Cookie Relay Boost `tap_xy(960,540)` from `jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`'s `on_absent` lists, independent of the Jump/Slide flags — the relay tap is a per-hop side action, not tied to either obstacle-avoidance action.
+
+⚠️ Turning off both Jump and Slide means the run has no obstacle avoidance — the runner will hit the first pit/bar and die almost immediately. Useful only for isolated testing (e.g. verifying the Magnet buy chain alone), not for actual farming.
+
+**Jump=n + Slide=n warm-up burst:** community-reported game bug — a run with zero jump/slide taps the entire way through doesn't get counted by the game at all (no Mystery Box, no reward), even though the bot's blind relay taps kept it technically alive. When both flags are off, `BoxQuitRunner` (see below) fires a one-shot 10-tap alternating jump/slide burst (back-to-back, no extra wait — slide's own ~550ms hold already paces it, ~2.7-3.2s total) the first time it reaches `guard_not_inactive` in a run, then lets the normal `jump_2` loop continue as usual. This is tracked in Python (`self._warmup_done`, reset to `False` every time `run_result` fires) rather than as a config state/goto: `guard_not_inactive` is a housekeeping guard the FSM revisits every ~4 hops for the rest of the run, not a one-time entry point, so an earlier config-goto-based version of this fired the burst every single cycle instead of once — the "bot secretly keeps jumping/sliding mid-loop" bug. The static FSM has no per-run variables, so "first time this run vs. just revisiting the guard chain" can only be tracked at the Python level. Any mode where Jump or Slide is already on skips this entirely.
+
+The patching happens in `tools/run_toggle.py` (`_strip_faststart`, `_disable_magnet`, `_strip_jump`, `_strip_slide`, `_strip_relay`), which loads the config the normal way via `src.config.load`, deep-copies `cfg.states`, mutates the copy, then hands it to `BoxQuitRunner` (a `Runner` subclass covering both this and the box-quit logic below) — the FSM engine itself (`src/fsm.py`) is untouched.
+
+**Quit after N runs-with-a-box (`--quit-after-boxes`, default 0 = never quit early):** `check_box` detects `boxcounter_marker.png` — the `[?] xN` counter that appears once a box is collected — but there's no OCR reading the actual number N off the counter, so the config alone can't tell "1 box this run" from "3 boxes this run", and `boxcounter_marker` **stays on screen for the rest of that run** once it appears. `check_box` gets revisited every ~4 hops for the rest of the run (housekeeping sweep), so counting every match would count one run's box 4+ times in ~10s instead of once — that was a real bug (`_box_counted_this_run` fixes it). `BoxQuitRunner` (a `Runner` subclass in `run_toggle.py`) now counts **how many runs have had at least one box** — one increment per run, on the first `check_box` match after `run_result` resets the flag — and only lets the `quit_run` goto through once that count reaches `quit_after`; earlier matches are redirected to `check_shop_after_run` so the run keeps going. At the default `0` the counter is never consulted — `check_box`'s own goto to `quit_run` always fires, i.e. runs play to natural death/end instead of quitting early. Note this counts *runs*, not total boxes — a run that nets 3 boxes still only advances the counter by 1.
+
+Manual equivalent:
+
+```powershell
+python tools/run_toggle.py --faststart y --magnet y --jump y --slide n --relay y --quit-after-boxes 2 --launch
+```
+
+
 ```
 
 ## Preconditions (cookierun run-grind)
