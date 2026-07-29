@@ -139,6 +139,22 @@ Manual equivalent:
 
 ```powershell
 python main.py --config config/cookierun/boxrun_ep3.json
+```
+
+## Box Farm — no relay, no early quit (`run_boxrun_norelay_noquit.bat`)
+
+Double-click **`run_boxrun_norelay_noquit.bat`** — a static clone of `boxrun_ep3.json` (`config/cookierun/boxrun_norelay_noquit.json`), not tied to any specific episode, with two things permanently removed, no toggle/prompt:
+
+- **No Cookie Relay Boost tap** — the (960,540) tap that `boxrun_ep3.json` fires every hop (`jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`) is gone from all four.
+- **No early quit on a box.** `boxrun_ep3.json`'s `check_box` bails via `quit_run` the instant `boxcounter_marker` shows (a ~40s run). Here `check_box` always falls through to `check_shop_after_run` instead (both `on_match` and `on_absent`) — every run plays to its natural death/end, and a collected box still gets opened normally once the run actually ends (`run_result` → `mystery_box`).
+
+Everything else (speed-boost buy, Fast Start, heart gate, J→J→S→J jump/slide pattern, popup-probe chain) is identical to `boxrun_ep3.json`. Not episode-locked — the bot only taps `Play!`, so whichever episode (3/5/6) is selected on home before starting is what gets played.
+
+Manual equivalent:
+
+```powershell
+python main.py --config config/cookierun/boxrun_norelay_noquit.json
+```
 
 ## Box Farm — Toggle (`run_boxrun.bat`)
 
