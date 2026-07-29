@@ -1483,9 +1483,32 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_prevresults"
+        "goto": "probe_fortunebakery"
       },
       "timeout_ms": 6000
+    },
+    "probe_fortunebakery": {
+      "_note": "'Fortune Bakery' popup (fortune-cookie dough picker) can sit over home, covering Play!, with no auto-buy risk on our side (we never tap Select Dough). Detected by the teal 'Fortune Bakery' banner (fortunebakery_marker.png). Close via X (1633,301 — scaled from a 1217x703 screenshot ratio, NOT yet CV-verified live; re-crop/re-measure on first live catch if the tap misses). Absent -> probe_prevresults (chain unchanged).",
+      "detect": "fortunebakery_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1633,
+          "y": 301
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_prevresults"
+      },
+      "timeout_ms": 8000
     }
   }
 }
