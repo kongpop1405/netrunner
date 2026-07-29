@@ -172,7 +172,7 @@ Multi-Buy fires **only when Double Coins is not already equipped**. On every boo
 
 Every run now writes a plain-text file log alongside the console, and can push Discord alerts on trouble. Both are opt-in-by-presence — no `.env` means no alerts, but the file log always writes.
 
-- **File log**: `logs/<YYYY-MM-DD>.log` (one file per calendar day, same format as console — no rotation beyond that, so a day with `-v` on for hours can get large). Path is announced at startup (`logging to logs\...`).
+- **File log**: `logs/netrunner.log` (active file, same format as console), rotating hourly to `netrunner.log.<YYYY-MM-DD_HH>` — last 72 hours kept, older ones deleted automatically. Path is announced at startup (`logging to logs\...`).
 - **Discord alerts**: set `DISCORD_WEBHOOK_URL` in `.env` (copy `.env.example`, fill in a channel webhook URL — Discord channel Settings → Integrations → Webhooks). `.env` is git-ignored; never commit it.
   - 🔴 **critical, `@here`-pinged** — the bot crashed (`FsmError`, e.g. a state timed out with no `on_absent` target). Includes the error and last state.
   - 🟡 **warning** — the FSM stayed on the exact same state for 100 consecutive polls (`_STUCK_STATE_WARN_CYCLES` in `src/fsm.py`), which usually means a livelock rather than an expected long wait (heart regen already self-limits via its own 30s-poll timeout logic, not this counter). Fires once per stuck episode — resets when the state finally changes.

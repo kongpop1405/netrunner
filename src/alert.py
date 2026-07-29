@@ -4,24 +4,37 @@ from __future__ import annotations
 import json
 import logging
 import time
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import requests
 
 logger = logging.getLogger("netrunner.alert")
 
+_ROTATE_WHEN = "H"
+_ROTATE_INTERVAL = 1
+_BACKUP_HOURS = 72
+
 
 def setup_file_logging(log_dir: str | Path = "logs", verbose: bool = False) -> Path:
-    """Add a daily-rotating-by-filename file handler alongside the existing console one.
+    """Add an hourly-rotating file handler alongside the existing console one.
 
-    One file per calendar day (`logs/2026-07-10.log`); no size-based rotation since
-    a single day's run log is small text. Returns the path in use.
+    Active file is `logs/netrunner.log`; each hour it rolls to a timestamped
+    backup (`netrunner.log.2026-07-10_14`), keeping the last `_BACKUP_HOURS`
+    hours and deleting older ones automatically.
     """
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"{time.strftime('%Y-%m-%d')}.log"
+    log_path = log_dir / "netrunner.log"
 
-    handler = logging.FileHandler(log_path, encoding="utf-8")
+    handler = TimedRotatingFileHandler(
+        log_path,
+        when=_ROTATE_WHEN,
+        interval=_ROTATE_INTERVAL,
+        backupCount=_BACKUP_HOURS,
+        encoding="utf-8",
+    )
+    handler.suffix = "%Y-%m-%d_%H"
     handler.setLevel(logging.DEBUG if verbose else logging.INFO)
     handler.setFormatter(logging.Formatter(
         "%(asctime)s %(levelname)s %(name)s: %(message)s", datefmt="%H:%M:%S",
