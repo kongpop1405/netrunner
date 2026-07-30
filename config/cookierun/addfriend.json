@@ -68,7 +68,7 @@
       "timeout_ms": 15000
     },
     "peel_popups": {
-      "_note": "Find tab still not visible after tapping it — before assuming a Friend's Info screen covers us, rule out a launch/reward modal. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the social popup. Peel whichever is present, then re-enter via open_find (the popup was on top of the Friends UI, which is still open underneath). None present -> close_info, the original Friend's Info X-tap recovery. Shared templates/coords with boxrun_speed.json.",
+      "_note": "Find tab still not visible after tapping it — before assuming a Friend's Info screen covers us, rule out a launch/reward modal. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the social popup. Peel whichever is present, then re-enter via open_find (the popup was on top of the Friends UI, which is still open underneath). None present -> close_info, the original Friend's Info X-tap recovery. Shared templates/coords with boxrun_default.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {

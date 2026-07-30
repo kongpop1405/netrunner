@@ -193,11 +193,11 @@ Manual equivalent:
 python main.py --config config/cookierun/addfriend.json --max-cycles 50
 ```
 
-## Box Farm — Speed (`boxrun_speed.bat`)
+## Box Farm — Speed (`boxrun_default.bat`)
 
-Double-click **`boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
+Double-click **`boxrun_default.bat`** — runs `config/cookierun/boxrun_default.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
 
-**Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_speed` / `boxrun_toggle`), not by episode.
+**Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_default` / `boxrun_toggle`), not by episode.
 
 Differences from `cookierun.json` (the coin grinder), all learned live 2026-07-15:
 
@@ -211,14 +211,14 @@ New templates added to `templates/cookierun/`: `faststart_btn.png`, `speedbase17
 Manual equivalent:
 
 ```powershell
-python main.py --config config/cookierun/boxrun_speed.json
+python main.py --config config/cookierun/boxrun_default.json
 ```
 
 ## Box Farm — archived variants
 
 These were trimmed from the active set on 2026-07-31 and moved to
 `config/cookierun/_archive/` (see its README). The active box-farm set is now
-just **`boxrun_speed`**, **`boxrun_magnet`**, and **`boxrun_toggle`** (below).
+just **`boxrun_default`**, **`boxrun_magnet`**, and **`boxrun_toggle`** (below).
 
 Archived: `boxrun_speed_quit2` · `boxrun_speed_noquit` · `boxrun_passive` ·
 `boxrun_passive_3boost` · `boxrun_magnet_quit3`. Each still works — move its JSON
@@ -227,7 +227,7 @@ them via flags (relay/jump/slide off, `--quit-after-boxes N`).
 
 ## Box Farm — Toggle (`boxrun_toggle.bat`)
 
-Double-click **`boxrun_toggle.bat`** — asks 6 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_speed`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+Double-click **`boxrun_toggle.bat`** — asks 6 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
 
 **Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
 
@@ -238,7 +238,7 @@ The buy chain's *shape* is identical for every boost — `probe_magnet → buy_m
 | `--boost` | banner template | buy taps | Multi-Buy | from |
 |-----------|-----------------|----------|-----------|------|
 | `magnet` | `magneticaura_banner.png` | (810,875) → (1645,340) | (950,880) | `boxrun_magnet` |
-| `speed` | `speedbase17_banner.png` | (1649,337) | (953,899) | `boxrun_speed` |
+| `speed` | `speedbase17_banner.png` | (1649,337) | (953,899) | `boxrun_default` |
 | `doublecoins` | `doublecoins_banner.png` | (755,875) → (1678,305) | (953,899) | `coinrun` |
 | `none` | — | — | — | skips the buy chain entirely |
 

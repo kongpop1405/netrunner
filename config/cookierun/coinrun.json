@@ -58,7 +58,7 @@
       "timeout_ms": 8000
     },
     "probe_dailycheckin": {
-      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the bot stalls (falls through to boost_shop and never recovers home). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run=0.232 — no false-positive). Present -> tap the green OK button (965,985) -> probe_treasurereward (a second launch popup often queues behind it). Absent -> fall to probe_treasurereward too. Shared with boxrun_speed.json; same template, same coords.",
+      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the bot stalls (falls through to boost_shop and never recovers home). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run=0.232 — no false-positive). Present -> tap the green OK button (965,985) -> probe_treasurereward (a second launch popup often queues behind it). Absent -> fall to probe_treasurereward too. Shared with boxrun_default.json; same template, same coords.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {
@@ -79,7 +79,7 @@
       "timeout_ms": 8000
     },
     "probe_treasurereward": {
-      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch and also covers Play!. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Shared with boxrun_speed.json.",
+      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch and also covers Play!. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Shared with boxrun_default.json.",
       "detect": "treasurereward_marker.png",
       "on_match": [
         {

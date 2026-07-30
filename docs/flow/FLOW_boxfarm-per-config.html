@@ -105,7 +105,7 @@
   <thead><tr><th>Config</th><th style="width:60px">สถานะ</th><th>Boost</th><th>In-run</th><th>Relay</th><th>Quit</th><th>States</th></tr></thead>
   <tbody>
     <tr><td><code>boxrun_toggle</code></td><td><span class="pill f"><span class="d"></span>active</span></td><td><b>ถามตอนรัน</b></td><td>jump hops</td><td>ถาม</td><td>ถาม</td><td>62</td></tr>
-    <tr><td><code>boxrun_speed</code></td><td><span class="pill f"><span class="d"></span>active</span></td><td><b>speed</b></td><td>jump hops</td><td>✓</td><td><b>early</b> (ได้กล่อง)</td><td>48</td></tr>
+    <tr><td><code>boxrun_default</code></td><td><span class="pill f"><span class="d"></span>active</span></td><td><b>speed</b></td><td>jump hops</td><td>✓</td><td><b>early</b> (ได้กล่อง)</td><td>48</td></tr>
     <tr><td><code>boxrun_magnet</code></td><td><span class="pill f"><span class="d"></span>active</span></td><td><b>magnet</b></td><td>jump hops</td><td>✓</td><td>เล่นจนตาย</td><td>45</td></tr>
     <tr style="opacity:.6"><td><code>boxrun_speed_quit2</code></td><td><span class="pill st" style="background:var(--elev2);color:var(--faint);border-color:var(--bd2)">archived</span></td><td>speed</td><td>jump hops</td><td>✓</td><td>after-2</td><td>47</td></tr>
     <tr style="opacity:.6"><td><code>boxrun_speed_noquit</code></td><td><span class="pill st" style="background:var(--elev2);color:var(--faint);border-color:var(--bd2)">archived</span></td><td>speed</td><td>jump hops</td><td>✗</td><td>ไม่ quit</td><td>47</td></tr>
@@ -190,7 +190,7 @@
 
 <!-- ═══════════ speed ═══════════ -->
 <section id="speed">
-<h2><span class="fname">boxrun_speed.bat</span></h2>
+<h2><span class="fname">boxrun_default.bat</span></h2>
 <div class="tags"><span class="tag bo">boost: speed</span>
   <span class="tag rl">relay ✓</span><span class="tag q1">early quit</span><span class="tag st">48 states</span></div>
 <p class="lead">โครงเหมือน boxrun_magnet เป๊ะ — เปลี่ยน 2 จุด: boost = <b>+17% speed</b> และ <b>quit เร็ว</b> พอได้กล่อง.</p>
@@ -223,7 +223,7 @@
 <div class="tags"><span class="tag bo">boost: speed</span>
   <span class="tag rl">relay ✓</span><span class="tag q1">quit-after-2</span><span class="tag st">47 states</span></div>
 <p class="lead">variant ของ boxrun_magnet (โครง jump-hops + speed boost) แต่ควิทหลังได้ <b>2 กล่อง</b> ต่อ session.</p>
-<div class="diff"><b>vs boxrun_speed:</b> เหมือนกันเกือบหมด (speed + quit + jump hops) — ต่างที่ episode 4 และ threshold ของ quit
+<div class="diff"><b>vs boxrun_default:</b> เหมือนกันเกือบหมด (speed + quit + jump hops) — ต่างที่ episode 4 และ threshold ของ quit
   (<code>--quit-after-boxes 2</code> ผ่าน <code>BoxQuitRunner</code>: นับกล่องข้าม run จน 2 ใบค่อยควิท ไม่ใช่ควิททันทีที่เจอใบแรก).
   โครง state เหมือน ep3.</div>
 <div class="note">
@@ -286,7 +286,7 @@
   <span class="tag st" style="border-color:var(--rd);color:var(--rd)">relay ✗</span>
   <span class="tag q0">ไม่ quit</span><span class="tag st">47 states</span></div>
 <p class="lead">Clone ของ ep3 (speed + jump hops) แต่ถอด 2 อย่าง: <b>ไม่ tap relay</b> ระหว่างรัน และ <b>ไม่ควิทเร็ว</b> — เล่นยาว.</p>
-<div class="diff"><b>vs boxrun_speed:</b> jump hops <b>ไม่มี <code>relay_tap</code></b> (jump_2/3/4 ถอด relay ออก) · <code>quit_run</code> มีอยู่แต่ <b>ไม่มีใครชี้เข้า</b>
+<div class="diff"><b>vs boxrun_default:</b> jump hops <b>ไม่มี <code>relay_tap</code></b> (jump_2/3/4 ถอด relay ออก) · <code>quit_run</code> มีอยู่แต่ <b>ไม่มีใครชี้เข้า</b>
   (check_box → check_shop_after_run แทน quit_run) = ไม่ควิท. เหมาะเก็บกล่องรัวยาว ๆ ไม่ bail</div>
 <div class="note warn">
   <b>ระวัง:</b> ชื่อ variant บอกเจตนาชัด — ห้ามต่อ <code>quit_run</code> กลับ (จะขัดชื่อ). relay ถอดจงใจ (relay เคยเป็นแหล่ง stray leaderboard tap)

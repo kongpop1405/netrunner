@@ -66,7 +66,7 @@ def test_boost_buy_taps_match_the_profile(states, choice):
 
 
 def test_speed_drops_the_random_boost_cell_and_its_wait(states):
-    """The +17% speed chain reaches Multi directly (boxrun_speed), so the baseline's
+    """The +17% speed chain reaches Multi directly (boxrun_default), so the baseline's
     first tap AND the wait that let its screen settle must both go — a leftover
     wait would just stall the buy for no reason."""
     rt._apply_boost(states, "speed")

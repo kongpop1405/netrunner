@@ -1,5 +1,5 @@
 {
-  "_comment": "boxrun_speed — Mystery Box farm, +17% Speed boost, jump-hop run, quits once a box is banked. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. PRECONDITION: Episode 3 selected on home BEFORE starting — the bot only taps Play!, it does NOT navigate episode selection (future episodes get their own boxrun_epN.json). BOOST RULE: every run must be played with the +17% base speed Random Boost equipped. On each boost-shop entry the loop routes probe_speed first: if speedbase17_banner ('+17% base speed' pill) is already on the panel, skip buying; else buy_speed opens the Multi picker (where +17% base speed is PRE-TICKED by the game) and taps Multi-Buy, which auto-rolls, spending coins, until the +17% boost lands. This mirrors coinrun.json's Double-Coins multi-buy but pins SPEED instead of coins, and additionally taps the 'Tap to activate Fast Start Boost!' prompt at run start (faststart_btn, via tap_template + a faststart_check verify pass, since a fixed tap beside the drifting arrow silently wasted the boost). The Cookie Relay Boost tap (960,540) fires once per 4-hop cycle from guard_not_shop, gated behind both guards so it can't land on the home leaderboard. Coins exhausted mid-roll -> insufficient_coins cancels and force_play runs with whatever we have. Templates + coords reused from coinrun.json (same device, same 1920x1080) except the two new ones (faststart_btn.png, speedbase17_banner.png). Loop: home->Play->await_shop->probe_speed->buy_speed(Multi->Multi-Buy->wait_roll)->start_run(verify pill)->check_heart->Play->await_faststart->faststart_check->run(jump/slide chain)->run_result->mystery_box->reveal->home. IN-RUN PATTERN: 3 jump : 1 slide (J->J->S->J) so overhead bars (only slide clears them) are covered blind alongside pits (jump). Ratio + slide hold_ms are the first knobs to tune after a live Episode-3 test.",
+  "_comment": "boxrun_default — Mystery Box farm, NO boost purchase (Fast Start only), jump-hop run (J->J->S->J), quits the run once 1 Mystery Box is banked. The default box-farm: minimal, no shop dependency. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. Loop: home->Play->await_shop(->check_heart, no buy)->check_heart(Play+FastStart spam)->run(J/J/S/J)->check_box(box?->quit_run | else die)->result->box->home.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -21,12 +21,12 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "Bridge between tapping Play! on home and acting in the boost shop (Play! shows THROUGH the shop fade above threshold — see coinrun.json for the double-tap loop this prevents). BUY DISABLED (temporary, user request): shop up -> check_heart directly, skipping probe_speed/buy_speed. To re-enable speed buying, change this goto (and boost_shop) back to 'probe_speed'. Absent -> one settle-retry (~1.2s via absent_wait_ms), then fall through to running.",
+      "_note": "Bridge between tapping Play! on home and acting in the boost shop (Play! shows THROUGH the shop fade above threshold — see coinrun.json for the double-tap loop this prevents). NO boost purchase (this is boxrun_default): shop up -> check_heart directly, skip straight to Play. For a config that buys a boost see boxrun_magnet or boxrun_toggle. Absent -> one settle-retry (~1.2s via absent_wait_ms), then fall through to running.",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "probe_speed"
+          "state": "check_heart"
         }
       ],
       "absent_retries": 1,
@@ -34,9 +34,7 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000,
-      "boost_role": "gate",
-      "boost_skip_goto": "check_heart"
+      "timeout_ms": 8000
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -102,130 +100,7 @@
       "timeout_ms": 8000
     },
     "boost_shop": {
-      "_note": "Boost shop open (entry point for guard/probe re-routing). BUY DISABLED (temporary): route straight to check_heart. Re-enable: change goto to 'probe_speed'.",
-      "detect": "boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "probe_speed"
-        }
-      ],
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000,
-      "boost_role": "gate",
-      "boost_skip_goto": "check_heart"
-    },
-    "probe_speed": {
-      "_note": "SPEED GUARD: the run must be played with +17% base speed equipped. speedbase17_banner.png ('+17% base speed' pill) shows on the shop's right panel whenever that boost is currently rolled/equipped (CV: pill present score=1.000; absent ~0.33-0.38, split clean by the 0.82 threshold). Present -> skip buying, go to the Play gate. Absent -> buy_speed opens the Multi picker to roll it. RETRY GRACE (3x800ms): the equipped-boost banner takes ~1-2s to render after the shop opens, so detecting with no grace read the still-fading panel, thought the boost was absent, and re-bought/re-rolled every cycle — burning coins. Same fix as boxrun_magnet probe_magnet.",
-      "detect": "speedbase17_banner.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "check_heart"
-        }
-      ],
-      "on_absent": {
-        "goto": "buy_speed"
-      },
-      "timeout_ms": 8000,
-      "absent_retries": 3,
-      "absent_wait_ms": 800,
-      "boost_role": "probe"
-    },
-    "buy_speed": {
-      "_note": "No +17% speed equipped (probe_speed confirmed pill absent). Tap the pink 'Multi' toggle (1649,337) on the Random Boost panel to open the 'Pick desired Boosts!' picker. The picker opens with +17% base speed ALREADY TICKED (CV verified live — the only checked row), so we do NOT tap any boost row (tapping the +17% row would un-tick it). Hand to picker.",
-      "detect": "boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 1649,
-          "y": 337
-        },
-        {
-          "type": "wait",
-          "ms": 1500
-        },
-        {
-          "type": "goto",
-          "state": "picker"
-        }
-      ],
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000,
-      "boost_role": "buy"
-    },
-    "picker": {
-      "_note": "'Pick desired Boosts!' popup (picker_marker, CV 1.000 @960,100). +17% base speed stays PRE-TICKED — DO NOT tap any row (each is a toggle; tapping the ticked row un-ticks it). Tap Multi-Buy (953,899) ONCE — the game then AUTO-ROLLS by itself, spending coins repeatedly, until the ticked boost (+17% speed) lands, then stops on its own. Do NOT re-tap or re-open. Hand to wait_roll to sit still until the roll UI is gone. ABSENT means the picker never opened (Multi tap missed or still animating): one settle-retry (~1.2s), then retry_buy (re-check coins, re-open the buy flow) — NO roll is in flight, so never fall through to Play with no boost.",
-      "detect": "picker_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 953,
-          "y": 899
-        },
-        {
-          "type": "wait",
-          "ms": 1500
-        },
-        {
-          "type": "goto",
-          "state": "wait_roll"
-        }
-      ],
-      "absent_retries": 1,
-      "absent_wait_ms": 1200,
-      "on_absent": {
-        "goto": "retry_buy"
-      },
-      "timeout_ms": 10000,
-      "boost_role": "picker"
-    },
-    "wait_roll": {
-      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_magnet. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
-      "detect": "rollstop_marker.png",
-      "on_match": [
-        {
-          "type": "wait",
-          "ms": 800
-        },
-        {
-          "type": "goto",
-          "state": "wait_roll"
-        }
-      ],
-      "on_absent": {
-        "goto": "start_run"
-      },
-      "timeout_ms": 60000,
-      "match_timeout_ms": 90000
-    },
-    "insufficient_coins": {
-      "_note": "SAFETY: 'Not enough Coins!' popup. Tap Cancel (770,685) — NEVER Confirm (1150,685), which spends gems. Then Play! with whatever boost we have (or none).",
-      "detect": "nocoins_marker.png",
-      "on_match": [
-        {
-          "type": "close_popup",
-          "x": 770,
-          "y": 685,
-          "verify": "nocoins_marker.png",
-          "settle_ms": 1500
-        },
-        {
-          "type": "goto",
-          "state": "force_play"
-        }
-      ],
-      "on_absent": {
-        "goto": "force_play"
-      },
-      "timeout_ms": 6000
-    },
-    "force_play": {
-      "_note": "Coins exhausted — stop chasing the speed boost, Play! with whatever we have. Still route through check_heart so we don't run on empty hearts.",
+      "_note": "Boost shop open (entry point for guard/probe re-routing). NO boost purchase: route straight to check_heart. (boxrun_default has no buy chain.)",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
@@ -235,40 +110,11 @@
       ],
       "on_absent": {
         "goto": "running"
-      },
-      "timeout_ms": 8000
-    },
-    "start_run": {
-      "_note": "SPEED ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Pill present -> the roll landed +17% speed -> check_heart -> Play. Pill ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-speed path is the nocoins escape (insufficient_coins -> force_play).",
-      "detect": "speedbase17_banner.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "check_heart"
-        }
-      ],
-      "on_absent": {
-        "goto": "retry_buy"
-      },
-      "timeout_ms": 8000,
-      "boost_role": "probe"
-    },
-    "retry_buy": {
-      "_note": "Re-buy gate: we ended up without the +17% speed boost and must roll again. Check the wallet FIRST so we never spin on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play — the ONLY sanctioned Play-without-speed path). No popup -> coins remain, loop back into buy_speed. Termination is natural (each roll drains coins until the game raises nocoins); a genuinely stuck loop trips the engine's 100-poll livelock warning.",
-      "detect": "nocoins_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "insufficient_coins"
-        }
-      ],
-      "on_absent": {
-        "goto": "buy_speed"
       },
       "timeout_ms": 8000
     },
     "check_heart": {
-      "_note": "SINGLE Play gate, reached from probe_speed/start_run/force_play (all BOOST-SHOP context, Play at 1365,931). heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> wait 30s and self-loop until a heart regenerates (timeout 25 min). HARD RULE: never buy hearts. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short).",
+      "_note": "SINGLE Play gate, reached from await_shop/boost_shop (Play at 1365,931). heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> wait 30s and self-loop until a heart regenerates (timeout 25 min). HARD RULE: never buy hearts. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short).",
       "detect": "heart_empty.png",
       "on_match": [
         {
@@ -540,12 +386,12 @@
       "timeout_ms": 15000
     },
     "probe_boostshop": {
-      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to probe_speed.",
+      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to check_heart (no buy).",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "boost_shop"
+          "state": "check_heart"
         }
       ],
       "on_absent": {

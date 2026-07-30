@@ -34,7 +34,7 @@ echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% main.py --config config/cookierun/boxrun_speed.json --launch
+%PY% main.py --config config/cookierun/boxrun_default.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

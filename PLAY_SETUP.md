@@ -34,7 +34,7 @@ restart the instance.
 
 ## 3. Put the game on the right screen (every run)
 
-For **coinrun** / **boxrun_speed** (the run-grinders):
+For **coinrun** / **boxrun_default** (the run-grinders):
 
 - Be on the **home screen** — the one with the big green **Play!** button bottom-right.
 - Any Episode is fine (the bot finds the **Play!** button, not the episode name).
