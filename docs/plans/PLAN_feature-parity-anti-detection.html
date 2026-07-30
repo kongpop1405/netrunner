@@ -385,7 +385,8 @@
 <section>
   <h2><span class="section-num">04</span>Feature spec</h2>
 
-  <div class="phase-hd"><span class="badge">PHASE 1</span><h3>Wait-between-games + human pacing</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 1</span><h3>Wait-between-games + human pacing
+    <span class="pill ok" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>DONE — pytest 139 passed</span></h3></div>
   <p>
     Config field ใหม่ (optional ทุกตัว — config เดิมไม่ระบุ = behavior เดิมเป๊ะ):
   </p>
@@ -418,6 +419,29 @@
     <li><b><code>poll_ms</code> รับ <code>[min,max]</code></b> — สุ่มต่อ cycle → hop cadence ไม่คงที่โดยไม่ต้องแตะ config state ใด</li>
     <li>ไม่แตะ pre-tap jitter เดิม (Gaussian + hesitate ใน <code>act.py:49-66</code> ดีอยู่แล้ว — ดีกว่า cookierun-bot)</li>
   </ul>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ทำแล้ว</b> (commit <code>e88dcec</code> + <code>ab03a7f</code>) —
+    <code>parse_range()</code> ตัวเดียวใช้ทั้ง 3 knob (poll / inter-game / wait) ·
+    scalar = behavior เดิมเป๊ะ ทุก config ไม่ต้องแก้ · <b>เจอเพิ่มระหว่าง implement:</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>Delay ต้องผูกกับ transition ไม่ใช่ check ทุก cycle</b> — เขียนแบบเช็คต้นลูปก่อน
+        (<code>if state == inter_game_state</code>) แล้วเห็นว่า<b>จะ re-fire ทุก poll ที่ยังอยู่ home</b>
+        (home มี absent_retries รอ marker settle = หลาย poll ต่อ 1 lap) → ย้ายไปอยู่ใน block
+        <code>state != prev_state</code> ซึ่งเป็นจุดเดียวที่รู้ว่า "เพิ่งเข้า"</li>
+      <li><b>Idle ต้องไม่ถูกคิดเป็น match_timeout</b> — idle 45s ที่ home แล้ว <code>state_entered_at</code>
+        ไม่ reset = lap ถัดไป trip match_timeout escape ทันที (ถ้า state นั้นมี budget &lt; 45s).
+        Fix: reset <code>state_entered_at</code> หลัง idle. <b>Interaction ข้าม phase ที่ไม่ได้อยู่ในแพลนเดิม</b> — มีเทสครอบ</li>
+      <li><b>ต้องข้ามการ delay ครั้งแรก</b> — start_state = inter_game_state ทั่วไป → ถ้าไม่ข้าม
+        จะ idle 30–60s ก่อนเกมแรกโดยไม่มีเหตุผล (นั่นคือเกม 1 เริ่ม ไม่ใช่เกม 0 จบ)</li>
+      <li><b><code>poll_ms</code> เปลี่ยน type ไม่ได้</b> — 4 test file สร้าง <code>Config(poll_ms=1)</code> ตรง ๆ →
+        เพิ่ม field <code>poll_ms_range</code> แยก + <code>poll_delay_s()</code> helper แทนแก้ type เดิม</li>
+      <li><b>Hop waits jitter ได้ 0 จุด</b> — คาดว่าจะ jitter <code>jump_2/3/4</code> แต่ state พวกนั้น
+        ใช้ <code>relay_tap</code>/<code>jump</code> (shared actions) <b>ไม่มี <code>wait</code> เลย</b> —
+        cadence in-run คุมด้วย <code>poll_ms</code> อย่างเดียว ซึ่ง jitter แล้ว. ที่ jitter จริง = 24 popup settle waits</li>
+    </ul>
+    <b>Enable ที่ <code>boxrun_toggle.json</code> เท่านั้น</b> (config ทดลอง): poll 600→[500,750] · idle 30–60s ที่ home ·
+    24 wait → range. อีก 12 config ยัง fixed จนกว่าตัวนี้จะรันผ่าน
+  </div>
 
   <div class="phase-hd"><span class="badge">PHASE 2</span><h3>Session reset — restart app ทุก 1.5–3 ชม.</h3></div>
   <pre><span class="c">// config JSON</span>
@@ -1035,9 +1059,9 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p1">PHASE 1</div>
       <div class="tl-body">
-        <b>Inter-game delay</b> — wait 30–60s ระหว่างเกม
-        <div class="tl-meta">3 ขั้น · config field 2 ตัว · เล่กสุด · anti-detection 1/3</div>
-        <div class="bar"><i style="width:28%;background:var(--accent)"></i></div>
+        <b>Pacing</b> ✅ <b>DONE</b> — inter-game idle + poll/wait jitter (parse_range 1 ตัวคุม 3 knob)
+        <div class="tl-meta">4 ขั้น · pytest 139 passed · enable ที่ boxrun_toggle ก่อน · anti-detection 1/3</div>
+        <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
       </div>
     </div>
     <div class="tl-row">
@@ -1252,7 +1276,10 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
       <b>Deferred (ตกลงแล้ว):</b> dry-run บนจอจริงเลื่อนไปรวบเฟสสุดท้ายทีเดียว — ยอมรับได้เพราะ
       mb_open ไม่มี coord ใหม่ (ก๊อปจาก chain เดิมที่พิสูจน์ live), fail mode ที่คิดออก = degrade แล้ว recover
       (match_timeout + livelock alert เป็น safety net 2 ชั้น), และเครื่อง dev ไม่มี LDPlayer</li>
-    <li><b>Phase 1</b> — log แสดง delay ต่างกันทุกรอบ อยู่ในช่วง 30–60 · รอบแรกไม่ delay · config ที่ไม่ระบุ field = ไม่มี delay เลย</li>
+    <li><b>Phase 1 ✅</b> — pytest <b>139 passed</b> (+25): delay ต่างกันทุกรอบในช่วง 30–60 · รอบแรกไม่ delay ·
+      config ที่ไม่ระบุ = ไม่ delay เลย · <code>inter_game_state</code> แยกจาก start_state ได้ ·
+      idle ไม่ trip match_timeout · poll/wait draw ต่างกันจริงในช่วง · range พัง 7 แบบถูก reject.
+      <b>ค้าง:</b> ดู log จริงว่า cadence กระจายจริง (ต้องมี baseline จาก Phase 7 ก่อน)</li>
     <li><b>Phase 2</b> — reset จริง: app ปิด+เปิดใหม่, <code>pidof</code> verify ผ่าน 3 รอบ, กลับเข้า home loop ต่อได้, counter reset จริง (ดู log) · เทส crash path ด้วย package ผิด → ต้อง retry 5 แล้ว alert</li>
     <li><b>Phase 3</b> — <code>--boost double_coins</code> → log ยืนยัน detect เปลี่ยนเป็น <code>doublecoins_banner.png</code> · เลือกตัวที่ยังไม่มี template → error บอกชัดว่าต้อง crop ไฟล์อะไร</li>
     <li><b>Phase 4</b> — synthetic test: 4 เหมือน + 2 ต่าง → หา 2 ใบถูก · 6 เหมือนกันหมด → bail ไม่เดา · cell ล้นขอบ → raise ไม่เงียบ · <b>เจอ captcha จริงครั้งแรก: snap เก็บภาพก่อน อย่าให้ solve ทันที</b></li>
