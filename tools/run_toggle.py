@@ -24,6 +24,7 @@ from src import boost as boostmod
 from src import config as cfgmod
 from src.device import AdbError
 from src.fsm import Runner
+from src.perceive import PerceiveError, find_named, read_counter
 
 CONFIG_PATH = "config/cookierun/boxrun_toggle.json"
 
@@ -44,14 +45,15 @@ class BoxQuitRunner(Runner):
     start of each run instead of never tapping jump/slide at all.
 
     check_box's on_match goes straight to quit_run every time boxcounter_marker
-    is seen (i.e. on the run that collects box #1) — there's no OCR reading the
-    "[?] xN" counter's actual number, so the engine can't tell box #1 from #4
-    by itself (see RUN.md). This subclass counts how many times check_box has
-    matched across the whole session and only lets the quit_run goto through
-    once that count reaches quit_after; earlier matches (and ALL matches when
-    quit_after=0, the default — "never quit early") are redirected to
-    check_shop_after_run so the run continues normally instead of bailing on
-    the first box the way the underlying config always did on its own.
+    is seen (i.e. on the run that collects box #1), so this subclass decides
+    whether to let that goto through.
+
+    It prefers reading the "[?] xN" pill: OCR gives the run's actual box count,
+    so quit_after means "quit at the Nth box of THIS run", which is what the
+    flag reads like. When OCR is unavailable or unreadable it falls back to
+    counting runs-that-had-a-box across the session — the only thing the engine
+    could do before, and still correct, just coarser. Either way quit_after=0
+    (the default) means never quit early.
 
     warmup_burst (only when both jump and slide are stripped, see main()):
     community-reported game bug — a run with ZERO jump/slide taps the whole
@@ -66,13 +68,47 @@ class BoxQuitRunner(Runner):
     revisiting the guard chain" — the static FSM has no per-run variables.
     """
 
-    def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False, **kwargs):
+    #: Where the box-count digits sit relative to the counter marker's match:
+    #: (dx, dy, w, h) from the marker's top-left. The pill draws "[?] xN" with the
+    #: number to the right of the glyph.
+    COUNTER_OFFSET = (70, 0, 90, 90)
+
+    def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False,
+                 counter_template: str = "boxcounter_marker.png", **kwargs):
         super().__init__(*args, **kwargs)
         self.quit_after = quit_after
         self.boxes_seen = 0
         self.warmup_burst = warmup_burst
+        self.counter_template = counter_template
         self._warmup_done = False
         self._box_counted_this_run = False
+        self._ocr_available = True  # flipped off after the first failure
+
+    def _read_box_count(self, frame) -> int | None:
+        """The run's box count from the counter pill, or None if unreadable.
+
+        Locates the pill by its own marker rather than a fixed rectangle, so the
+        region follows the marker instead of assuming where the HUD sits. One
+        failure disables OCR for the session: pytesseract missing or a missing
+        tesseract binary will not fix itself mid-run, and retrying every few
+        seconds would just spam the log.
+        """
+        if frame is None or not self._ocr_available:
+            return None
+        try:
+            m = find_named(frame, self.store, self.counter_template,
+                           self.cfg.match_threshold)
+            if not m.found:
+                return None
+            dx, dy, w, h = self.COUNTER_OFFSET
+            x = m.x - m.w // 2 + dx
+            y = m.y - m.h // 2 + dy
+            return read_counter(frame, (max(0, x), max(0, y), w, h))
+        except PerceiveError as e:
+            logging.getLogger("netrunner").warning(
+                "box-count OCR unavailable, falling back to counting runs: %s", e)
+            self._ocr_available = False
+            return None
 
     def _run_actions(self, actions, frame, state):
         if state == "check_box":
@@ -81,20 +117,30 @@ class BoxQuitRunner(Runner):
             )
             if is_quit_goto:
                 log = logging.getLogger("netrunner")
-                # boxcounter_marker.png stays on screen for the rest of the run
-                # once a box is collected (see the state's own _note) — check_box
-                # gets revisited every ~4 hops for the REST of that same run, so
-                # without this guard boxes_seen was incrementing once per revisit
-                # (4 hits in ~10s, all one run's box) instead of once per run.
-                if not self._box_counted_this_run:
-                    self._box_counted_this_run = True
-                    self.boxes_seen += 1
-                if self.quit_after <= 0 or self.boxes_seen < self.quit_after:
-                    log.info("check_box: %d run(s) with a box so far (quit_after=%d) — continuing run",
-                              self.boxes_seen, self.quit_after)
-                    return "check_shop_after_run", False
-                log.info("check_box: %d/%d runs-with-a-box reached — quitting run",
-                          self.boxes_seen, self.quit_after)
+                in_run = self._read_box_count(frame)
+                if in_run is not None:
+                    if self.quit_after <= 0 or in_run < self.quit_after:
+                        log.info("check_box: box %d this run (quit_after=%d) — continuing run",
+                                 in_run, self.quit_after)
+                        return "check_shop_after_run", False
+                    log.info("check_box: box %d/%d this run — quitting run",
+                             in_run, self.quit_after)
+                else:
+                    # boxcounter_marker.png stays on screen for the rest of the run
+                    # once a box is collected (see the state's own _note) — check_box
+                    # gets revisited every ~4 hops for the REST of that same run, so
+                    # without this guard boxes_seen was incrementing once per revisit
+                    # (4 hits in ~10s, all one run's box) instead of once per run.
+                    if not self._box_counted_this_run:
+                        self._box_counted_this_run = True
+                        self.boxes_seen += 1
+                    if self.quit_after <= 0 or self.boxes_seen < self.quit_after:
+                        log.info("check_box: %d run(s) with a box so far (quit_after=%d) "
+                                 "— continuing run [no OCR]",
+                                 self.boxes_seen, self.quit_after)
+                        return "check_shop_after_run", False
+                    log.info("check_box: %d/%d runs-with-a-box reached — quitting run [no OCR]",
+                             self.boxes_seen, self.quit_after)
 
         # run_result marks the run as over -> the NEXT time we reach
         # guard_not_inactive is a new run and needs its own burst, and the

@@ -117,8 +117,13 @@ def find_named(
     return find(frame, store.get(name), threshold, roi=roi)
 
 
-def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None) -> str:
-    """OCR a frame (or a sub-region x,y,w,h) via pytesseract. Optional dependency."""
+def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None,
+              config: str = "") -> str:
+    """OCR a frame (or a sub-region x,y,w,h) via pytesseract. Optional dependency.
+
+    `config` goes straight to tesseract — see read_counter for the digits-only
+    invocation a counter needs.
+    """
     try:
         import pytesseract  # noqa: PLC0415 — optional, imported lazily
     except ImportError as e:
@@ -130,4 +135,50 @@ def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None
         x, y, w, h = region
         frame = frame[y : y + h, x : x + w]
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    return pytesseract.image_to_string(gray).strip()
+    return pytesseract.image_to_string(gray, config=config).strip()
+
+
+#: tesseract page-segmentation mode 7 = "treat the image as one text line", which
+#: is what a counter pill is; the whitelist keeps it from reading the x in "x3"
+#: or the box glyph as a digit.
+_COUNTER_CONFIG = "--psm 7 -c tessedit_char_whitelist=0123456789"
+
+#: Upscale before OCR. A counter pill is ~30px tall in a 1080p frame and
+#: tesseract is trained on print-sized glyphs; without this it reads mostly noise.
+_COUNTER_SCALE = 4
+
+
+def read_counter(frame: np.ndarray, region: tuple[int, int, int, int] | None = None,
+                 *, scale: int = _COUNTER_SCALE) -> int | None:
+    """Read a small integer (a box/coin counter) from a frame region.
+
+    Returns None when nothing digit-like is there — a caller must treat that as
+    "unknown", not as zero. Everything about a counter fights OCR: the digits are
+    tiny, sit on a busy background, and are prefixed by an "x" that reads as a
+    number if allowed to. So the region is upscaled, thresholded, and tesseract
+    is pinned to one line of digits.
+
+    Raises PerceiveError only when OCR itself is unavailable; a frame that simply
+    holds no readable digits is a None, not an error.
+    """
+    if region is not None:
+        x, y, w, h = region
+        frame = frame[y : y + h, x : x + w]
+    if frame.size == 0:
+        return None
+
+    gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    if scale > 1:
+        gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    # Otsu rather than a fixed cut: the pill's background brightness changes with
+    # whatever the level is drawing behind it.
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Digits must end up dark-on-light for tesseract; the pill draws them light.
+    if float(binary.mean()) < 127:
+        binary = cv2.bitwise_not(binary)
+
+    raw = read_text(binary, config=_COUNTER_CONFIG)
+    digits = "".join(c for c in raw if c.isdigit())
+    if not digits:
+        return None
+    return int(digits)
