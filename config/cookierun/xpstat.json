@@ -711,9 +711,7 @@
           "ms": 1200
         },
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "type": "relay_tap"
         },
         {
           "type": "wait",

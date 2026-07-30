@@ -33,130 +33,9 @@
       "absent_wait_ms": 700,
       "on_absent": [
         {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
+          "type": "faststart_tap",
+          "taps": 14,
+          "gap_ms": 400
         },
         {
           "type": "goto",
@@ -395,166 +274,9 @@
           "ms": 1500
         },
         {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
-        },
-        {
-          "type": "tap_xy",
-          "x": 985,
-          "y": 515
-        },
-        {
-          "type": "wait",
-          "ms": 400
+          "type": "faststart_tap",
+          "taps": 18,
+          "gap_ms": 400
         },
         {
           "type": "goto",
@@ -669,9 +391,7 @@
           "ry": 55
         },
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "type": "relay_tap"
         },
         {
           "type": "goto",
@@ -698,9 +418,7 @@
           "ry": 55
         },
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "type": "relay_tap"
         },
         {
           "type": "goto",
@@ -727,9 +445,7 @@
           "ry": 55
         },
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "type": "relay_tap"
         },
         {
           "type": "goto",
@@ -1028,9 +744,7 @@
           "ry": 55
         },
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "type": "relay_tap"
         },
         {
           "type": "goto",
@@ -1137,9 +851,7 @@
           "ms": 1200
         },
         {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 540
+          "type": "relay_tap"
         },
         {
           "type": "wait",
