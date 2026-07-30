@@ -193,11 +193,11 @@ Manual equivalent:
 python main.py --config config/cookierun/addfriend.json --max-cycles 50
 ```
 
-## Box Farm — Episode 3 (`boxrun_speed.bat`)
+## Box Farm — Speed (`boxrun_speed.bat`)
 
 Double-click **`boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
 
-**Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_speed` / `boxrun_passive` / ...), not by episode.
+**Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_speed` / `boxrun_toggle`), not by episode.
 
 Differences from `cookierun.json` (the coin grinder), all learned live 2026-07-15:
 
@@ -214,20 +214,16 @@ Manual equivalent:
 python main.py --config config/cookierun/boxrun_speed.json
 ```
 
-## Box Farm — no relay, no early quit (`boxrun_speed_noquit.bat`)
+## Box Farm — archived variants
 
-Double-click **`boxrun_speed_noquit.bat`** — a static clone of `boxrun_speed.json` (`config/cookierun/boxrun_speed_noquit.json`), not tied to any specific episode, with two things permanently removed, no toggle/prompt:
+These were trimmed from the active set on 2026-07-31 and moved to
+`config/cookierun/_archive/` (see its README). The active box-farm set is now
+just **`boxrun_speed`**, **`boxrun_magnet`**, and **`boxrun_toggle`** (below).
 
-- **No Cookie Relay Boost tap** — the (960,540) tap that `boxrun_speed.json` fires every hop (`jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`) is gone from all four.
-- **No early quit on a box.** `boxrun_speed.json`'s `check_box` bails via `quit_run` the instant `boxcounter_marker` shows (a ~40s run). Here `check_box` always falls through to `check_shop_after_run` instead (both `on_match` and `on_absent`) — every run plays to its natural death/end, and a collected box still gets opened normally once the run actually ends (`run_result` → `mystery_box`).
-
-Everything else (speed-boost buy, Fast Start, heart gate, J→J→S→J jump/slide pattern, popup-probe chain) is identical to `boxrun_speed.json`. Not episode-locked — the bot only taps `Play!`, so whichever episode (3/5/6) is selected on home before starting is what gets played.
-
-Manual equivalent:
-
-```powershell
-python main.py --config config/cookierun/boxrun_speed_noquit.json
-```
+Archived: `boxrun_speed_quit2` · `boxrun_speed_noquit` · `boxrun_passive` ·
+`boxrun_passive_3boost` · `boxrun_magnet_quit3`. Each still works — move its JSON
+back up to `config/cookierun/` to reactivate. `boxrun_toggle` covers most of
+them via flags (relay/jump/slide off, `--quit-after-boxes N`).
 
 ## Box Farm — Toggle (`boxrun_toggle.bat`)
 
