@@ -156,89 +156,80 @@
   ก่อนแตะ Play! มี <b>gate 2 ชั้น</b> (verify_no_popup / verify_no_sendlife) กัน tap ทะลุ popup ที่บัง Play!.
 </p>
 <div class="fig">
-  <svg viewBox="0 0 900 570" role="img" aria-label="Unified box-farm flow with the three per-config divergence points detailed">
-    <defs>
-      <marker id="ua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker>
-      <marker id="uar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185"/></marker>
-      <marker id="uav" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8b5cf6"/></marker>
-      <marker id="uac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ea5e9"/></marker>
-    </defs>
+  <svg viewBox="0 0 820 240" role="img" aria-label="Box-farm shared spine with three numbered branch points">
+    <defs><marker id="ua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker>
+      <marker id="uar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185"/></marker></defs>
     <style>
       .sp{fill:var(--gns);stroke:var(--gn);stroke-width:1.3}
       .gt{fill:var(--ams);stroke:var(--am);stroke-width:1.3}
       .bo{fill:var(--vis);stroke:var(--vi);stroke-width:1.3}
-      .qz{fill:var(--acs);stroke:var(--ac);stroke-width:1.3}
-      .lv{fill:var(--cys);stroke:var(--cy);stroke-width:1.3}
-      .t{fill:var(--tx);font:600 10.5px}.s{fill:var(--dim);font:8.5px}
+      .t{fill:var(--tx);font:600 11px}.s{fill:var(--dim);font:9px}
       .e{stroke:#94a3b8;stroke-width:1.4;fill:none}
-      .ev{stroke:#8b5cf6;stroke-width:1.4;fill:none}
-      .ec{stroke:#0ea5e9;stroke-width:1.4;fill:none}
       .er{stroke:#fb7185;stroke-width:1.3;fill:none;stroke-dasharray:4 3}
-      .l{fill:var(--faint);font:8.5px}.hd{font:700 9.5px}
+      .l{fill:var(--faint);font:9px}
+      .bn{fill:var(--vi);font:700 11px}
     </style>
 
-    <text class="hd" x="24" y="18" fill="var(--gn)">SHARED SPINE — 37 state เหมือนกันทั้ง 4 config</text>
+    <!-- แถวบน: home -> gate -> await_shop -> [①] -> check_heart -->
+    <rect class="sp" x="20" y="26" width="96" height="44" rx="8"/><text class="t" x="68" y="45" text-anchor="middle">home</text><text class="s" x="68" y="59" text-anchor="middle">Play! visible</text>
+    <rect class="gt" x="156" y="26" width="150" height="44" rx="8"/><text class="t" x="231" y="45" text-anchor="middle">verify gate ×2</text><text class="s" x="231" y="59" text-anchor="middle">popup บัง Play?</text>
+    <rect class="sp" x="346" y="26" width="110" height="44" rx="8"/><text class="t" x="401" y="45" text-anchor="middle">await_shop</text><text class="s" x="401" y="59" text-anchor="middle">shop เปิด?</text>
+    <circle cx="506" cy="48" r="15" fill="var(--vis)" stroke="var(--vi)" stroke-width="1.5"/><text class="bn" x="506" y="52" text-anchor="middle">①</text>
+    <rect class="sp" x="556" y="26" width="112" height="44" rx="8"/><text class="t" x="612" y="45" text-anchor="middle">check_heart</text><text class="s" x="612" y="59" text-anchor="middle">tap Play!</text>
+    <circle cx="718" cy="48" r="15" fill="var(--cys)" stroke="var(--cy)" stroke-width="1.5"/><text class="bn" x="718" y="52" text-anchor="middle" fill="var(--cy)">③</text>
 
-    <rect class="sp" x="24" y="30" width="100" height="42" rx="7"/><text class="t" x="74" y="48" text-anchor="middle">home</text><text class="s" x="74" y="61" text-anchor="middle">Play! visible</text>
-    <rect class="gt" x="164" y="30" width="132" height="42" rx="7"/><text class="t" x="230" y="48" text-anchor="middle">verify_no_popup</text><text class="s" x="230" y="61" text-anchor="middle">inactive บัง Play?</text>
-    <rect class="gt" x="336" y="30" width="142" height="42" rx="7"/><text class="t" x="407" y="48" text-anchor="middle">verify_no_sendlife</text><text class="s" x="407" y="61" text-anchor="middle">send-life บัง Play?</text>
-    <rect class="sp" x="518" y="30" width="110" height="42" rx="7"/><text class="t" x="573" y="48" text-anchor="middle">await_shop</text><text class="s" x="573" y="61" text-anchor="middle">shop เปิด?</text>
-    <rect class="sp" x="668" y="30" width="112" height="42" rx="7"/><text class="t" x="724" y="48" text-anchor="middle">check_heart</text><text class="s" x="724" y="61" text-anchor="middle">heart? tap Play!</text>
+    <line class="e" x1="116" y1="48" x2="154" y2="48" marker-end="url(#ua)"/>
+    <line class="e" x1="306" y1="48" x2="344" y2="48" marker-end="url(#ua)"/><text class="l" x="325" y="42" text-anchor="middle">Play</text>
+    <line class="e" x1="456" y1="48" x2="489" y2="48" marker-end="url(#ua)"/>
+    <line class="e" x1="523" y1="48" x2="554" y2="48" marker-end="url(#ua)"/><text class="l" x="538" y="42" text-anchor="middle">buy/skip</text>
 
-    <line class="e" x1="124" y1="51" x2="162" y2="51" marker-end="url(#ua)"/>
-    <line class="e" x1="296" y1="51" x2="334" y2="51" marker-end="url(#ua)"/><text class="l" x="315" y="45" text-anchor="middle">Play</text>
-    <line class="e" x1="478" y1="51" x2="516" y2="51" marker-end="url(#ua)"/>
-    <line class="e" x1="628" y1="51" x2="666" y2="51" marker-end="url(#ua)"/>
+    <!-- แถวล่าง: running -> [②] -> run_result -> mb_open -> recheck -> (home) -->
+    <rect class="sp" x="556" y="150" width="112" height="44" rx="8"/><text class="t" x="612" y="169" text-anchor="middle">running</text><text class="s" x="612" y="183" text-anchor="middle">J→J→S→J จนตาย</text>
+    <circle cx="506" cy="172" r="15" fill="var(--acs)" stroke="var(--ac)" stroke-width="1.5"/><text class="bn" x="506" y="176" text-anchor="middle" fill="var(--ac)">②</text>
+    <rect class="sp" x="346" y="150" width="110" height="44" rx="8"/><text class="t" x="401" y="169" text-anchor="middle">run_result</text><text class="s" x="401" y="183" text-anchor="middle">OK</text>
+    <rect class="bo" x="196" y="150" width="110" height="44" rx="8"/><text class="t" x="251" y="169" text-anchor="middle">mb_open</text><text class="s" x="251" y="183" text-anchor="middle">เปิดกล่อง (loop)</text>
+    <rect class="sp" x="20" y="150" width="146" height="44" rx="8"/><text class="t" x="93" y="169" text-anchor="middle">mystery_box_recheck</text><text class="s" x="93" y="183" text-anchor="middle">Play! กลับมา?</text>
 
-    <rect class="sp" x="668" y="150" width="112" height="42" rx="7"/><text class="t" x="724" y="168" text-anchor="middle">running</text><text class="s" x="724" y="181" text-anchor="middle">J→J→S→J จนตาย</text>
-    <rect class="sp" x="484" y="150" width="120" height="42" rx="7"/><text class="t" x="544" y="168" text-anchor="middle">run_result</text><text class="s" x="544" y="181" text-anchor="middle">OK</text>
-    <rect class="bo" x="312" y="150" width="122" height="42" rx="7"/><text class="t" x="373" y="168" text-anchor="middle">mb_open</text><text class="s" x="373" y="181" text-anchor="middle">เปิดกล่อง (loop)</text>
-    <rect class="sp" x="140" y="150" width="142" height="42" rx="7"/><text class="t" x="211" y="168" text-anchor="middle">mystery_box_recheck</text><text class="s" x="211" y="181" text-anchor="middle">Play! กลับมา?</text>
-
-    <line class="e" x1="724" y1="72" x2="724" y2="148" marker-end="url(#ua)"/>
-    <line class="e" x1="668" y1="171" x2="606" y2="171" marker-end="url(#ua)"/><text class="l" x="637" y="165" text-anchor="middle">result</text>
-    <line class="e" x1="484" y1="171" x2="436" y2="171" marker-end="url(#ua)"/><text class="l" x="460" y="165" text-anchor="middle">box</text>
-    <line class="e" x1="312" y1="171" x2="284" y2="171" marker-end="url(#ua)"/>
-    <path class="e" d="M211,150 C211,110 130,80 124,66" marker-end="url(#ua)"/><text class="l" x="150" y="112" text-anchor="middle">Play! → home</text>
-
-    <rect class="bo" x="508" y="240" width="368" height="98" rx="10"/>
-    <text class="hd" x="522" y="258" fill="var(--vi)">① BOOST — แตกจาก await_shop (ต่างต่อ config)</text>
-    <text class="s" x="522" y="275" fill="var(--vi)">magnet: probe_magnet → buy_magnet → picker → wait_roll → start_run</text>
-    <text class="s" x="522" y="290" fill="var(--vi)">coinrun: probe_dc_owned → buy_boost → picker → wait_roll</text>
-    <text class="s" x="522" y="305" fill="var(--vi)">toggle: boost ที่เลือกตอนรัน (apply_boost patch)</text>
-    <text class="s" x="522" y="324" fill="#fb7185">default: ไม่ซื้อ — await_shop → check_heart ตรง</text>
-    <path class="ev" d="M573,72 C566,150 640,200 692,240" marker-end="url(#uav)"/>
-    <path class="e" d="M700,240 C712,180 720,120 724,74" marker-end="url(#ua)"/><text class="l" x="770" y="150" text-anchor="middle">equipped → check_heart</text>
-
-    <rect class="qz" x="24" y="240" width="452" height="84" rx="10"/>
-    <text class="hd" x="38" y="258" fill="var(--ac)">② QUIT — เจอกล่องแล้วออกเลยมั้ย? (ต่างต่อ config)</text>
-    <text class="s" x="38" y="275" fill="var(--ac)">default / toggle: check_box → check_box2 → quit_run (บีบออกทาง pause menu)</text>
-    <text class="s" x="38" y="290" fill="var(--ac)">→ default ควิทที่กล่องแรก · toggle: --quit-after-boxes N</text>
-    <text class="s" x="38" y="309" fill="#fb7185">magnet / coinrun: ไม่มี quit — เล่นจนตายทุก run</text>
-    <path class="ec" d="M700,192 C560,215 480,235 476,262" marker-end="url(#uac)"/><text class="l" x="580" y="228" text-anchor="middle" fill="#0ea5e9">running: ยังไม่ตาย → check_box</text>
-
-    <rect class="lv" x="24" y="360" width="414" height="84" rx="10"/>
-    <text class="hd" x="38" y="378" fill="var(--cy)">③ LIVES routine — เฉพาะ boxrun_toggle</text>
-    <text class="s" x="38" y="395" fill="var(--cy)">ทุก 25–35 นาที (periodic_routines): home → lives_scan → confirm_dialog</text>
-    <text class="s" x="38" y="410" fill="var(--cy)">→ message_sent → (ไม่เจอ) scroll_list ×6 → กลับ home</text>
-    <text class="s" x="38" y="429" fill="var(--cy)">14 lives_* states · + หลัง session reset ทุกครั้ง (after_reset)</text>
-    <path class="ec" d="M74,192 C74,285 30,320 30,358" marker-end="url(#uac)"/><text class="l" x="96" y="292" text-anchor="start" fill="#06b6d4">timer due</text>
-
-    <rect class="gt" x="470" y="360" width="406" height="84" rx="10" stroke-dasharray="4 3"/>
-    <text class="hd" x="484" y="378">POPUP RECOVERY (shared) — home absent = มี popup บัง Play!</text>
-    <text class="s" x="484" y="395">connectionlost → enterleague → inactive → settings → fortunebakery</text>
-    <text class="s" x="484" y="410">→ prevresults → dailycheckin → treasure → sendlife → congrats / ...</text>
-    <text class="s" x="484" y="429">แต่ละตัว: close_popup + verify → home · inactive/conn-lost → recover_login</text>
-    <path class="er" d="M124,60 C320,340 466,398 468,398" marker-end="url(#uar)"/>
+    <line class="e" x1="612" y1="70" x2="612" y2="148" marker-end="url(#ua)"/><text class="l" x="622" y="112" text-anchor="start">ตาย</text>
+    <line class="e" x1="556" y1="172" x2="523" y2="172" marker-end="url(#ua)"/>
+    <line class="e" x1="489" y1="172" x2="458" y2="172" marker-end="url(#ua)"/><text class="l" x="473" y="166" text-anchor="middle">box</text>
+    <line class="e" x1="346" y1="172" x2="308" y2="172" marker-end="url(#ua)"/>
+    <line class="e" x1="196" y1="172" x2="168" y2="172" marker-end="url(#ua)"/>
+    <path class="e" d="M93,150 C93,110 40,88 30,72" marker-end="url(#ua)"/><text class="l" x="55" y="112" text-anchor="middle">Play!→home</text>
+    <path class="er" d="M116,60 C150,110 130,150 120,150" marker-end="url(#uar)"/><text class="l" x="150" y="128" text-anchor="middle" fill="#fb7185">home absent → popup</text>
   </svg>
   <div class="legend">
-    <span><i style="background:var(--gns);border-color:var(--gn)"></i>spine ร่วม (37 state)</span>
-    <span><i style="background:var(--vis);border-color:var(--vi)"></i>① boost (ต่าง)</span>
-    <span><i style="background:var(--acs);border-color:var(--ac)"></i>② quit (ต่าง)</span>
-    <span><i style="background:var(--cys);border-color:var(--cy)"></i>③ lives (toggle)</span>
-    <span><i style="background:var(--ams);border-color:var(--am)"></i>popup recovery</span>
-    <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="#fb7185" stroke-width="1.3" stroke-dasharray="4 3"/></svg> absent / skip</span>
+    <span><i style="background:var(--gns);border-color:var(--gn)"></i>spine ร่วม (37 state ทั้ง 4 config)</span>
+    <span><i style="background:var(--ams);border-color:var(--am)"></i>verify gate</span>
+    <span><i style="background:var(--vis);border-color:var(--vi)"></i>mb_open</span>
+    <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="#fb7185" stroke-width="1.3" stroke-dasharray="4 3"/></svg> absent path</span>
   </div>
+</div>
+
+<p class="lead" style="margin-top:16px"><b>จุดที่แต่ละ config ต่างกัน — 3 จุด (①②③ ในภาพ):</b></p>
+<div class="tw">
+<table>
+  <thead><tr><th style="width:130px">จุด</th><th>ทำอะไร / state ที่เดินผ่าน</th></tr></thead>
+  <tbody>
+    <tr><td><b style="color:var(--vi)">① BOOST</b><br><span class="s" style="font-size:11px;color:var(--faint)">แตกจาก await_shop</span></td>
+      <td><b>magnet</b>: probe_magnet → buy_magnet → picker → wait_roll → start_run<br>
+        <b>coinrun</b>: probe_dc_owned → buy_boost → picker → wait_roll<br>
+        <b>toggle</b>: boost ที่เลือกตอนรัน (apply_boost patch)<br>
+        <b style="color:var(--rd)">default</b>: ไม่ซื้อ — await_shop → check_heart ตรง</td></tr>
+    <tr><td><b style="color:var(--ac)">② QUIT</b><br><span class="s" style="font-size:11px;color:var(--faint)">แตกจาก running</span></td>
+      <td><b>default / toggle</b>: check_box → check_box2 → quit_run (บีบออกทาง pause menu)<br>
+        → default ควิทที่กล่องแรก · toggle: <code>--quit-after-boxes N</code><br>
+        <b style="color:var(--rd)">magnet / coinrun</b>: ไม่มี quit — เล่นจนตายทุก run</td></tr>
+    <tr><td><b style="color:var(--cy)">③ LIVES</b><br><span class="s" style="font-size:11px;color:var(--faint)">timer จาก home</span></td>
+      <td><b>เฉพาะ boxrun_toggle</b> — ทุก 25–35 นาที (periodic_routines):<br>
+        home → lives_scan → confirm_dialog → message_sent → (ไม่เจอ) scroll_list ×6 → home<br>
+        14 lives_* states · + รันหลัง session reset ทุกครั้ง (after_reset)</td></tr>
+    <tr><td><b style="color:var(--am)">POPUP RECOVERY</b><br><span class="s" style="font-size:11px;color:var(--faint)">shared — home absent</span></td>
+      <td>มี popup บัง Play! → เดิน probe chain ปิดทีละตัว:<br>
+        connectionlost → enterleague → inactive → settings → fortunebakery → prevresults → dailycheckin → treasure → sendlife → congrats → ...<br>
+        แต่ละตัว: close_popup + verify → home · inactive/conn-lost → recover_login</td></tr>
+  </tbody>
+</table>
 </div>
 <div class="tw">
 <table>
