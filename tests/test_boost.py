@@ -184,3 +184,57 @@ class TestNoOrphansShipped:
                            if a.get("type") == "goto"]
                 assert any(t in probes for t in targets), \
                     f"{Path(path).name}:{gate} skips the buy chain ({targets})"
+
+
+class TestPickerTicks:
+    """Multi-Buy re-rolls until any ticked boost lands, so the picker must be
+    left holding exactly one tick — the boost that was asked for."""
+
+    def _picker(self, choice):
+        cfg = _cfg()
+        boost.apply_boost(cfg, choice)
+        return cfg.states["picker"]["on_match"]
+
+    def test_every_other_row_is_cleared_and_the_target_set(self):
+        actions = self._picker("magnet")
+        ticks = [a for a in actions if a.get("type") == "tap_template"]
+        assert len(ticks) == len(boost.PICK)
+
+        wanted = [a for a in ticks if a["template"] == boost.UNTICKED_TEMPLATE]
+        clears = [a for a in ticks if a["template"] == boost.TICKED_TEMPLATE]
+        assert len(wanted) == 1, "exactly one row should be ticked ON"
+        assert len(clears) == len(boost.PICK) - 1
+
+        x, y = boost.PICK["magnet"]
+        assert wanted[0]["roi"] == boost._roi(x, y)
+
+    def test_rows_are_cleared_before_the_target_is_set(self):
+        actions = self._picker("speed")
+        kinds = [a["template"] for a in actions if a.get("type") == "tap_template"]
+        assert kinds[-1] == boost.UNTICKED_TEMPLATE, \
+            "the target must be ticked last, after the clears"
+
+    def test_ticks_run_before_multibuy(self):
+        actions = self._picker("doublecoins")
+        first_multibuy = next(i for i, a in enumerate(actions)
+                              if a.get("type") == "tap_xy")
+        last_tick = max(i for i, a in enumerate(actions)
+                        if a.get("type") == "tap_template")
+        assert last_tick < first_multibuy
+
+    def test_each_roi_covers_only_its_own_row(self):
+        """Rows sit 74px apart; an roi reaching a neighbour would let the disc
+        match the wrong row and tick something nobody asked for."""
+        for name, (x, y) in boost.PICK.items():
+            rx, ry, rw, rh = boost._roi(x, y)
+            for other, (ox, oy) in boost.PICK.items():
+                if other == name:
+                    continue
+                inside = rx <= ox <= rx + rw and ry <= oy <= ry + rh
+                assert not inside, f"{name}'s roi contains {other}"
+
+    def test_taps_are_conditional(self):
+        """A blind tap on an already-correct row would toggle it the wrong way."""
+        for a in self._picker("magnet"):
+            if a.get("type") == "tap_template":
+                assert a.get("optional") is True
