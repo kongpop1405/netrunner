@@ -1,0 +1,402 @@
+<meta charset="utf-8">
+<title>NetRunner — Bot Flows</title>
+<style>
+  :root{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;--bd2:#cbd5e1;
+    --tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;--acs:#e0f2fe;
+    --gn:#10b981;--gns:#d1fae5;--am:#f59e0b;--ams:#fef3c7;--rd:#f43f5e;--rds:#ffe4e6;
+    --in:#6366f1;--ins:#e0e7ff;--vi:#8b5cf6;--vis:#ede9fe;--cy:#06b6d4;--cys:#cffafe}
+  @media(prefers-color-scheme:dark){:root{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;
+    --bd:#1e293b;--bd2:#334155;--tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;
+    --ac:#38bdf8;--acs:rgba(56,189,248,.12);--gn:#34d399;--gns:rgba(52,211,153,.14);
+    --am:#fbbf24;--ams:rgba(251,191,36,.14);--rd:#fb7185;--rds:rgba(251,113,133,.14);
+    --in:#818cf8;--ins:rgba(129,140,248,.14);--vi:#a78bfa;--vis:rgba(167,139,250,.14);
+    --cy:#22d3ee;--cys:rgba(34,211,238,.14)}}
+  :root[data-theme="dark"]{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;--bd:#1e293b;
+    --bd2:#334155;--tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;--ac:#38bdf8;
+    --acs:rgba(56,189,248,.12);--gn:#34d399;--gns:rgba(52,211,153,.14);--am:#fbbf24;
+    --ams:rgba(251,191,36,.14);--rd:#fb7185;--rds:rgba(251,113,133,.14);--in:#818cf8;
+    --ins:rgba(129,140,248,.14);--vi:#a78bfa;--vis:rgba(167,139,250,.14);--cy:#22d3ee;--cys:rgba(34,211,238,.14)}
+  :root[data-theme="light"]{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;
+    --bd2:#cbd5e1;--tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;
+    --acs:#e0f2fe;--gn:#10b981;--gns:#d1fae5;--am:#f59e0b;--ams:#fef3c7;--rd:#f43f5e;
+    --rds:#ffe4e6;--in:#6366f1;--ins:#e0e7ff;--vi:#8b5cf6;--vis:#ede9fe;--cy:#06b6d4;--cys:#cffafe}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:14px/1.6 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding:44px 22px 90px}
+  .head{border-bottom:1px solid var(--bd);padding-bottom:22px;margin-bottom:24px}
+  .toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  h1{font-size:25px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px}
+  .sub{color:var(--dim);font-size:14px}
+  .toggle{background:var(--elev);color:var(--dim);border:1px solid var(--bd2);
+    border-radius:8px;padding:7px 13px;font:500 13px inherit;cursor:pointer}
+  .toggle:hover{background:var(--elev2);color:var(--tx)}
+  nav.toc{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  nav.toc a{font:600 12px ui-monospace,monospace;padding:5px 10px;border-radius:7px;
+    background:var(--elev);border:1px solid var(--bd);color:var(--dim);text-decoration:none}
+  nav.toc a:hover{background:var(--acs);color:var(--ac);border-color:var(--ac)}
+  h2{font-size:20px;font-weight:700;margin:40px 0 6px;display:flex;align-items:center;gap:10px;scroll-margin-top:16px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:7px;background:var(--acs);color:var(--ac);font:700 12px ui-monospace,monospace}
+  h3{font-size:16px;font-weight:600;margin:30px 0 6px;scroll-margin-top:16px}
+  .fname{font:700 13px ui-monospace,monospace;color:var(--vi)}
+  p{margin:8px 0}.lead{color:var(--dim);font-size:13.5px}
+  code{font:500 12px ui-monospace,Consolas,monospace;background:var(--elev2);color:var(--in);
+    padding:1px 6px;border-radius:5px;border:1px solid var(--bd)}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}
+  .tag{font:600 11px ui-monospace,monospace;padding:3px 9px;border-radius:999px;border:1px solid}
+  .tag.bo{background:var(--vis);color:var(--vi);border-color:var(--vi)}
+  .tag.q1{background:var(--gns);color:var(--gn);border-color:var(--gn)}
+  .tag.q0{background:var(--ams);color:var(--am);border-color:var(--am)}
+  .tag.rl{background:var(--cys);color:var(--cy);border-color:var(--cy)}
+  .tag.st{background:var(--elev2);color:var(--dim);border-color:var(--bd2)}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
+    font:600 11px ui-monospace,monospace;border:1px solid;white-space:nowrap}
+  .pill .d{width:5px;height:5px;border-radius:50%}
+  .pill.act{background:var(--gns);color:var(--gn);border-color:var(--gn)}.pill.act .d{background:var(--gn)}
+  .pill.arc{background:var(--elev2);color:var(--faint);border-color:var(--bd2)}
+  .pill.u{background:var(--ins);color:var(--in);border-color:var(--in)}.pill.u .d{background:var(--in)}
+  .tw{overflow-x:auto;margin:12px 0}
+  table{width:100%;border-collapse:collapse;background:var(--elev);border-radius:10px;
+    overflow:hidden;font-size:13px;min-width:640px}
+  th{text-align:left;font:600 10.5px/1.4 inherit;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--dim);padding:9px 12px;background:var(--elev2);border-bottom:1px solid var(--bd)}
+  td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+  tr:last-child td{border-bottom:none}tr:hover td{background:var(--elev2)}
+  .fig{background:var(--elev);border:1px solid var(--bd);border-radius:12px;padding:16px 12px;margin:12px 0}
+  .fig svg{display:block;width:100%;height:auto;min-width:520px}
+  svg text{font-family:ui-monospace,monospace}
+  .diff{background:var(--elev);border:1px solid var(--bd);border-left:3px solid var(--vi);
+    border-radius:8px;padding:11px 14px;font-size:13px;margin:10px 0}
+  .diff b{color:var(--tx)}
+  .note{background:var(--elev);border:1px solid var(--bd);border-left:3px solid var(--ac);
+    border-radius:8px;padding:12px 14px;font-size:13px;color:var(--dim);margin:14px 0}
+  .note.warn{border-left-color:var(--am)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:11.5px;color:var(--dim)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:11px;height:11px;border-radius:3px;border:1px solid;display:inline-block}
+  @media(max-width:720px){.wrap{padding:24px 14px 60px}h1{font-size:20px}}
+</style>
+
+<div class="wrap">
+<header class="head">
+  <div class="toprow">
+    <div>
+      <h1>NetRunner — โฟลวบอททั้งหมด</h1>
+      <div class="sub">launcher → config → state-machine flow · Cookie Run: OvenBreak · ณ 2026-07-31</div>
+    </div>
+    <button class="toggle" onclick="var r=document.documentElement;
+      r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';
+      this.textContent=r.dataset.theme==='dark'?'☾ Dark':'☀ Light';">☀ Light</button>
+  </div>
+  <nav class="toc">
+    <a href="#overview">ภาพรวม</a>
+    <a href="#boxfarm">box-farm</a>
+    <a href="#default">default</a><a href="#magnet">magnet</a><a href="#toggle">toggle</a>
+    <a href="#coinrun">coinrun</a>
+    <a href="#utility">utility</a>
+    <a href="#shared">กลไกร่วม</a>
+    <a href="#archive">archived</a>
+  </nav>
+</header>
+
+<p class="lead">
+  ทุกบอทใช้ <b>engine ตัวเดียวกัน</b> (<code>src/fsm.py</code> — capture → perceive → act loop).
+  ความต่างอยู่ที่ <b>config JSON</b> ล้วน: บอทคนละตัว = state machine คนละชุด. launcher <code>.bat</code>
+  แค่เลือก config + ถาม flag แล้วเรียก <code>main.py</code>.
+</p>
+
+<!-- ═══════════════ OVERVIEW ═══════════════ -->
+<section id="overview">
+<h2><span class="n">01</span>ภาพรวม — 8 บอท active + 5 archived</h2>
+<div class="tw">
+<table>
+  <thead><tr><th>Launcher (.bat)</th><th>Config</th><th style="width:70px">States</th><th>กลุ่ม</th><th>งาน</th></tr></thead>
+  <tbody>
+    <tr><td><span class="fname">boxrun_default</span></td><td><code>boxrun_default.json</code></td><td>40</td>
+      <td><span class="pill u"><span class="d"></span>box-farm</span></td>
+      <td><b>default</b> — ไม่ซื้อ boost, ไม่ tap relay, jump-hop, ควิทพอได้ 1 กล่อง</td></tr>
+    <tr><td><span class="fname">boxrun_magnet</span></td><td><code>boxrun_magnet.json</code></td><td>45</td>
+      <td><span class="pill u"><span class="d"></span>box-farm</span></td>
+      <td>ซื้อ Magnetic Aura ทุก run · jump-hop · เล่นจนตาย</td></tr>
+    <tr><td><span class="fname">boxrun_toggle</span></td><td><code>boxrun_toggle.json</code></td><td>62</td>
+      <td><span class="pill u"><span class="d"></span>box-farm</span></td>
+      <td><b>ถาม flag ตอนรัน</b> (boost/jump/slide/relay/quit) + anti-detection ครบ</td></tr>
+    <tr><td><span class="fname">coinrun</span></td><td><code>coinrun.json</code></td><td>47</td>
+      <td><span class="pill u"><span class="d"></span>box-farm</span></td>
+      <td>ซื้อ Double Coins — เก็บเหรียญ (โครงเหมือน box-farm)</td></tr>
+    <tr><td><span class="fname">sendlife</span></td><td><code>sendlife.json</code></td><td>16</td>
+      <td><span class="pill act"><span class="d"></span>utility</span></td>
+      <td>ส่ง life ให้เพื่อนทั้ง friends list แล้ว stop</td></tr>
+    <tr><td><span class="fname">giftdraw</span></td><td><code>giftdraw.json</code></td><td>13</td>
+      <td><span class="pill act"><span class="d"></span>utility</span></td>
+      <td>เปิด Gift Draw box รัว ๆ จนหมด แล้ว stop</td></tr>
+    <tr><td><span class="fname">addfriend</span></td><td><code>addfriend.json</code></td><td>15</td>
+      <td><span class="pill act"><span class="d"></span>utility</span></td>
+      <td>Find tab → refresh → ส่ง friend request ทีละแถว</td></tr>
+    <tr><td><span style="color:var(--faint)">— (main.py)</span></td><td><code>xpstat.json</code></td><td>38</td>
+      <td><span class="pill act"><span class="d"></span>utility</span></td>
+      <td>วัด XP/run บน test account (ไม่ซื้ออะไร, coin คงที่)</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="note">
+  <b>Active box-farm 3 ตัว:</b> <code>boxrun_default</code> (ไม่ซื้อ boost) · <code>boxrun_magnet</code> (Magnetic Aura) ·
+  <code>boxrun_toggle</code> (ถาม flag). <code>boxrun_toggle</code> ครอบตัวอื่นได้ผ่าน flag.
+  อีก 5 variant <a href="#archive">archived</a>. ทุกตัว<b>เล่น episode ไหนก็ได้</b> — config แค่ tap Play!
+  (สลับ ep: <code>tools/switch_episode.py --episode N</code>).
+</div>
+</section>
+
+<!-- ═══════════════ BOX-FARM MAIN LOOP ═══════════════ -->
+<section id="boxfarm">
+<h2><span class="n">02</span>โฟลว Box-Farm (วงหลักร่วม)</h2>
+<p class="lead">
+  วงหลัก: <b>home → เคลียร์ popup → (ซื้อ boost) → รอ heart → เล่น → เปิดกล่อง → กลับ home</b>.
+  ก่อนแตะ Play! มี <b>gate 2 ชั้น</b> (verify_no_popup / verify_no_sendlife) กัน tap ทะลุ popup ที่บัง Play!.
+</p>
+<div class="fig">
+  <svg viewBox="0 0 820 240" role="img" aria-label="Box-farm shared spine with three numbered branch points">
+    <defs><marker id="ua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker>
+      <marker id="uar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185"/></marker></defs>
+    <style>
+      .sp{fill:var(--gns);stroke:var(--gn);stroke-width:1.3}
+      .gt{fill:var(--ams);stroke:var(--am);stroke-width:1.3}
+      .bo{fill:var(--vis);stroke:var(--vi);stroke-width:1.3}
+      .t{fill:var(--tx);font:600 11px}.s{fill:var(--dim);font:9px}
+      .e{stroke:#94a3b8;stroke-width:1.4;fill:none}
+      .er{stroke:#fb7185;stroke-width:1.3;fill:none;stroke-dasharray:4 3}
+      .l{fill:var(--faint);font:9px}
+      .bn{fill:var(--vi);font:700 11px}
+    </style>
+
+    <!-- แถวบน: home -> gate -> await_shop -> [①] -> check_heart -->
+    <rect class="sp" x="20" y="26" width="96" height="44" rx="8"/><text class="t" x="68" y="45" text-anchor="middle">home</text><text class="s" x="68" y="59" text-anchor="middle">Play! visible</text>
+    <rect class="gt" x="156" y="26" width="150" height="44" rx="8"/><text class="t" x="231" y="45" text-anchor="middle">verify gate ×2</text><text class="s" x="231" y="59" text-anchor="middle">popup บัง Play?</text>
+    <rect class="sp" x="346" y="26" width="110" height="44" rx="8"/><text class="t" x="401" y="45" text-anchor="middle">await_shop</text><text class="s" x="401" y="59" text-anchor="middle">shop เปิด?</text>
+    <circle cx="506" cy="48" r="15" fill="var(--vis)" stroke="var(--vi)" stroke-width="1.5"/><text class="bn" x="506" y="52" text-anchor="middle">①</text>
+    <rect class="sp" x="556" y="26" width="112" height="44" rx="8"/><text class="t" x="612" y="45" text-anchor="middle">check_heart</text><text class="s" x="612" y="59" text-anchor="middle">tap Play!</text>
+    <circle cx="718" cy="48" r="15" fill="var(--cys)" stroke="var(--cy)" stroke-width="1.5"/><text class="bn" x="718" y="52" text-anchor="middle" fill="var(--cy)">③</text>
+
+    <line class="e" x1="116" y1="48" x2="154" y2="48" marker-end="url(#ua)"/>
+    <line class="e" x1="306" y1="48" x2="344" y2="48" marker-end="url(#ua)"/><text class="l" x="325" y="42" text-anchor="middle">Play</text>
+    <line class="e" x1="456" y1="48" x2="489" y2="48" marker-end="url(#ua)"/>
+    <line class="e" x1="523" y1="48" x2="554" y2="48" marker-end="url(#ua)"/><text class="l" x="538" y="42" text-anchor="middle">buy/skip</text>
+
+    <!-- แถวล่าง: running -> [②] -> run_result -> mb_open -> recheck -> (home) -->
+    <rect class="sp" x="556" y="150" width="112" height="44" rx="8"/><text class="t" x="612" y="169" text-anchor="middle">running</text><text class="s" x="612" y="183" text-anchor="middle">J→J→S→J จนตาย</text>
+    <circle cx="506" cy="172" r="15" fill="var(--acs)" stroke="var(--ac)" stroke-width="1.5"/><text class="bn" x="506" y="176" text-anchor="middle" fill="var(--ac)">②</text>
+    <rect class="sp" x="346" y="150" width="110" height="44" rx="8"/><text class="t" x="401" y="169" text-anchor="middle">run_result</text><text class="s" x="401" y="183" text-anchor="middle">OK</text>
+    <rect class="bo" x="196" y="150" width="110" height="44" rx="8"/><text class="t" x="251" y="169" text-anchor="middle">mb_open</text><text class="s" x="251" y="183" text-anchor="middle">เปิดกล่อง (loop)</text>
+    <rect class="sp" x="20" y="150" width="146" height="44" rx="8"/><text class="t" x="93" y="169" text-anchor="middle">mystery_box_recheck</text><text class="s" x="93" y="183" text-anchor="middle">Play! กลับมา?</text>
+
+    <line class="e" x1="612" y1="70" x2="612" y2="148" marker-end="url(#ua)"/><text class="l" x="622" y="112" text-anchor="start">ตาย</text>
+    <line class="e" x1="556" y1="172" x2="523" y2="172" marker-end="url(#ua)"/>
+    <line class="e" x1="489" y1="172" x2="458" y2="172" marker-end="url(#ua)"/><text class="l" x="473" y="166" text-anchor="middle">box</text>
+    <line class="e" x1="346" y1="172" x2="308" y2="172" marker-end="url(#ua)"/>
+    <line class="e" x1="196" y1="172" x2="168" y2="172" marker-end="url(#ua)"/>
+    <path class="e" d="M93,150 C93,110 40,88 30,72" marker-end="url(#ua)"/><text class="l" x="55" y="112" text-anchor="middle">Play!→home</text>
+    <path class="er" d="M116,60 C150,110 130,150 120,150" marker-end="url(#uar)"/><text class="l" x="150" y="128" text-anchor="middle" fill="#fb7185">home absent → popup</text>
+  </svg>
+  <div class="legend">
+    <span><i style="background:var(--gns);border-color:var(--gn)"></i>spine ร่วม (37 state ทั้ง 4 config)</span>
+    <span><i style="background:var(--ams);border-color:var(--am)"></i>verify gate</span>
+    <span><i style="background:var(--vis);border-color:var(--vi)"></i>mb_open</span>
+    <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="#fb7185" stroke-width="1.3" stroke-dasharray="4 3"/></svg> absent path</span>
+  </div>
+</div>
+
+<p class="lead" style="margin-top:16px"><b>จุดที่แต่ละ config ต่างกัน — 3 จุด (①②③ ในภาพ):</b></p>
+<div class="tw">
+<table>
+  <thead><tr><th style="width:130px">จุด</th><th>ทำอะไร / state ที่เดินผ่าน</th></tr></thead>
+  <tbody>
+    <tr><td><b style="color:var(--vi)">① BOOST</b><br><span class="s" style="font-size:11px;color:var(--faint)">แตกจาก await_shop</span></td>
+      <td><b>magnet</b>: probe_magnet → buy_magnet → picker → wait_roll → start_run<br>
+        <b>coinrun</b>: probe_dc_owned → buy_boost → picker → wait_roll<br>
+        <b>toggle</b>: boost ที่เลือกตอนรัน (apply_boost patch)<br>
+        <b style="color:var(--rd)">default</b>: ไม่ซื้อ — await_shop → check_heart ตรง</td></tr>
+    <tr><td><b style="color:var(--ac)">② QUIT</b><br><span class="s" style="font-size:11px;color:var(--faint)">แตกจาก running</span></td>
+      <td><b>default / toggle</b>: check_box → check_box2 → quit_run (บีบออกทาง pause menu)<br>
+        → default ควิทที่กล่องแรก · toggle: <code>--quit-after-boxes N</code><br>
+        <b style="color:var(--rd)">magnet / coinrun</b>: ไม่มี quit — เล่นจนตายทุก run</td></tr>
+    <tr><td><b style="color:var(--cy)">③ LIVES</b><br><span class="s" style="font-size:11px;color:var(--faint)">timer จาก home</span></td>
+      <td><b>เฉพาะ boxrun_toggle</b> — ทุก 25–35 นาที (periodic_routines):<br>
+        home → lives_scan → confirm_dialog → message_sent → (ไม่เจอ) scroll_list ×6 → home<br>
+        14 lives_* states · + รันหลัง session reset ทุกครั้ง (after_reset)</td></tr>
+    <tr><td><b style="color:var(--am)">POPUP RECOVERY</b><br><span class="s" style="font-size:11px;color:var(--faint)">shared — home absent</span></td>
+      <td>มี popup บัง Play! → เดิน probe chain ปิดทีละตัว:<br>
+        connectionlost → enterleague → inactive → settings → fortunebakery → prevresults → dailycheckin → treasure → sendlife → congrats → ...<br>
+        แต่ละตัว: close_popup + verify → home · inactive/conn-lost → recover_login</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="tw">
+<table>
+  <thead><tr><th>Config</th><th>① Boost</th><th>② Quit</th><th>③ Lives</th><th>States</th></tr></thead>
+  <tbody>
+    <tr><td><code>boxrun_default</code></td><td><span style="color:var(--rd)">ไม่ซื้อ</span></td><td><b>quit ที่ 1 กล่อง</b></td><td>✗</td><td>40</td></tr>
+    <tr><td><code>boxrun_magnet</code></td><td>Magnetic Aura</td><td>เล่นจนตาย</td><td>✗</td><td>45</td></tr>
+    <tr><td><code>coinrun</code></td><td>Double Coins</td><td>เล่นจนตาย</td><td>✗</td><td>47</td></tr>
+    <tr><td><code>boxrun_toggle</code></td><td><b>ถามตอนรัน</b></td><td><b>ถามตอนรัน</b></td><td><b>✓ ทุก 25–35 น.</b></td><td>62</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="note">
+  <b>37/62 state เหมือนกันหมด</b> — spine (home→gates→check_heart→running→mb_open→home) + popup recovery +
+  guard chain + jump hops. ต่างแค่ <b>3 จุด</b>: boost อะไร · ควิทมั้ย · มี lives routine มั้ย.
+  <code>boxrun_toggle</code> = superset (มีทั้ง 3 แล้วเลือกเปิด/ปิดผ่าน flag ตอนรัน).
+</div>
+<div class="note warn">
+  <b>In-run ของ 4 ตัวนี้ = jump hops ทั้งหมด</b> (<code>jump_2→jump_3→jump_4</code> วน J→S→J).
+  โครง <span style="color:var(--cy)">guard loop</span> (ไม่มี jump) มีเฉพาะใน <a href="#archive">archived passive</a> variants.
+</div>
+</section>
+
+<!-- ═══════════════ per active box-farm ═══════════════ -->
+<h3 id="default"><span class="fname">boxrun_default</span> — ตัวเริ่มต้น</h3>
+<div class="tags"><span class="tag st" style="border-color:var(--rd);color:var(--rd)">no boost</span>
+  <span class="tag st">jump hops</span><span class="tag st" style="border-color:var(--rd);color:var(--rd)">relay ✗</span>
+  <span class="tag q1">quit ที่ 1 กล่อง</span><span class="tag st">40 states</span></div>
+<p class="lead">ตัว default — <b>ไม่ซื้อ boost</b> (Fast Start อย่างเดียว), jump-hop run (<b>ไม่ tap relay</b>), ควิททันทีที่ได้กล่องแรก. minimal ไม่พึ่ง shop.</p>
+<div class="diff"><b>vs boxrun_magnet:</b> <b>เอา buy chain ออกทั้งชุด</b> (probe/buy/picker/wait_roll/... ลบหมด) · <code>await_shop</code>/<code>boost_shop</code> → <code>check_heart</code> ตรง · เพิ่ม <code>check_box → quit_run</code> (magnet เล่นจนตาย). In-run = jump hops เหมือน magnet <b>แต่ถอด relay_tap ออก</b> (jump_2/3/4 + guard_not_inactive ไม่ tap Cookie Relay)</div>
+
+<h3 id="magnet"><span class="fname">boxrun_magnet</span></h3>
+<div class="tags"><span class="tag bo">boost: magnet</span>
+  <span class="tag st">jump hops</span><span class="tag rl">relay ✓</span>
+  <span class="tag q0">เล่นจนตาย</span><span class="tag st">45 states</span></div>
+<p class="lead">ซื้อ Magnetic Aura ทุก run (Random Boost + Multi-Buy auto-roll) · jump-hop run · เล่นจนตายเก็บกล่อง.</p>
+<div class="diff"><b>baseline ของ jump-hops.</b> <code>boxrun_default</code> = ตัวนี้ลบ buy chain + เพิ่ม quit; <code>coinrun</code> = ตัวนี้เปลี่ยน boost เป็น Double Coins</div>
+
+<h3 id="toggle"><span class="fname">boxrun_toggle</span></h3>
+<div class="tags"><span class="tag st">ep ไหนก็ได้</span><span class="tag bo">boost: ถามตอนรัน</span>
+  <span class="tag rl">relay: ถาม</span><span class="tag q0">quit: ถาม</span><span class="tag st">62 states (มากสุด)</span></div>
+<p class="lead"><b>ตัวเดียวที่ถาม flag ตอนรัน</b> — ผ่าน <code>tools/run_toggle.py</code> patch config in-memory ก่อนส่งเข้า engine + เปิด anti-detection ครบ (pacing/reset/lives).</p>
+<p class="lead"><b>flag → config patch:</b> <code>boost X</code> → apply_boost · <code>jump=n</code> → strip jump · <code>relay=n</code> → strip relay_tap · <code>quit=N</code> → BoxQuitRunner.quit_after.
+  <b style="color:var(--gn)">+ anti-detection ใน JSON:</b> poll/wait jitter · inter_game_delay · session_reset · periodic_routines (lives).</p>
+<div class="diff"><b>vs ทุกตัว:</b> ไม่ hardcode boost/quit/relay — ถามตอนรันแล้ว patch. โครง state = superset (jump hops + check_box + lives_* chain) · เป็นตัวเดียวที่มี session_reset + periodic_routines + pacing jitter</div>
+
+<h3 id="coinrun"><span class="fname">coinrun</span></h3>
+<div class="tags"><span class="tag bo">boost: doublecoins</span>
+  <span class="tag st">jump hops</span><span class="tag rl">relay ✓</span>
+  <span class="tag q0">เล่นจนตาย</span><span class="tag st">47 states</span></div>
+<p class="lead">โครง jump-hops เหมือน magnet แต่เป้าหมาย <b>เหรียญไม่ใช่กล่อง</b> — ซื้อ Double Coins ผ่าน guard พิเศษ.</p>
+<div class="diff"><b>vs boxrun_magnet:</b> boost <code>magnet→doublecoins</code> ผ่าน guard <code>probe_dc_owned</code> (เช็คว่ามี Double Coins แล้วก่อนซื้อ = กันซื้อซ้ำ) · ไม่มี early quit</div>
+
+<!-- ═══════════════ UTILITY ═══════════════ -->
+<section id="utility">
+<h2><span class="n">03</span>โฟลว Utility (จบแล้ว stop)</h2>
+<p class="lead">ต่างจาก box-farm: <b>ทำงานจนหมดแล้วหยุด</b> ไม่วน farm. ไม่มี boost/heart/run.</p>
+
+<h3><span class="fname">giftdraw</span> — เปิดกล่อง Gift Draw</h3>
+<div class="fig">
+  <svg viewBox="0 0 700 110" role="img" aria-label="gift draw: draw pick reward loop until done">
+    <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
+    <style>.n{fill:var(--elev2);stroke:var(--bd2)}.ng{fill:var(--gns);stroke:var(--gn)}
+      .nr{fill:var(--rds);stroke:var(--rd)}.t{fill:var(--tx);font:600 10px}.e{stroke:#94a3b8;stroke-width:1.3;fill:none}.l{fill:var(--faint);font:8px}</style>
+    <rect class="ng" x="20" y="40" width="110" height="38" rx="7"/><text class="t" x="75" y="63" text-anchor="middle">gift_draw</text>
+    <rect class="n" x="180" y="40" width="110" height="38" rx="7"/><text class="t" x="235" y="63" text-anchor="middle">pick_box</text>
+    <rect class="n" x="340" y="40" width="110" height="38" rx="7"/><text class="t" x="395" y="63" text-anchor="middle">reward</text>
+    <rect class="nr" x="560" y="40" width="110" height="38" rx="7"/><text class="t" x="615" y="63" text-anchor="middle">done · stop</text>
+    <line class="e" x1="130" y1="59" x2="178" y2="59" marker-end="url(#a2)"/>
+    <line class="e" x1="290" y1="59" x2="338" y2="59" marker-end="url(#a2)"/>
+    <path class="e" d="M395,40 C395,12 235,12 235,38" marker-end="url(#a2)"/><text class="l" x="315" y="20" text-anchor="middle">ยังมีกล่อง → วน</text>
+    <line class="e" x1="450" y1="59" x2="558" y2="59" marker-end="url(#a2)"/><text class="l" x="504" y="52" text-anchor="middle">หมด</text>
+  </svg>
+</div>
+
+<h3><span class="fname">sendlife</span> — ส่ง life ให้เพื่อน</h3>
+<div class="fig">
+  <svg viewBox="0 0 720 150" role="img" aria-label="send life: scan confirm sent loop, scroll when none, stop at bottom">
+    <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
+    <style>.n{fill:var(--elev2);stroke:var(--bd2)}.ng{fill:var(--gns);stroke:var(--gn)}
+      .nr{fill:var(--rds);stroke:var(--rd)}.nw{fill:var(--ams);stroke:var(--am)}
+      .t{fill:var(--tx);font:600 10px}.s{fill:var(--dim);font:8px}.e{stroke:#94a3b8;stroke-width:1.3;fill:none}.l{fill:var(--faint);font:8px}</style>
+    <rect class="ng" x="20" y="20" width="120" height="38" rx="7"/><text class="t" x="80" y="43" text-anchor="middle">scan</text>
+    <rect class="n" x="200" y="20" width="130" height="38" rx="7"/><text class="t" x="265" y="43" text-anchor="middle">confirm_dialog</text>
+    <rect class="n" x="390" y="20" width="130" height="38" rx="7"/><text class="t" x="455" y="43" text-anchor="middle">message_sent</text>
+    <rect class="nw" x="20" y="95" width="130" height="38" rx="7"/><text class="t" x="85" y="113" text-anchor="middle">scroll_list</text><text class="s" x="85" y="126" text-anchor="middle">retry x6</text>
+    <rect class="nr" x="240" y="95" width="110" height="38" rx="7"/><text class="t" x="295" y="118" text-anchor="middle">stop</text>
+    <line class="e" x1="140" y1="39" x2="198" y2="39" marker-end="url(#a3)"/><text class="l" x="169" y="32" text-anchor="middle">เจอ icon</text>
+    <line class="e" x1="330" y1="39" x2="388" y2="39" marker-end="url(#a3)"/>
+    <path class="e" d="M455,58 C455,80 90,75 82,58" marker-end="url(#a3)"/><text class="l" x="300" y="80" text-anchor="middle">→ scan (คนถัดไป)</text>
+    <path class="e" d="M80,58 C80,80 85,88 85,93" marker-end="url(#a3)"/><text class="l" x="150" y="80" text-anchor="middle">ไม่เจอ = scroll</text>
+    <line class="e" x1="150" y1="118" x2="238" y2="116" marker-end="url(#a3)"/><text class="l" x="195" y="128" text-anchor="middle">สุด list</text>
+  </svg>
+</div>
+<div class="note">
+  <b>sendlife ถูก graft เข้า boxrun_toggle แล้ว</b> (Phase 5) เป็น <code>lives_*</code> states — เรียกทุก 25–35 นาที
+  ระหว่าง farm ผ่าน <code>periodic_routines</code>. <code>sendlife.bat</code> = รันแยกครั้งเดียวจบ.
+</div>
+
+<h3><span class="fname">addfriend</span> — ส่ง friend request</h3>
+<div class="fig">
+  <svg viewBox="0 0 700 120" role="img" aria-label="add friend: open find refresh request rows loop">
+    <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
+    <style>.n{fill:var(--elev2);stroke:var(--bd2)}.ng{fill:var(--gns);stroke:var(--gn)}
+      .t{fill:var(--tx);font:600 10px}.s{fill:var(--dim);font:8px}.e{stroke:#94a3b8;stroke-width:1.3;fill:none}.l{fill:var(--faint);font:8px}</style>
+    <rect class="ng" x="20" y="40" width="110" height="38" rx="7"/><text class="t" x="75" y="63" text-anchor="middle">open_find</text>
+    <rect class="n" x="180" y="40" width="110" height="38" rx="7"/><text class="t" x="235" y="63" text-anchor="middle">do_refresh</text>
+    <rect class="n" x="340" y="40" width="180" height="38" rx="7"/><text class="t" x="430" y="58" text-anchor="middle">req_row1..N</text><text class="s" x="430" y="70" text-anchor="middle">ส่ง request ทีละแถว</text>
+    <line class="e" x1="130" y1="59" x2="178" y2="59" marker-end="url(#a4)"/>
+    <line class="e" x1="290" y1="59" x2="338" y2="59" marker-end="url(#a4)"/>
+    <path class="e" d="M430,78 C430,102 235,102 235,80" marker-end="url(#a4)"/><text class="l" x="332" y="99" text-anchor="middle">ครบแถว → refresh</text>
+  </svg>
+</div>
+<div class="note">
+  <b>xpstat</b> (test account) ไม่มี .bat — รันตรง <code>python main.py --config config/cookierun/xpstat.json</code>.
+  โครงเหมือน box-farm แต่<b>ไม่ซื้ออะไรเลย</b> (coin คงที่ วัด XP/run ได้สะอาด). NEVER point ที่ main account.
+</div>
+</section>
+
+<!-- ═══════════════ SHARED ═══════════════ -->
+<section id="shared">
+<h2><span class="n">04</span>กลไกร่วมทุกบอท</h2>
+<p class="lead">อยู่ที่ engine — ทุก config ได้ฟรี ไม่ต้องเขียนซ้ำ</p>
+<div class="tw">
+<table>
+  <thead><tr><th>กลไก</th><th>ทำอะไร</th><th>อยู่ที่</th></tr></thead>
+  <tbody>
+    <tr><td><b>Popup recovery chain</b></td><td>home absent = มี popup บัง → เดิน probe chain ปิดทีละตัว (connectionlost → enterleague → inactive → settings → daily → ...) แล้วกลับ home</td><td>ทุก config</td></tr>
+    <tr><td><b>Login recovery</b></td><td>inactive/connection-lost restart เกม → <code>recover_login</code> → <code>recover_pick</code> re-auth</td><td>ทุก config</td></tr>
+    <tr><td><b>Livelock detector</b></td><td>state เดิม / ping-pong เกิน 100 poll → snap จอเข้า <code>unknown_screens/</code> + Discord alert</td><td>engine</td></tr>
+    <tr><td><b>match_timeout escape</b></td><td>marker ค้าง match เกินกำหนด → หลุดออก (กัน <code>mb_open</code> วนไม่จบ)</td><td>engine + config</td></tr>
+    <tr><td><b>adb retry + tolerance</b></td><td>adb hiccup = เสีย 1 cycle ไม่ใช่ตายทั้ง run; 5 รอบติดถึงยอมหยุด</td><td>engine</td></tr>
+    <tr><td><b>Human pacing</b> (toggle เท่านั้น)</td><td>poll/wait jitter + idle 30–60s ระหว่างเกม + session reset 1.5–3 ชม.</td><td>boxrun_toggle</td></tr>
+  </tbody>
+</table>
+</div>
+</section>
+
+<!-- ═══════════════ ARCHIVED ═══════════════ -->
+<section id="archive">
+<h2><span class="n">05</span>Archived box-farm (5 ตัว)</h2>
+<p class="lead">
+  ย้ายไป <code>config/cookierun/_archive/</code> เมื่อ 2026-07-31 — <b>ยังใช้ได้</b> (lint clean, live-tested),
+  แค่ตัดออกจาก active set. ย้าย JSON กลับขึ้น <code>config/cookierun/</code> เพื่อ reactivate.
+</p>
+<div class="tw">
+<table>
+  <thead><tr><th>Config</th><th>Boost</th><th>In-run</th><th>Quit</th><th>ทำไม archive</th></tr></thead>
+  <tbody>
+    <tr><td><code>boxrun_speed_quit2</code></td><td>+17% speed</td><td>jump hops</td><td>after-2</td><td>ใช้ <code>boxrun_toggle --quit-after-boxes</code> แทน</td></tr>
+    <tr><td><code>boxrun_speed_noquit</code></td><td>+17% speed</td><td>jump hops</td><td>ไม่ quit</td><td>long-run variant ใช้น้อย</td></tr>
+    <tr><td><code>boxrun_passive</code></td><td>none</td><td>guard loop</td><td>box target</td><td>toggle ครอบได้ (jump/slide/relay off)</td></tr>
+    <tr><td><code>boxrun_passive_3boost</code></td><td>3 tiles (HP+clock+x2)</td><td>guard loop</td><td>box target</td><td>3-boost setup เฉพาะกิจ</td></tr>
+    <tr><td><code>boxrun_magnet_quit3</code></td><td>magnet</td><td>guard loop</td><td>3 boxes</td><td>ผูก ep6 box-counter; ใช้ magnet แทน</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="note warn">
+  <b><code>guard loop</code> in-run</b> (passive/passive_3boost/magnet_quit3) = ไม่มี jump เลย — <code>running</code> absent →
+  ไล่ guard chain (home? shop? sendlife? inactive?) → <code>check_box</code>. พึ่ง auto-play + guard เช็ค popup ระหว่างรัน.
+  <b><code>magnet_quit3</code> ไม่ episode-agnostic เต็มตัว</b> — อ่าน ep6 box-counter, episode อื่น counter อาจไม่ match.
+</div>
+</section>
+
+<div class="note">
+  อ่านจาก config จริง ณ branch <code>refactor/rename-boxrun-by-behavior</code> (2026-07-31).
+  SVG graph เต็มต่อ state: <code>python tools/lint_config.py --svg docs/graphs config/cookierun/&lt;name&gt;.json</code>
+</div>
+
+</div>

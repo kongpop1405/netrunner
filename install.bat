@@ -147,7 +147,7 @@ if "%FAIL%"=="0" (
     echo   will not recognize the game. See PLAY_SETUP.md.
     echo.
     echo   Next: open LDPlayer + CookieRun on the home screen, then
-    echo   double-click run_coinrun.bat ^(or another run_*.bat^).
+    echo   double-click coinrun.bat ^(or another run_*.bat^).
 ) else (
     echo   INSTALL DID NOT FINISH - see the [X] above.
     echo   Send install-log.txt to whoever set this up.

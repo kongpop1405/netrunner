@@ -34,13 +34,13 @@ restart the instance.
 
 ## 3. Put the game on the right screen (every run)
 
-For **run_coinrun** / **run_boxrun_ep3** (the run-grinders):
+For **coinrun** / **boxrun_default** (the run-grinders):
 
 - Be on the **home screen** — the one with the big green **Play!** button bottom-right.
 - Any Episode is fine (the bot finds the **Play!** button, not the episode name).
 - Don't leave a popup open over Play! (daily reward, event, friend info). Close them first.
 
-For **run_giftdraw** / **run_sendlife** / **run_addfriend**: see the matching section in
+For **giftdraw** / **sendlife** / **addfriend**: see the matching section in
 [RUN.md](RUN.md) — each needs its own starting screen (Gift Draw popup open / Friends tab /
 Find tab).
 

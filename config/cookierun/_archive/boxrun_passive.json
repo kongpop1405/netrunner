@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 5 — plays runs to the end (till death) collecting Mystery Boxes passively; NO boost purchase, Fast Start ONLY. PRECONDITION: Episode 5 selected on home BEFORE starting (bot only taps Play!). Fast Start is spammed (985,515) after leaving home — on the shop path from check_heart after its Play tap, on the direct-run path from await_shop absent. Boxes collected mid-run open on the Mystery Box screen after Result. Loop: home->Play->await_shop->(shop->check_heart | direct->spam)->check_heart(Play+FastStart spam)->run(NO jump/slide; QUIT at 2nd box via check_box->quit_run, else die)->run_result->mystery_box->reveal->home. home Play coord may differ from ep6 (1650) — verify live for Episode 5.",
+  "_comment": "boxrun_passive — Mystery Box farm, NO boost, passive guard-loop run (no jump/slide), quits at box target. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. PRECONDITION: Episode 5 selected on home BEFORE starting (bot only taps Play!). Fast Start is spammed (985,515) after leaving home — on the shop path from check_heart after its Play tap, on the direct-run path from await_shop absent. Boxes collected mid-run open on the Mystery Box screen after Result. Loop: home->Play->await_shop->(shop->check_heart | direct->spam)->check_heart(Play+FastStart spam)->run(NO jump/slide; QUIT at 2nd box via check_box->quit_run, else die)->run_result->mystery_box->reveal->home. home Play coord may differ from ep6 (1650) — verify live for Episode 5.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -490,7 +490,7 @@
       "threshold": 0.95
     },
     "quit_run": {
-      "_note": "2 boxes collected -> bail via the pause menu. pause (1790,55) -> menu Quit (960,640) -> confirm Quit (960,570, NOT Cancel 960,755) -> Result with both boxes credited -> run_result opens/reveals them. Generous waits (1200-2500ms) for each menu/dialog fade. Coords reused from boxrun_ep6.",
+      "_note": "2 boxes collected -> bail via the pause menu. pause (1790,55) -> menu Quit (960,640) -> confirm Quit (960,570, NOT Cancel 960,755) -> Result with both boxes credited -> run_result opens/reveals them. Generous waits (1200-2500ms) for each menu/dialog fade. Coords reused from boxrun_magnet.",
       "detect": "result_marker.png",
       "on_match": [
         {

@@ -27,14 +27,14 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - boxrun bot (Episode 5)
-echo   Mystery Box farm - buys Fast Start only, Fast Start
-echo   precondition: Episode 5 selected on home
+echo   NetRunner - boxrun: speed (+17% Speed, quit on box)
+echo   Mystery Box farm - buys +17% Speed, Fast Start
+echo   precondition: ANY episode selected on home (bot only taps Play)
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% main.py --config config/cookierun/boxrun_ep5.json --launch
+%PY% main.py --config config/cookierun/boxrun_default.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.
