@@ -76,7 +76,17 @@ class Device:
             raise AdbError(
                 f"adb timed out after {self.retries + 1} attempts: {' '.join(cmd)}"
             ) from last_err
-        raise last_err  # type: ignore[misc]
+        if isinstance(last_err, AdbError):
+            raise last_err
+        # MemoryError (or anything else non-adb) must still surface as AdbError:
+        # the FSM's fail-streak tolerance only catches AdbError, so a bare
+        # MemoryError from a tap would kill a whole run — the exact class of
+        # crash the retry loop above exists to survive. (The capture path was
+        # already shielded by grab(); the tap path was not.)
+        raise AdbError(
+            f"adb failed after {self.retries + 1} attempts "
+            f"({type(last_err).__name__}): {' '.join(cmd)}"
+        ) from last_err
 
     def shell(self, *args: str) -> str:
         """Run `adb shell <args>` and return decoded stdout."""
@@ -110,6 +120,10 @@ def connect(address: str, adb: str = "adb", timeout: float = 15.0) -> Device:
         )
     except FileNotFoundError as e:
         raise AdbError(f"adb not found on PATH (tried '{adb}')") from e
+    except subprocess.TimeoutExpired as e:
+        # A hung adb daemon must surface as AdbError like every other failure —
+        # callers catch AdbError, not a raw TimeoutExpired traceback.
+        raise AdbError(f"adb connect {address} timed out after {timeout:.0f}s") from e
     out = (proc.stdout + proc.stderr).lower()
     if "cannot" in out or "failed" in out or "unable" in out:
         raise AdbError(f"connect failed for {address}: {proc.stdout.strip()}")
@@ -125,6 +139,8 @@ def list_devices(adb: str = "adb", timeout: float = 15.0) -> list[str]:
         )
     except FileNotFoundError as e:
         raise AdbError(f"adb not found on PATH (tried '{adb}')") from e
+    except subprocess.TimeoutExpired as e:
+        raise AdbError(f"adb devices timed out after {timeout:.0f}s") from e
     serials = []
     for line in proc.stdout.splitlines()[1:]:  # skip "List of devices attached"
         parts = line.split()

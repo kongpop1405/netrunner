@@ -43,7 +43,9 @@ class TestDeviceRetry:
         monkeypatch.setattr(subprocess, "run", fake_run)
         monkeypatch.setattr(Device, "retry_backoff_s", 0)
         d = Device("127.0.0.1:5555")
-        with pytest.raises(AdbError, match="timed out after 3 attempts"):
+        # attempt count derived from Device.retries — a hardcoded "3 attempts"
+        # here went stale when the retry budget was widened for low-RAM hosts.
+        with pytest.raises(AdbError, match=f"timed out after {d.retries + 1} attempts"):
             d.shell("input", "tap", "1", "2")
         assert calls["n"] == d.retries + 1
 

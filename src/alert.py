@@ -4,12 +4,37 @@ from __future__ import annotations
 import json
 import logging
 import time
+from datetime import datetime, timezone
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import requests
 
 logger = logging.getLogger("netrunner.alert")
+
+#: Repeat alerts with the same title are muted for this long. A condition that
+#: flaps (perceive OOM going in and out on a RAM-tight host) would otherwise
+#: fire on every re-trip and run into Discord's own webhook rate limit.
+#: `critical=True` bypasses the mute — a crash must always arrive.
+_ALERT_COOLDOWN_S = 600.0
+_last_sent: dict[str, float] = {}
+
+
+def _muted(title: str, critical: bool) -> bool:
+    if critical:
+        return False
+    now = time.monotonic()
+    if now - _last_sent.get(title, float("-inf")) < _ALERT_COOLDOWN_S:
+        logger.debug("alert '%s' muted (cooldown %.0fs)", title, _ALERT_COOLDOWN_S)
+        return True
+    _last_sent[title] = now
+    return False
+
+
+def _utc_timestamp() -> str:
+    # Discord parses the embed timestamp as UTC when no offset is given — a
+    # naive local time from a UTC+7 machine displayed 7 hours off.
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 _ROTATE_WHEN = "H"
 _ROTATE_INTERVAL = 1
@@ -44,8 +69,11 @@ def setup_file_logging(log_dir: str | Path = "logs", verbose: bool = False) -> P
 
 
 def send_alert(webhook_url: str | None, title: str, message: str, *, critical: bool = False) -> None:
-    """POST a Discord embed to the webhook. Never raises — a dead webhook must not crash the bot."""
-    if not webhook_url:
+    """POST a Discord embed to the webhook. Never raises — a dead webhook must not crash the bot.
+
+    Same-title alerts are muted for `_ALERT_COOLDOWN_S` unless critical.
+    """
+    if not webhook_url or _muted(title, critical):
         return
     color = 0xE74C3C if critical else 0xF1C40F  # red vs yellow
     payload = {
@@ -53,7 +81,7 @@ def send_alert(webhook_url: str | None, title: str, message: str, *, critical: b
             "title": ("🔴 " if critical else "🟡 ") + title,
             "description": message,
             "color": color,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "timestamp": _utc_timestamp(),
         }],
     }
     if critical:
@@ -71,7 +99,7 @@ def send_alert_with_image(
     screens (candidate popups/bugs) to Discord so they can be reviewed/analyzed
     later without needing local disk access to the machine that captured them.
     """
-    if not webhook_url:
+    if not webhook_url or _muted(title, critical):
         return
     image_path = Path(image_path)
     color = 0xE74C3C if critical else 0xF1C40F
@@ -80,7 +108,7 @@ def send_alert_with_image(
             "title": ("🔴 " if critical else "🟡 ") + title,
             "description": message,
             "color": color,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "timestamp": _utc_timestamp(),
             "image": {"url": f"attachment://{image_path.name}"},
         }],
     }

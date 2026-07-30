@@ -58,6 +58,7 @@ class Runner:
         )
         state = self.cfg.start_state
         entered_at = time.monotonic()
+        state_entered_at = time.monotonic()  # reset only when `state` changes
         cycles = 0
         same_state_streak = 0
         stuck_alerted = False
@@ -90,7 +91,27 @@ class Runner:
 
                     prev_state = state
                     did_transition = False
-                    if m.found:
+                    mt = spec.get("match_timeout_ms")
+                    if m.found and mt is not None \
+                            and (time.monotonic() - state_entered_at) * 1000 >= mt:
+                        # The marker is STILL on screen after the whole budget —
+                        # the state's own taps aren't dismissing it. timeout_ms
+                        # only fires on the absent path, so a stuck MATCH needs
+                        # this separate escape (the old hand-written
+                        # mb_reveal_retry chains existed to fake it).
+                        target = self._match_timeout_target(spec)
+                        if target is None or target == state:
+                            raise FsmError(
+                                f"state '{state}' still matched after "
+                                f"{(time.monotonic() - state_entered_at) * 1000:.0f}ms "
+                                f"(match_timeout {mt}ms) with no escape target"
+                            )
+                        log.warning("state '%s' still matched >= match_timeout %dms -> goto '%s'",
+                                    state, mt, target)
+                        state = target
+                        did_transition = True
+                        acted = False
+                    elif m.found:
                         absent_streak = 0
                         entered_at = time.monotonic()
                         on_match = spec.get("on_match", [])
@@ -160,6 +181,7 @@ class Runner:
                 else:
                     same_state_streak = 0
                     stuck_alerted = False
+                    state_entered_at = time.monotonic()
                 if same_state_streak >= _STUCK_STATE_WARN_CYCLES and not stuck_alerted:
                     log.warning("state '%s' unchanged for %d consecutive polls — possible livelock",
                                 state, same_state_streak)
@@ -223,6 +245,20 @@ class Runner:
             )
             raise
 
+    @staticmethod
+    def _match_timeout_target(spec: dict) -> str | None:
+        """Escape state for a stuck MATCH: explicit on_match_timeout goto wins,
+        else fall back to the on_absent goto (both screens lead the same way out)."""
+        omt = spec.get("on_match_timeout")
+        if isinstance(omt, dict) and omt.get("goto"):
+            return omt["goto"]
+        oa = spec.get("on_absent")
+        if isinstance(oa, dict):
+            return oa.get("goto")
+        if isinstance(oa, list):
+            return next((a.get("state") for a in oa if a.get("type") == "goto"), None)
+        return None
+
     def _detect(self, frame, spec: dict, threshold: float) -> tuple[Match, str]:
         """Match the state's template(s) against the frame.
 
@@ -239,6 +275,11 @@ class Runner:
                 return m, name
             if best is None or m.score > best.score:
                 best, best_name = m, name
+        if best is None:
+            # No detect names at all — validation normally rejects this, but a
+            # tool that patches states post-load (run_toggle) can strip them;
+            # an empty miss keeps the loop alive instead of AttributeError.
+            return Match(found=False, score=0.0, x=0, y=0, w=0, h=0), best_name
         return best, best_name
 
     def _run_actions(self, actions: list[dict], frame, state: str) -> tuple[str | None, bool]:

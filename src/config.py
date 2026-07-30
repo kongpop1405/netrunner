@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+
+log = logging.getLogger("netrunner.config")
 
 _ACTION_TYPES = {
     "tap_template", "tap_xy", "swipe", "wait", "goto", "stop", "key", "jump",
@@ -92,6 +95,50 @@ def _validate(cfg: Config) -> None:
     names = set(cfg.states)
     for sname, state in cfg.states.items():
         _validate_state(sname, state, names, tdir)
+    orphans = unreachable_states(cfg.states, cfg.start_state)
+    if orphans:
+        # Warn, don't raise: an orphan may be parked on purpose (an experiment,
+        # a state kept for reference) — but silent orphans have also hidden a
+        # broken chain (ep3's whole boost-buy chain was unreachable for weeks).
+        log.warning(
+            "%s: %d state(s) unreachable from start_state '%s': %s",
+            cfg.path.name or "config", len(orphans), cfg.start_state,
+            ", ".join(orphans),
+        )
+
+
+def goto_targets(state: dict) -> set[str]:
+    """Every state name this state can transition to (on_match + on_absent)."""
+    outs: set[str] = set()
+    lists: list[list[dict]] = []
+    om = state.get("on_match", [])
+    lists.extend(om.values()) if isinstance(om, dict) else lists.append(om)
+    oa = state.get("on_absent")
+    if isinstance(oa, dict) and "goto" in oa:
+        outs.add(oa["goto"])
+    elif isinstance(oa, list):
+        lists.append(oa)
+    omt = state.get("on_match_timeout")
+    if isinstance(omt, dict) and "goto" in omt:
+        outs.add(omt["goto"])
+    for actions in lists:
+        for a in actions:
+            if a.get("type") == "goto":
+                outs.add(a.get("state"))
+    return outs
+
+
+def unreachable_states(states: dict[str, dict], start_state: str) -> list[str]:
+    """States with no goto path from start_state (BFS over goto_targets)."""
+    seen: set[str] = set()
+    stack = [start_state] if start_state in states else []
+    while stack:
+        s = stack.pop()
+        if s in seen:
+            continue
+        seen.add(s)
+        stack.extend(t for t in goto_targets(states[s]) if t in states)
+    return sorted(set(states) - seen)
 
 
 def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> None:
@@ -144,6 +191,30 @@ def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> Non
         absent_goto = next(
             (a.get("state") for a in absent if a.get("type") == "goto"), None
         )
+
+    mt = state.get("match_timeout_ms")
+    if mt is not None and (not isinstance(mt, int) or isinstance(mt, bool) or mt <= 0):
+        raise ConfigError(f"state '{sname}': 'match_timeout_ms' must be a positive integer (ms)")
+    omt = state.get("on_match_timeout")
+    if omt is not None:
+        if not (isinstance(omt, dict) and isinstance(omt.get("goto"), str)):
+            raise ConfigError(
+                f"state '{sname}': 'on_match_timeout' must be {{\"goto\": \"<state>\"}}"
+            )
+        actions.append({"type": "goto", "state": omt["goto"]})
+        if mt is None:
+            raise ConfigError(
+                f"state '{sname}': 'on_match_timeout' set without 'match_timeout_ms'"
+            )
+    if mt is not None:
+        # Same trap as timeout_ms below: the escape target (on_match_timeout,
+        # else the on_absent goto) must exist and not point back at the state.
+        escape = omt["goto"] if omt else absent_goto
+        if escape == sname:
+            raise ConfigError(
+                f"state '{sname}': match_timeout_ms escape goto targets itself — "
+                f"when the timeout fires there is no way out"
+            )
 
     # timeout + on_absent goto pointing at the state itself = guaranteed FsmError
     # once the timeout fires (there is no escape target) — reject at load time.
