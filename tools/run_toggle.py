@@ -69,9 +69,17 @@ class BoxQuitRunner(Runner):
     """
 
     #: Where the box-count digits sit relative to the counter marker's match:
-    #: (dx, dy, w, h) from the marker's top-left. The pill draws "[?] xN" with the
-    #: number to the right of the glyph.
-    COUNTER_OFFSET = (70, 0, 90, 90)
+    #: (dx, dy, w, h) from the marker's top-left. The pill draws "[?] xN"; this
+    #: box covers N only — measured off live 1920x1080 frames (marker top-left
+    #: (118,360), digit ink at x 300-324, y 360-415), not estimated.
+    #:
+    #: The previous (70, 0, 90, 90) started inside the "[?]" glyph and ran past
+    #: the digits, which read as a confident 25 on a pill showing x1 — worse than
+    #: unreadable, since --quit-after-boxes would act on it. This box either reads
+    #: the digit or returns None, and None correctly falls back to counting runs.
+    #: Reads ~half the frames: the digits are white with a heavy black outline, so
+    #: Otsu splits them into a hollow ring that tesseract often rejects.
+    COUNTER_OFFSET = (176, -4, 60, 64)
 
     def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False,
                  counter_template: str = "boxcounter_marker.png", **kwargs):
