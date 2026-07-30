@@ -1132,5 +1132,11 @@
     30,
     60
   ],
-  "inter_game_state": "home"
+  "inter_game_state": "home",
+  "session_reset_s": [
+    5400,
+    10800
+  ],
+  "reset_at_state": "home",
+  "package": "com.devsisters.crg"
 }
