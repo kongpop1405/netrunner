@@ -443,7 +443,8 @@
     24 wait → range. อีก 12 config ยัง fixed จนกว่าตัวนี้จะรันผ่าน
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 2</span><h3>Session reset — restart app ทุก 1.5–3 ชม.</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 2</span><h3>Session reset — restart app ทุก 1.5–3 ชม.
+    <span class="pill ok" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>DONE — pytest 157 passed</span></h3></div>
   <pre><span class="c">// config JSON</span>
 {
   <span class="k">"session_reset_s"</span>: [<span class="s">5400</span>, <span class="s">10800</span>],  <span class="c">// 1.5–3 ชม. random ต่อ session</span>
@@ -462,6 +463,30 @@
   <div class="note info">
     <b>Reuse ไม่เขียนใหม่:</b> <code>launcher.py</code> มี <code>_start_app</code> + <code>_wait_adb_ready</code> +
     <code>_app_foreground</code> ครบแล้ว. <code>src/session.py</code> แค่เรียงลำดับ + เพิ่ม <code>pidof</code> loop
+  </div>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ทำแล้ว</b> (commit <code>9e7434f</code> + <code>86225a2</code>) — <b>เจอเพิ่มระหว่าง implement:</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>Reuse <code>_start_app</code> ตรง ๆ ไม่ได้</b> — signature เป็น
+        <code>_start_app(ldconsole, index, dev, package)</code> แต่ Runner รู้แค่ <code>device</code>
+        (ไม่มี ldconsole path / instance index). Fix: <code>Restarter.start_app</code> เป็น <b>injected callable</b> —
+        <code>main.py</code> ปิด closure ทับ <code>_start_app</code> เมื่อหา LDPlayer เจอ, ไม่เจอก็ fallback
+        <code>am start</code> ล้วน (ซึ่งเป็นทั้งหมดที่ bare <code>--device</code> ทำได้). ยืนยันบนเครื่องนี้:
+        ไม่มี LDPlayer → เข้า fallback path ไม่ crash</li>
+      <li><b>ต้อง reset counter ทุกตัว ไม่ใช่แค่ state</b> — <code>same_state_streak</code>,
+        <code>no_act_streak</code>, <code>no_act_states</code>, <code>absent_streak</code>, alert flags:
+        ถ้าไม่ล้าง → streak จากก่อน restart สะสมต่อ = livelock alert ปลอมหลัง reset</li>
+      <li><b>Reset ต้องมาก่อน inter-game idle</b> (Phase 1) — สอง hook แขวนจุดเดียวกัน (state entry);
+        reset ทำให้ idle ไร้ความหมาย (app หายไปกลับมาแล้ว = ช่องว่างยาวกว่า 30–60s เยอะ) →
+        เรียง reset ก่อน แล้ว set <code>pending_inter_game_delay = True</code> ให้ lap แรกหลัง reset ไม่ idle ซ้ำ</li>
+      <li><b>เทสเวลาจริงไม่ได้</b> — stub <code>time.sleep</code> แล้ว wall clock ไม่เดิน แต่ budget เทียบกับ
+        <code>monotonic()</code> → ใช้ budget เล็ก (0.0001s) แล้วยังไม่ fire (Windows monotonic resolution ~15.6ms).
+        Fix: fake monotonic clock เดินทีละ 1s ต่อการอ่าน + budget 5s. <b>3 เทสแรกแดงเพราะเรื่องนี้ ไม่ใช่ logic ผิด</b></li>
+      <li><b><code>pidof</code> fail ≠ app ตาย</b> — adb hiccup ระหว่าง stability check ถ้าตีเป็นตาย
+        จะ restart วนไม่จบ → <code>AdbError</code> = "unknown-alive", ให้ check ถัดไปตัดสิน</li>
+    </ul>
+    <b>Enable ที่ <code>boxrun_toggle.json</code>:</b> <code>session_reset_s: [5400, 10800]</code> ·
+    <code>reset_at_state: "home"</code> · <code>package: com.devsisters.crg</code>
   </div>
 
   <div class="phase-hd"><span class="badge">PHASE 3</span><h3>Boost picker — ต่อยอด <code>_BOOST_PROFILES</code> ให้ครบ 11</h3></div>
@@ -1067,9 +1092,9 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p2">PHASE 2</div>
       <div class="tl-body">
-        <b>Session reset</b> — restart app 1.5–3 ชม. + stability verify 3×20s
-        <div class="tl-meta">4 ขั้น · src/session.py ใหม่ · reuse launcher._start_app · anti-detection 2/3</div>
-        <div class="bar"><i style="width:62%;background:var(--green)"></i></div>
+        <b>Session reset</b> ✅ <b>DONE</b> — restart 1.5–3 ชม. + pidof stability 3×20s + retry ≤5
+        <div class="tl-meta">4 ขั้น · pytest 157 passed · start_app injected (ldconsole → am start fallback) · anti-detection 2/3</div>
+        <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
       </div>
     </div>
     <div class="tl-row">
@@ -1280,7 +1305,12 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
       config ที่ไม่ระบุ = ไม่ delay เลย · <code>inter_game_state</code> แยกจาก start_state ได้ ·
       idle ไม่ trip match_timeout · poll/wait draw ต่างกันจริงในช่วง · range พัง 7 แบบถูก reject.
       <b>ค้าง:</b> ดู log จริงว่า cadence กระจายจริง (ต้องมี baseline จาก Phase 7 ก่อน)</li>
-    <li><b>Phase 2</b> — reset จริง: app ปิด+เปิดใหม่, <code>pidof</code> verify ผ่าน 3 รอบ, กลับเข้า home loop ต่อได้, counter reset จริง (ดู log) · เทส crash path ด้วย package ผิด → ต้อง retry 5 แล้ว alert</li>
+    <li><b>Phase 2 ✅</b> — pytest <b>157 passed</b> (+18): happy path · crash กลาง stability window → retry แล้วผ่าน ·
+      ไม่ขึ้นเลย → SessionError หลัง 5 ครั้ง · launch error นับเป็น attempt · am-start fallback ·
+      resolve-activity ไม่ได้ → error ชัด · pidof AdbError = assumed alive ·
+      timer: fire เมื่อครบ+ถึง safe state เท่านั้น · dry-run ไม่ reset · ไม่มี restarter = ปิดเงียบ ·
+      restart พัง = FsmError + critical alert · lap หลัง reset ไม่ idle ซ้ำ.
+      <b>ค้าง:</b> reset จริงบนเกม (รวมใน final dry-run gate)</li>
     <li><b>Phase 3</b> — <code>--boost double_coins</code> → log ยืนยัน detect เปลี่ยนเป็น <code>doublecoins_banner.png</code> · เลือกตัวที่ยังไม่มี template → error บอกชัดว่าต้อง crop ไฟล์อะไร</li>
     <li><b>Phase 4</b> — synthetic test: 4 เหมือน + 2 ต่าง → หา 2 ใบถูก · 6 เหมือนกันหมด → bail ไม่เดา · cell ล้นขอบ → raise ไม่เงียบ · <b>เจอ captcha จริงครั้งแรก: snap เก็บภาพก่อน อย่าให้ solve ทันที</b></li>
     <li><b>Phase 5</b> — fake-clock test ผ่าน · dry-run: log แสดง redirect เข้า lives_scan เมื่อ due+home เท่านั้น · จบ chain กลับ home แล้ว farm ต่อ · after_reset fire ครั้งเดียว</li>
