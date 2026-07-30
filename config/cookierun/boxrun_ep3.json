@@ -949,6 +949,27 @@
           "state": "home"
         }
       ],
+      "on_absent": {
+        "goto": "verify_no_prevresults"
+      },
+      "timeout_ms": 6000
+    },
+    "verify_no_prevresults": {
+      "_note": "Third Play-tap gate. 'Previous Results / You have unreviewed game results' sits ON TOP of home while Play! still scores 1.00 through it — same class of bug as the inactive and send-life gates. Without this the loop taps Play into the dialog forever: the popup does not cover the button, so home matches, the two existing gates find nothing, and probe_prevresults (which does handle it) is only reachable when home is ABSENT. Present -> Confirm (950,680), verified, then back to home. Absent -> the real Play tap.",
+      "detect": "prevresults_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 950,
+          "y": 680,
+          "verify": "prevresults_marker.png",
+          "settle_ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
       "on_absent": [
         {
           "type": "tap_xy",
