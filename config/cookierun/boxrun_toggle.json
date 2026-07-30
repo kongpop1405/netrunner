@@ -2,7 +2,10 @@
   "_comment": "Cookie Run BOX-FARM run-grind, TOGGLE variant — same Mystery Box farm loop as boxrun_ep3/ep5/ep6, but every optional action (Fast Start tap, Magnetic Aura boost buy, Jump, Slide) is meant to be patched on/off per-launch by tools/run_toggle.py (see run_boxrun.bat), NOT edited directly in this file. PRECONDITION: pick whichever episode (3/5/6) on home BEFORE starting — the bot only taps Play!, it does not navigate episode selection. BOOST: Magnetic Aura Random Boost (ported from boxrun_ep6 — probe_magnet/buy_magnet/picker/wait_roll/start_run/retry_buy, magneticaura_banner.png, Multi-Buy at 950,880) replaces the ep3 +17% speed chain. Fast Start prompt spam-tap (985,515) lives in check_heart/after_play. Loop: home->Play->await_shop->probe_magnet->buy_magnet(Multi->Multi-Buy->wait_roll)->start_run(verify banner)->check_heart->Play->run(jump/slide J-J-S-J chain)->run_result->mystery_box->reveal->home. run_toggle.py strips the magnet chain, the Fast Start taps, and/or the jump/slide action entries out of the loaded states dict before handing them to the engine's Runner, based on the four Y/N flags asked by run_boxrun.bat.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
-  "poll_ms": 600,
+  "poll_ms": [
+    500,
+    750
+  ],
   "match_threshold": 0.82,
   "start_state": "home",
   "states": {
@@ -47,7 +50,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -70,7 +76,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -93,7 +102,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -146,7 +158,10 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": [
+            1020,
+            1440
+          ]
         },
         {
           "type": "tap_xy",
@@ -155,7 +170,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -178,7 +196,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -236,7 +257,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -313,7 +337,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "faststart_tap",
@@ -380,7 +407,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -403,7 +433,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -527,7 +560,10 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": [
+            1020,
+            1440
+          ]
         },
         {
           "type": "tap_xy",
@@ -536,7 +572,10 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": [
+            1020,
+            1440
+          ]
         },
         {
           "type": "tap_xy",
@@ -593,7 +632,10 @@
         },
         {
           "type": "wait",
-          "ms": 2000
+          "ms": [
+            1700,
+            2400
+          ]
         },
         {
           "type": "goto",
@@ -616,7 +658,10 @@
         },
         {
           "type": "wait",
-          "ms": 2000
+          "ms": [
+            1700,
+            2400
+          ]
         },
         {
           "type": "goto",
@@ -639,7 +684,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -662,7 +710,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -685,7 +736,10 @@
         },
         {
           "type": "wait",
-          "ms": 900
+          "ms": [
+            765,
+            1080
+          ]
         },
         {
           "type": "tap_xy",
@@ -694,7 +748,10 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": [
+            1020,
+            1440
+          ]
         },
         {
           "type": "goto",
@@ -940,7 +997,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -975,7 +1035,10 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": [
+            1020,
+            1440
+          ]
         },
         {
           "type": "goto",
@@ -998,7 +1061,10 @@
         },
         {
           "type": "wait",
-          "ms": 1500
+          "ms": [
+            1275,
+            1800
+          ]
         },
         {
           "type": "goto",
@@ -1021,7 +1087,10 @@
         },
         {
           "type": "wait",
-          "ms": 900
+          "ms": [
+            765,
+            1080
+          ]
         },
         {
           "type": "tap_xy",
@@ -1030,7 +1099,10 @@
         },
         {
           "type": "wait",
-          "ms": 900
+          "ms": [
+            765,
+            1080
+          ]
         },
         {
           "type": "tap_xy",
@@ -1039,7 +1111,10 @@
         },
         {
           "type": "wait",
-          "ms": 900
+          "ms": [
+            765,
+            1080
+          ]
         },
         {
           "type": "goto",
@@ -1052,5 +1127,10 @@
       "match_timeout_ms": 25000,
       "timeout_ms": 8000
     }
-  }
+  },
+  "inter_game_delay_s": [
+    30,
+    60
+  ],
+  "inter_game_state": "home"
 }
