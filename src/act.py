@@ -138,6 +138,29 @@ class Actor:
         if not self.dry_run:
             self.device.shell("input", "keyevent", str(keycode))
 
+    #: Restarter for the `restart_app` action, injected by the Runner. None means
+    #: the action degrades to a no-op with a warning rather than crashing.
+    restarter: object = None
+
+    def restart_app(self) -> None:
+        """Force-stop and relaunch the game, verifying it stays up.
+
+        For screens the game cannot recover from on its own. The inactive popup
+        is not one of these — confirming it makes the GAME restart itself, and
+        the existing recover_login chain re-auths. A lost connection is: the
+        dialog's reload button often lands back on the same dead screen, so the
+        process has to be cycled from outside.
+        """
+        if self.dry_run:
+            log.info("restart_app [dry]")
+            return
+        if self.restarter is None:
+            log.warning("restart_app requested but no restarter is wired — "
+                        "pass --launch or set session_reset_s to enable it")
+            return
+        log.info("restart_app: cycling the game process")
+        self.restarter.restart()
+
     # --- shared game actions --------------------------------------------------
     # Behaviour every bot shares lives here, not copy-pasted into each config, so
     # a tuning fix reaches every config that names the action without touching
@@ -334,6 +357,9 @@ class Actor:
                 action.get("x"), action.get("y"),
                 taps=action.get("taps"), gap_ms=action.get("gap_ms"),
             )
+            return None
+        if kind == "restart_app":
+            self.restart_app()
             return None
         if kind == "close_popup":
             self.close_popup(

@@ -15,7 +15,7 @@ _ACTION_TYPES = {
     "slide", "text",
     # shared game actions — behaviour lives in Actor so a fix reaches every
     # config naming the action (see src/act.py "shared game actions").
-    "relay_tap", "faststart_tap", "close_popup",
+    "relay_tap", "faststart_tap", "close_popup", "restart_app",
 }
 _REQUIRED_FIELDS = {
     "tap_template": {"template"},
@@ -32,6 +32,7 @@ _REQUIRED_FIELDS = {
     "relay_tap": set(),
     "faststart_tap": set(),
     "close_popup": {"x", "y"},
+    "restart_app": set(),
 }
 
 

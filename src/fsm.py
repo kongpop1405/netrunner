@@ -68,6 +68,9 @@ class Runner:
             self.device, self.store,
             dry_run=dry_run, default_threshold=self.cfg.match_threshold,
         )
+        # `restart_app` actions cycle the process through the same Restarter the
+        # scheduled resets use, so a config gets one without its own plumbing.
+        self.actor.restarter = self.restarter
         state = self.cfg.start_state
         entered_at = time.monotonic()
         state_entered_at = time.monotonic()  # reset only when `state` changes
