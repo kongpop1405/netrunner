@@ -1,5 +1,5 @@
 {
-  "_comment": "boxrun_default — Mystery Box farm, NO boost purchase (Fast Start only), jump-hop run (J->J->S->J), quits the run once 1 Mystery Box is banked. The default box-farm: minimal, no shop dependency. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. Loop: home->Play->await_shop(->check_heart, no buy)->check_heart(Play+FastStart spam)->run(J/J/S/J)->check_box(box?->quit_run | else die)->result->box->home.",
+  "_comment": "boxrun_default — Mystery Box farm, NO boost purchase (Fast Start only), jump-hop run (J->J->S->J, NO Cookie Relay tap), quits the run once 1 Mystery Box is banked. The default box-farm: minimal, no shop dependency. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. Loop: home->Play->await_shop(->check_heart, no buy)->check_heart(Play+FastStart spam)->run(J/J/S/J)->check_box(box?->quit_run | else die)->result->box->home.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -250,9 +250,6 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
-        },
-        {
           "type": "goto",
           "state": "jump_3"
         }
@@ -277,9 +274,6 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
-        },
-        {
           "type": "goto",
           "state": "jump_4"
         }
@@ -302,9 +296,6 @@
           "cy": 940,
           "rx": 175,
           "ry": 55
-        },
-        {
-          "type": "relay_tap"
         },
         {
           "type": "goto",
@@ -701,9 +692,6 @@
           "cy": 940,
           "rx": 175,
           "ry": 55
-        },
-        {
-          "type": "relay_tap"
         },
         {
           "type": "goto",
