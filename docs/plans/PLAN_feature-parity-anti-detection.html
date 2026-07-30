@@ -557,7 +557,8 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     ที่เหลือเพิ่มได้ทีละตัวโดยไม่แตะโค้ด (แค่ PNG + 1 บรรทัดใน registry). ระบุใน CLI help ว่าตัวไหนพร้อมใช้
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 4</span><h3>Anti-bot captcha — odd-one-out (port จาก cookierun-bot)</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 4</span><h3>Anti-bot captcha — odd-one-out (port จาก cookierun-bot)
+    <span class="pill warn" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>PARTIAL — algorithm เสร็จ, พิกัดค้าง</span></h3></div>
   <p class="lead">
     Cookie Run เด้ง popup กันบอทแบบสุ่ม: การ์ด 6 ใบ (grid 3×2) ตัวละครเดียวกัน
     <b>4 ใบเหมือนกัน + 2 ใบต่าง</b> — ต้องแตะ 2 ใบที่ต่างแล้วยืนยัน. ตอบผิด = เสี่ยงแบนไอดี
@@ -825,7 +826,8 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     ทำที่เครื่องที่มี LDPlayer <b>ก่อนเปิด Phase 1–2</b>
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 8</span><h3>OCR box counter — quit logic ที่แม่นต่อ run</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 8</span><h3>OCR box counter — quit logic ที่แม่นต่อ run
+    <span class="pill ok" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>DONE — pytest 259 passed</span></h3></div>
   <p class="lead">
     <code>run_toggle.py</code> สารภาพใน docstring เอง: <i>"there's no OCR reading the '[?] xN' counter's
     actual number — the engine can't tell box #1 from #4"</i> → <code>quit_after</code> เลยต้องนับ
@@ -841,6 +843,20 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <li><b>ROI จาก template ที่มีอยู่:</b> <code>boxcounter_marker.png</code> / <code>ep6_boxcounter_marker.png</code>
       ใช้หา anchor แล้ว offset ไปตำแหน่งเลข — ไม่ต้อง crop ใหม่</li>
   </ul>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ทำแล้ว</b> (commit <code>612ce43</code>) — <b>preprocessing คือของจริง ไม่ใช่แค่เรียก OCR:</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>Upscale ×4 บังคับ</b> — pill สูง ~40px, tesseract เทรนกับ glyph ขนาดพิมพ์ → ไม่ขยายอ่านได้แต่ noise</li>
+      <li><b>Otsu threshold ไม่ใช่ค่าคงที่</b> — พื้นหลัง pill สว่างต่างกันตามฉากที่เกมวาดอยู่ข้างหลัง</li>
+      <li><b>Invert เป็นดำบนขาว</b> — tesseract ต้องการแบบนั้น แต่ HUD วาดกลับกัน</li>
+      <li><b><code>--psm 7</code> + whitelist ตัวเลข</b> — ไม่งั้น "x" ใน "x3" กลายเป็นเลข</li>
+      <li><b>คืน <code>None</code> ไม่ใช่ 0</b> — caller ต้องแยก "อ่านไม่ออก" จาก "ไม่มีกล่อง" ได้</li>
+      <li><b>Fail ครั้งเดียว = ปิด OCR ตลอด session</b> — pytesseract/binary หายจะไม่กลับมาเองกลางรัน,
+        retry ทุกไม่กี่วิ = spam log เปล่า → fallback ไปนับ run แบบเดิม (ยังถูก แค่หยาบกว่า)</li>
+      <li><b>tesseract binary ไม่มีบนเครื่อง dev</b> (เป็น native installer ไม่ใช่ pip) →
+        7 เทส live OCR <code>skip</code> ตามการออกแบบ; เทส preprocessing + fallback รันได้ครบ</li>
+    </ul>
+  </div>
 </section>
 
 
@@ -1028,7 +1044,12 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
           <code>ep5</code>/<code>ep6v2</code> มี probe chain 6 ตัว (congrats/levelup/giftdraw/...) orphan = popup พวกนั้นไม่ถูกปิด
         </td>
         <td>
-          เพิ่ม reachability check ใน <code>config._validate()</code> → warn ตอน load (ไม่ raise — orphan อาจตั้งใจไว้ทดลอง)
+          เพิ่ม reachability check ใน <code>config._validate()</code> → warn ตอน load.
+          <b>✅ แก้ครบแล้ว (commit <code>23b34c4</code>): orphan 45 → 0 ทุก config</b> —
+          ep3/norelay gate ไม่เคยเข้า boost chain · ep5-family orphan popup chain ที่<b>ไม่มี state อื่นครอบ
+          4 marker เลย</b> (congrats/friendinfo/giftdraw/ranking = โผล่แล้วค้างจริง) ·
+          <code>check_boost_result</code> superseded by <code>start_run</code> + <code>quit_run</code> ตายใน
+          ep6box/norelay → ลบ. มีเทส regression กันย้อน
         </td>
       </tr>
       <tr>
@@ -1208,15 +1229,15 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p0">PHASE 8</div>
       <div class="tl-body">
-        <b>OCR box counter</b> — quit_after แม่นต่อ run (read_text 0-caller → ใช้จริง)
-        <div class="tl-meta">3 ขั้น · เล็ก · optional dep tesseract + fallback บังคับ</div>
-        <div class="bar"><i style="width:25%;background:var(--red)"></i></div>
+        <b>OCR box counter</b> ✅ <b>DONE</b> — read_counter (upscale+Otsu+psm7) · fallback เมื่อไม่มี tesseract
+        <div class="tl-meta">pytest 259 passed (7 skip = ไม่มี binary) · quit_after = กล่องที่ N ของ run นี้</div>
+        <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
       </div>
     </div>
     <div class="tl-row">
       <div class="tl-badge p4">PHASE 4</div>
       <div class="tl-body">
-        <b>Captcha solver</b> — odd-one-out (ไม่ต้องมี template)
+        <b>Captcha solver</b> ⚠️ <b>PARTIAL</b> — algorithm + gap_min + bail ครบ · พิกัดรอ challenge จริง
         <div class="tl-meta">5 ขั้น · หนักสุด · <b>gate: ต้องเห็น captcha จริงก่อน</b> · anti-detection 3/3</div>
         <div class="bar"><i style="width:88%;background:var(--amber)"></i></div>
       </div>
