@@ -1,0 +1,1337 @@
+<meta charset="utf-8">
+<title>NetRunner — Feature parity + anti-detection — Feature Plan</title>
+<style>
+  :root[data-theme="light"] {
+    --bg:#fff; --bg-elev:#f8fafc; --bg-elev-2:#f1f5f9; --bg-hover:#e2e8f0;
+    --border:#e2e8f0; --border-strong:#cbd5e1;
+    --text:#0f172a; --text-dim:#475569; --text-faint:#94a3b8;
+    --accent:#0ea5e9; --accent-soft:#e0f2fe; --accent-border:#7dd3fc;
+    --indigo:#6366f1; --indigo-soft:#e0e7ff;
+    --green:#10b981; --green-soft:#d1fae5; --green-border:#6ee7b7;
+    --amber:#f59e0b; --amber-soft:#fef3c7; --amber-border:#fcd34d;
+    --red:#f43f5e; --red-soft:#ffe4e6; --red-border:#fda4af;
+    --violet:#8b5cf6; --violet-soft:#ede9fe;
+  }
+  :root[data-theme="dark"] {
+    --bg:#020617; --bg-elev:#0f172a; --bg-elev-2:#1e293b; --bg-hover:#334155;
+    --border:#1e293b; --border-strong:#334155;
+    --text:#f1f5f9; --text-dim:#94a3b8; --text-faint:#64748b;
+    --accent:#38bdf8; --accent-soft:rgba(56,189,248,.12); --accent-border:rgba(56,189,248,.35);
+    --indigo:#818cf8; --indigo-soft:rgba(129,140,248,.12);
+    --green:#34d399; --green-soft:rgba(52,211,153,.12); --green-border:rgba(52,211,153,.35);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.12); --amber-border:rgba(251,191,36,.35);
+    --red:#fb7185; --red-soft:rgba(251,113,133,.12); --red-border:rgba(251,113,133,.35);
+    --violet:#a78bfa; --violet-soft:rgba(167,139,250,.12);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;
+    font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1100px; margin:0 auto; padding:48px 24px 96px; }
+  .header { margin-bottom:36px; padding-bottom:24px; border-bottom:1px solid var(--border); }
+  .title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:14px; flex-wrap:wrap; }
+  h1 { font-size:27px; font-weight:700; letter-spacing:-.025em; margin:0; }
+  .theme-toggle { background:var(--bg-elev); color:var(--text-dim); border:1px solid var(--border-strong);
+    border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit; font-weight:500; transition:all .15s; }
+  .theme-toggle:hover { background:var(--bg-hover); color:var(--text); }
+  .meta { display:flex; flex-wrap:wrap; gap:6px 8px; color:var(--text-dim); font-size:13px; }
+  .meta .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--bg-elev);
+    border:1px solid var(--border); border-radius:8px; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px; color:var(--text-dim); }
+  .meta .chip b { color:var(--text); font-weight:600; }
+  section { margin-top:40px; scroll-margin-top:24px; }
+  h2 { font-size:21px; font-weight:700; letter-spacing:-.018em; margin:0 0 14px; display:flex; align-items:center; gap:12px; }
+  h2 .section-num { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px;
+    background:var(--accent-soft); color:var(--accent); font-size:13px; font-weight:700; font-family:'JetBrains Mono',ui-monospace,monospace; }
+  h3 { font-size:15px; font-weight:600; margin:22px 0 10px; }
+  p { margin:8px 0; }
+  .lead { color:var(--text-dim); font-size:14.5px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:12px 0 16px; }
+  .stat { background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .stat .label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); margin-bottom:4px; }
+  .stat .value { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--text); line-height:1.25; }
+  .tbl-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; background:var(--bg-elev); border-radius:10px; overflow:hidden; }
+  thead th { text-align:left; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--text-dim); padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg-elev-2); }
+  tbody td { padding:10px 14px; vertical-align:top; border-bottom:1px solid var(--border); font-size:13px; color:var(--text); }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover td { background:var(--bg-hover); }
+  code { font-family:'JetBrains Mono',ui-monospace,Consolas,monospace; font-size:12.5px; background:var(--bg-elev-2);
+    color:var(--indigo); padding:1px 7px; border-radius:5px; border:1px solid var(--border); font-weight:500; }
+  pre { margin:0; padding:14px 16px; background:#0b1120; color:#cbd5e1; border-radius:10px;
+    font-family:'JetBrains Mono',ui-monospace,Consolas,monospace; font-size:12px; line-height:1.7; overflow-x:auto; border:1px solid var(--border); }
+  pre .k { color:#7dd3fc; } pre .c { color:#64748b; } pre .s { color:#6ee7b7; } pre .r { color:#fb7185; }
+  .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 10px; border-radius:999px;
+    font-size:11.5px; font-weight:600; font-family:'JetBrains Mono',ui-monospace,monospace; border:1px solid; white-space:nowrap; }
+  .pill .dot { width:5px; height:5px; border-radius:50%; }
+  .pill.ok { background:var(--green-soft); color:var(--green); border-color:var(--green-border); }
+  .pill.ok .dot { background:var(--green); }
+  .pill.err { background:var(--red-soft); color:var(--red); border-color:var(--red-border); }
+  .pill.err .dot { background:var(--red); }
+  .pill.warn { background:var(--amber-soft); color:var(--amber); border-color:var(--amber-border); }
+  .pill.warn .dot { background:var(--amber); }
+  .pill.opt { background:var(--violet-soft); color:var(--violet); border-color:var(--violet); }
+  ol.steps { padding-left:0; list-style:none; counter-reset:s; margin:0; background:var(--bg-elev);
+    border:1px solid var(--border); border-radius:10px; }
+  ol.steps li { counter-increment:s; padding:12px 16px 12px 48px; position:relative; border-bottom:1px solid var(--border); font-size:13.5px; }
+  ol.steps li:last-child { border-bottom:none; }
+  ol.steps li::before { content:counter(s); position:absolute; left:14px; top:12px; width:22px; height:22px;
+    border-radius:6px; background:var(--accent-soft); color:var(--accent); font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .note { margin-top:12px; padding:14px 16px; background:var(--amber-soft); border:1px solid var(--amber-border);
+    border-radius:10px; color:var(--text); font-size:13px; }
+  .note.info { background:var(--accent-soft); border-color:var(--accent-border); }
+  .note.danger { background:var(--red-soft); border-color:var(--red-border); }
+  ul.tight { margin:8px 0; padding-left:20px; } ul.tight li { margin:4px 0; }
+  .file { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--indigo); }
+  .phase-hd { display:flex; align-items:center; gap:10px; margin:26px 0 10px; }
+  .phase-hd .badge { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; padding:3px 9px;
+    border-radius:6px; background:var(--indigo-soft); color:var(--indigo); border:1px solid var(--indigo); }
+  .phase-hd h3 { margin:0; }
+
+  /* ── images ─────────────────────────────────────────── */
+  .tpl-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; margin:14px 0; }
+  .tpl-card { background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:10px; }
+  .tpl-card.hit { border-color:var(--green-border); background:var(--green-soft); }
+  .tpl-card.miss { border-color:var(--red-border); background:var(--red-soft); }
+  .tpl-card.todo { border-color:var(--amber-border); background:var(--amber-soft); }
+  .tpl-shot { background:repeating-conic-gradient(var(--bg-elev-2) 0% 25%, var(--bg) 0% 50%) 50%/12px 12px;
+    border:1px solid var(--border); border-radius:7px; padding:5px; display:flex; align-items:center;
+    justify-content:center; min-height:56px; margin-bottom:8px; overflow:hidden; }
+  .tpl-img { max-width:100%; height:auto; display:block; image-rendering:crisp-edges; border-radius:3px; }
+  .tpl-name { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text); font-weight:600;
+    word-break:break-all; line-height:1.4; }
+  .tpl-dim { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-faint); margin-top:2px; }
+  .tpl-tag { margin-top:6px; }
+  figure { margin:16px 0; }
+  figcaption { font-size:12px; color:var(--text-dim); margin-top:8px; line-height:1.55; }
+  .shot-ph { background:var(--bg-elev); border:1.5px dashed var(--border-strong); border-radius:10px;
+    padding:26px 20px; text-align:center; color:var(--text-faint); }
+  .shot-ph .ph-icon { font-size:26px; opacity:.55; }
+  .shot-ph .ph-t { font-size:13px; font-weight:600; color:var(--text-dim); margin:6px 0 3px; }
+  .shot-ph .ph-s { font-size:11.5px; font-family:'JetBrains Mono',monospace; }
+
+  /* ── FSM diagram ────────────────────────────────────── */
+  .fsm { background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:18px 16px; margin:14px 0; overflow-x:auto; }
+  .fsm svg { display:block; min-width:640px; width:100%; height:auto; }
+  .fsm text { font-family:'JetBrains Mono',ui-monospace,monospace; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:12px; font-size:12px; color:var(--text-dim); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend i { width:11px; height:11px; border-radius:3px; display:inline-block; border:1px solid; }
+
+  /* ── phase timeline ─────────────────────────────────── */
+  .tl { margin:16px 0; }
+  .tl-row { display:grid; grid-template-columns:78px 1fr; gap:12px; align-items:start;
+    padding:12px 0; border-bottom:1px solid var(--border); }
+  .tl-row:last-child { border-bottom:none; }
+  .tl-badge { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; text-align:center;
+    padding:5px 0; border-radius:7px; border:1px solid; }
+  .tl-badge.p0 { background:var(--red-soft); color:var(--red); border-color:var(--red-border); }
+  .tl-badge.p1 { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-border); }
+  .tl-badge.p2 { background:var(--green-soft); color:var(--green); border-color:var(--green-border); }
+  .tl-badge.p3 { background:var(--violet-soft); color:var(--violet); border-color:var(--violet); }
+  .tl-badge.p4 { background:var(--amber-soft); color:var(--amber); border-color:var(--amber-border); }
+  .tl-body b { font-size:13.5px; }
+  .tl-meta { font-size:11.5px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; margin-top:3px; }
+  .bar { height:7px; border-radius:4px; margin-top:7px; background:var(--bg-elev-2); overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:4px; }
+  @media (max-width:780px){ .wrap{padding:24px 16px 64px;} .title-row{flex-direction:column;} h1{font-size:22px;} }
+</style>
+
+<div class="wrap">
+
+<header class="header">
+  <div class="title-row">
+    <h1>NetRunner — Feature parity + anti-detection</h1>
+    <button class="theme-toggle" onclick="
+      const r=document.documentElement;
+      r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';
+      this.textContent=r.dataset.theme==='dark'?'☾ Dark':'☀ Light';
+    ">☀ Light</button>
+  </div>
+  <div class="meta">
+    <span class="chip">Type <b>FEATURE</b></span>
+    <span class="chip">Repo <b>netrunner</b></span>
+    <span class="chip">Phases <b>9</b></span>
+    <span class="chip">Re-analyzed <b>8054cc2</b></span>
+    <span class="chip">Templates <b>47+43</b></span>
+    <span class="chip">New files <b>6</b></span>
+    <span class="chip">Modified <b>8</b></span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="section-num">01</span>Goal &amp; Scope</h2>
+  <p class="lead">
+    เติม feature ที่ <b>cookierun-classic-bot มีแต่ NetRunner ไม่มี</b> — session reset, wait-between-games,
+    lives routine ทุก 25–35 นาที, boost 11 ตัว, popup coverage, anti-bot captcha — พร้อมแก้ bug 10 ตัวที่เจอตอน review.
+    <b>วิเคราะห์รอบสองหลัง commit <code>406f408</code>/<code>42e5b66</code>/<code>8054cc2</code></b>
+    (shared actions + <code>--boost</code> 3 profile) — bug เดิมยังอยู่ครบ, Phase 3 เปลี่ยนเป็นต่อยอดของที่ทำแล้ว.
+    ทั้งหมดทำที่ <b>engine layer</b> (Python) ไม่ใช่ยัดเข้า JSON เพิ่ม เพราะ JSON ไม่มี timer/counter/loop primitive
+    (เหตุผลเต็มใน section 03).
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="label">Feature ที่ขาด</div><div class="value" style="color:var(--amber)">6</div></div>
+    <div class="stat"><div class="label">Bug ที่เจอ</div><div class="value" style="color:var(--red)">10</div></div>
+    <div class="stat"><div class="label">Engine LOC เพิ่ม</div><div class="value">~320</div></div>
+    <div class="stat"><div class="label">JSON แตะ</div><div class="value" style="color:var(--green)">0*</div></div>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:90px">Scope</th><th>Item</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="pill ok"><span class="dot"></span>IN</span></td>
+        <td>
+          Session reset (restart app ทุก 1.5–3 ชม. + stability verify) ·
+          wait-between-games 30–60s + wait/poll jitter ·
+          lives routine ทุก 25–35 นาที (reuse <code>sendlife.json</code>) ·
+          <code>--boost</code> 11 ตัว (ต่อยอด <code>_BOOST_PROFILES</code> จาก <code>8054cc2</code>) ·
+          popup coverage 10 ตัวที่ขาด + adopt <code>close_popup</code> ·
+          anti-bot captcha แบบ odd-one-out ·
+          unknown-screen collector + run analytics (Phase 7 — ปลุก 2 ฟังก์ชันที่เขียนแล้วแต่ 0 caller) ·
+          OCR box counter (Phase 8) ·
+          fix bug 10 ตัวที่ section 06
+        </td>
+      </tr>
+      <tr>
+        <td><span class="pill err"><span class="dot"></span>OUT</span></td>
+        <td>
+          รื้อ JSON เป็น DSL ใหม่ ·
+          <s>แก้ config bloat</s> <span class="pill ok" style="vertical-align:1px"><span class="dot"></span>แก้แล้ว upstream</span>
+          (<code>42e5b66</code> migrate เข้า shared actions, −2,286 บรรทัด) ·
+          multi-instance farm · obstacle dodge · multi-resolution templates · เพิ่มเกมใหม่ (digimon) —
+          ทั้งหมดย้ายไป <b>Backlog (section 10)</b> พร้อมเหตุผล ·
+          mailbox receive-lives (extension ของ Phase 5 — ต้อง template ใหม่)
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note info">
+    <b>* JSON แตะ 0 ไฟล์เฉพาะ Phase 1–2.</b> Phase 3 เพิ่ม template PNG 8 ตัว ·
+    Phase 4–6 เพิ่ม state chain / probe state ใน config — ทุก phase <b>ไม่แก้ state ที่มีอยู่เดิม</b>
+    (append-only) จึงไม่เสี่ยงพัง flow ที่ทดสอบแล้ว
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">02</span>Feature parity — ตารางเทียบ</h2>
+  <p class="lead">
+    9 feature จาก README ของ cookierun-classic-bot เทียบกับ NetRunner ปัจจุบัน
+  </p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Feature</th><th style="width:110px">NetRunner</th><th>รายละเอียด</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Stage detect via template matching</td>
+        <td><span class="pill ok"><span class="dot"></span>มี</span></td>
+        <td><code>src/perceive.py</code> — ดีกว่า: มี ROI, uniform-template guard, OOM retry</td>
+      </tr>
+      <tr>
+        <td>Full game loop</td>
+        <td><span class="pill ok"><span class="dot"></span>มี</span></td>
+        <td>JSON FSM 46 state reachable — แต่<b>ครอบ popup คนละชุด</b>กับ cookierun-bot:
+          netrunner มี settings/fortune/friendinfo/giftdraw ที่อีกฝั่งไม่มี · cookierun-bot มี 10 ตัวที่ netrunner ขาด → <b>Phase 6</b></td>
+      </tr>
+      <tr>
+        <td>Fast Start / Cookie Relay auto</td>
+        <td><span class="pill ok"><span class="dot"></span>มี</span></td>
+        <td>ดีขึ้นอีกหลัง <code>406f408</code>: shared action <code>relay_tap</code> (×30) / <code>faststart_tap</code> (×16)
+          — จูนที่ Actor ที่เดียวถึงทุก config</td>
+      </tr>
+      <tr>
+        <td>Human-like tap jitter + delay</td>
+        <td><span class="pill ok"><span class="dot"></span>มี</span></td>
+        <td>ดีกว่า: Gaussian σ=3 + clip, 8% hesitate 0.6–1.4s, uniform-in-ellipse สำหรับปุ่มใหญ่</td>
+      </tr>
+      <tr>
+        <td>Debug screen saving</td>
+        <td><span class="pill ok"><span class="dot"></span>มี</span></td>
+        <td><code>tools/snap.py</code> — CLI แยก ไม่ต้อง uncomment code</td>
+      </tr>
+      <tr>
+        <td><b>Desired Random Boost (11 ตัว)</b></td>
+        <td><span class="pill warn"><span class="dot"></span>บางส่วน</span></td>
+        <td>
+          <code>8054cc2</code> เพิ่ม <code>--boost {magnet,speed,doublecoins,none}</code> ใน
+          <code>run_toggle.py</code> (<code>_BOOST_PROFILES</code>: banner + buy_taps + multibuy ต่อ boost) —
+          <b>3 จาก 11</b> และใช้ได้เฉพาะ <code>boxrun_toggle.json</code>.
+          เหลือ: อีก 8 boost (ต้อง crop banner) + expose ใน <code>main.py</code> ให้ทุก config → <b>Phase 3</b>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Auto-wait 30–60s ระหว่างเกม</b></td>
+        <td><span class="pill err"><span class="dot"></span>ไม่มี</span></td>
+        <td>
+          grep <code>src/ config/</code> = 0 hit. เล่นจบ→เริ่มใหม่ทันที = cadence สม่ำเสมอผิดธรรมชาติ → <b>Phase 1</b>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Session reset 1.5–3 ชม.</b></td>
+        <td><span class="pill err"><span class="dot"></span>ไม่มี</span></td>
+        <td>
+          grep <code>session.?reset|force-stop</code> = 0 hit. รันต่อเนื่องไม่จำกัด = long-session signal → <b>Phase 2</b>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Anti-bot captcha solver</b></td>
+        <td><span class="pill err"><span class="dot"></span>ไม่มี</span></td>
+        <td>
+          grep <code>anti.?bot|captcha</code> ใน <code>src/ config/</code> = 0 hit.
+          เจอ captcha แล้วค้าง (livelock warn แล้วรอคน) →
+          port วิธี <b>odd-one-out</b> จาก <code>cookierun-bot/detection.py:131-177</code> → <b>Phase 4</b>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Lives routine ทุก 25–35 นาที</b></td>
+        <td><span class="pill err"><span class="dot"></span>ไม่มี</span></td>
+        <td>
+          cookierun-bot ยิง receive+send lives ทุก <code>uniform(25*60, 35*60)</code>
+          (<code>bot.py:193-199</code>) + send หลัง app reset (<code>pending_send_friend_life</code>) —
+          social signal สม่ำเสมอแบบคนเล่นจริง. netrunner มี <code>sendlife.json</code> แต่<b>ต้องรันแยกเอง</b>
+          ไม่ผูกกับ farm loop → <b>Phase 5</b>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Random delay ทุก action</b></td>
+        <td><span class="pill warn"><span class="dot"></span>บางส่วน</span></td>
+        <td>
+          cookierun-bot: ทุก action ตามด้วย <code>uniform(0.8, 1.4)s</code> — ไม่มี delay ค่าคงที่เลย.
+          netrunner: pre-tap jitter ดีกว่า (Gaussian + hesitate) แต่ <b><code>wait</code> action ทั้ง 754 จุด
+          ใน config = fixed ms</b> + <code>poll_ms</code> คงที่ → in-run hop cadence เป็น metronome → <b>Phase 1</b>
+        </td>
+      </tr>
+      <tr>
+        <td><b>Full-scan recovery</b></td>
+        <td><span class="pill ok"><span class="dot"></span>เทียบเท่า</span></td>
+        <td>
+          cookierun-bot: detect miss นานเกิน threshold → scan ทุก stage.
+          netrunner: probe chain + <code>timeout_ms</code> + livelock detector = ครอบเคสเดียวกันด้วยวิธีต่างกัน — ไม่ต้อง port
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note danger">
+    <b>ความเสี่ยงที่ใหญ่สุด = ของที่ขาดรวมกันเป็นเรื่องเดียว: anti-detection / human-likeness.</b>
+    NetRunner แข็งเรื่อง <i>survive ความพัง</i> (retry/livelock/alert) แต่ไม่มีอะไรเรื่อง <i>ไม่ให้ถูกจับว่าเป็นบอท</i> เลย —
+    รันต่อเนื่อง 12 ชม. ไม่พัก ไม่ restart, cadence คงที่, เจอ captcha แล้วค้าง (livelock warn แล้วรอคนมาแก้).
+    cookierun-bot อ่อนกว่าเรื่อง resilience แต่คิดเรื่องนี้ครบทั้ง 3 ข้อ
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">03</span>Architecture decision — ทำไมไปที่ engine ไม่ใช่ JSON</h2>
+  <p class="lead">
+    ทั้ง 4 feature ต้องการอย่างเดียวกัน: <b>state ที่อยู่ข้าม cycle</b> (timer, counter, per-run flag).
+    JSON FSM ปัจจุบันไม่มี concept นี้เลย — ทุก state ตัดสินจาก frame เดียว + <code>absent_streak</code> ที่ engine ถือให้
+  </p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Feature</th><th>ต้องมี</th><th>JSON ทำได้มั้ย</th></tr></thead>
+    <tbody>
+      <tr><td>wait 30–60s ระหว่างเกม</td><td>random delay ต่อ 1 รอบเกม</td>
+        <td><span class="pill err"><span class="dot"></span>ไม่ได้</span> <code>wait.ms</code> เป็นค่าคงที่ ไม่ random</td></tr>
+      <tr><td>session reset 1.5–3 ชม.</td><td>timer ข้าม cycle + force-stop + verify</td>
+        <td><span class="pill err"><span class="dot"></span>ไม่ได้</span> ไม่มี timer, ไม่มี action ที่ restart app</td></tr>
+      <tr><td>boost 11 ตัว</td><td>เลือก template ตอน runtime</td>
+        <td><span class="pill warn"><span class="dot"></span>ฝืนได้</span> ต้องมี 11 config หรือ patch dict แบบ <code>run_toggle.py</code></td></tr>
+      <tr><td>captcha solver</td><td>วน 6 cell → classify → tap หลายจุด</td>
+        <td><span class="pill err"><span class="dot"></span>ไม่ได้</span> <code>find()</code> คืน peak เดียว ไม่ใช่ทุก match</td></tr>
+      <tr><td>lives routine 25–35 นาที</td><td>timer ข้าม cycle + trigger ที่ state ปลอดภัย</td>
+        <td><span class="pill err"><span class="dot"></span>ไม่ได้</span> ไม่มี timer; state chain ของ send มีแล้ว (<code>sendlife.json</code>) แค่เรียกไม่ได้</td></tr>
+      <tr><td>popup coverage 10 ตัว</td><td>probe state + template ใหม่</td>
+        <td><span class="pill ok"><span class="dot"></span>ได้</span> append probe state — engine ไม่ต้องแก้ (Phase 6 = งาน config+template ล้วน)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>ทางเลือกที่พิจารณา</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:150px">ทาง</th><th>ข้อดี</th><th>ข้อเสีย</th><th style="width:80px">เลือก</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>A. Subclass <code>Runner</code> ต่อ feature</td>
+        <td>ไม่แตะ engine, pattern เดียวกับ <code>BoxQuitRunner</code> ที่มีอยู่</td>
+        <td>เปิด <code>_run_actions</code> ทับซ้อนกันหลายชั้น — 3 feature = 3 subclass ที่ต้อง compose กัน (จะชนกันเอง)</td>
+        <td><span class="pill err"><span class="dot"></span>ไม่</span></td>
+      </tr>
+      <tr>
+        <td>B. Hook ใน <code>Runner.run()</code> + config field ใหม่</td>
+        <td>1 ที่, compose ได้, JSON เดิมไม่พัง (field ใหม่ = optional)</td>
+        <td>engine โตขึ้น ~180 LOC</td>
+        <td><span class="pill ok"><span class="dot"></span>ใช่</span></td>
+      </tr>
+      <tr>
+        <td>C. เพิ่ม JSON primitive (<code>repeat</code>, <code>counter</code>, <code>timer</code>)</td>
+        <td>เหลือแค่ timer/counter — bloat แก้ไปแล้วด้วย shared actions (<code>42e5b66</code>)</td>
+        <td>งานใหญ่กว่ามาก = สร้าง DSL. ควรเป็นแพลนแยก</td>
+        <td><span class="pill warn"><span class="dot"></span>ทีหลัง</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note info">
+    เลือก <b>B</b>. Feature ทั้งหมดเป็น <i>engine concern</i> จริง (นาฬิกา, การ restart app, การ classify ภาพ) ไม่ใช่ game logic —
+    วางที่ engine ทำให้ทุก config ได้ประโยชน์ฟรี ไม่ต้องแก้ 13 ไฟล์ JSON.
+    <b>commit <code>406f408</code> พิสูจน์ pattern นี้แล้ว</b> — shared actions ใน Actor ลบ JSON ไป 2,286 บรรทัด
+    โดย behavior จูนที่เดียวถึงทุก config. C ยังจำเป็นในอนาคตแต่คนละงาน
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">04</span>Feature spec</h2>
+
+  <div class="phase-hd"><span class="badge">PHASE 1</span><h3>Wait-between-games + human pacing</h3></div>
+  <p>
+    Config field ใหม่ (optional ทุกตัว — config เดิมไม่ระบุ = behavior เดิมเป๊ะ):
+  </p>
+  <pre><span class="c">// config JSON — top level, ทุก field optional</span>
+{
+  <span class="k">"inter_game_delay_s"</span>: [<span class="s">30</span>, <span class="s">60</span>],   <span class="c">// random.uniform ก่อนเริ่มเกมใหม่</span>
+  <span class="k">"inter_game_state"</span>: <span class="s">"home"</span>,        <span class="c">// state ที่ถือว่า "จบ 1 รอบ" (default: start_state)</span>
+  <span class="k">"poll_ms"</span>: [<span class="s">500</span>, <span class="s">900</span>],             <span class="c">// เดิมรับ int เดียว — เพิ่มรูปแบบ range = สุ่มต่อ cycle</span>
+}
+
+<span class="c">// action ระดับ state — wait รับ range ได้ (backward-compat: int เดียว = เดิม)</span>
+{ <span class="k">"type"</span>: <span class="s">"wait"</span>, <span class="k">"ms"</span>: [<span class="s">800</span>, <span class="s">1400</span>] }</pre>
+  <p>
+    Engine: เมื่อ <b>เข้า</b> <code>inter_game_state</code> (transition เข้า ไม่ใช่อยู่แล้ว) และไม่ใช่รอบแรก →
+    sleep <code>uniform(*inter_game_delay_s)</code> ก่อนรัน <code>on_match</code>.
+    Log ค่าที่สุ่มได้ทุกครั้ง เพื่อยืนยันว่าไม่ใช่ค่าคงที่
+  </p>
+  <div class="note">
+    <b>ต่างจาก cookierun-bot:</b> อันนั้น hardcode <code>random.uniform(30, 60)</code> ใน 4 ที่
+    (<code>bot.py:148/188/198/309</code>) — แก้ที่เดียวไม่ครบ. อันนี้อยู่ใน config = แก้ที่เดียว, ต่อ config ได้ต่างกัน
+  </div>
+  <h4 style="font-size:14px;font-weight:600;margin:20px 0 8px">Wait jitter + poll jitter — ฆ่า metronome</h4>
+  <p>
+    cookierun-bot ทุก action ตามด้วย <code>uniform(0.8, 1.4)s</code> — <b>ไม่มี delay ค่าคงที่สักจุด</b>.
+    netrunner กลับกัน: <code>wait</code> ทั้ง <b>754 จุด</b>ใน config เป็น fixed ms + <code>poll_ms</code> คงที่ 600 →
+    ช่วงเวลาระหว่าง tap ในลูป (โดยเฉพาะ in-run hop J→J→S→J) เป็นจังหวะคงที่ = ลายเซ็นบอท
+  </p>
+  <ul class="tight">
+    <li><b><code>wait.ms</code> รับ <code>[min,max]</code></b> — Actor สุ่มต่อครั้ง. int เดียว = behavior เดิมเป๊ะ (backward-compat, ไม่ต้อง migrate 754 จุดทันที — ทยอยเปลี่ยนเฉพาะจุด hot)</li>
+    <li><b><code>poll_ms</code> รับ <code>[min,max]</code></b> — สุ่มต่อ cycle → hop cadence ไม่คงที่โดยไม่ต้องแตะ config state ใด</li>
+    <li>ไม่แตะ pre-tap jitter เดิม (Gaussian + hesitate ใน <code>act.py:49-66</code> ดีอยู่แล้ว — ดีกว่า cookierun-bot)</li>
+  </ul>
+
+  <div class="phase-hd"><span class="badge">PHASE 2</span><h3>Session reset — restart app ทุก 1.5–3 ชม.</h3></div>
+  <pre><span class="c">// config JSON</span>
+{
+  <span class="k">"session_reset_s"</span>: [<span class="s">5400</span>, <span class="s">10800</span>],  <span class="c">// 1.5–3 ชม. random ต่อ session</span>
+  <span class="k">"package"</span>: <span class="s">"com.devsisters.crg"</span>,      <span class="c">// force-stop target</span>
+  <span class="k">"reset_at_state"</span>: <span class="s">"home"</span>,               <span class="c">// reset เฉพาะตอนอยู่ state ปลอดภัย</span>
+}</pre>
+  <p><b>ทำไมต้อง <code>reset_at_state</code>:</b> restart กลางรันเกม = เสียรอบ + เสียหัวใจ. รอถึง home ก่อนเสมอ</p>
+  <p>Flow (module ใหม่ <span class="file">src/session.py</span>):</p>
+  <ol class="steps">
+    <li><b>force-stop</b> — <code>adb shell cmd activity force-stop &lt;package&gt;</code> แล้วรอ 15s</li>
+    <li><b>restart</b> — reuse <code>launcher._start_app()</code> ที่มีอยู่ (ldconsole runapp → fallback am start) <b>ไม่ใช้ monkey</b> — comment ใน <code>launcher.py:220-224</code> บอกว่า LDPlayer image หลายตัวไม่มี monkey</li>
+    <li><b>stability verify</b> — เช็ค <code>pidof</code> 3 รอบ ห่างกัน 20s (port จาก <code>cookierun-bot/adb.py:104-117</code>) — crash ตอน launch จับได้ก่อนเข้า loop</li>
+    <li><b>retry</b> — พัง → ลองใหม่ max 5 ครั้ง → หมดแล้ว raise + Discord alert critical</li>
+    <li><b>กลับ start_state</b> — reset ตัวนับทุกตัว (<code>absent_streak</code>, <code>same_state_streak</code>, timer) + สุ่ม interval ใหม่</li>
+  </ol>
+  <div class="note info">
+    <b>Reuse ไม่เขียนใหม่:</b> <code>launcher.py</code> มี <code>_start_app</code> + <code>_wait_adb_ready</code> +
+    <code>_app_foreground</code> ครบแล้ว. <code>src/session.py</code> แค่เรียงลำดับ + เพิ่ม <code>pidof</code> loop
+  </div>
+
+  <div class="phase-hd"><span class="badge">PHASE 3</span><h3>Boost picker — ต่อยอด <code>_BOOST_PROFILES</code> ให้ครบ 11</h3></div>
+  <div class="note info">
+    <b>สถานะเปลี่ยนหลัง <code>8054cc2</code>:</b> <code>run_toggle.py</code> มี <code>--boost {magnet,speed,doublecoins,none}</code>
+    แล้ว — <code>_BOOST_PROFILES</code> เก็บ banner + buy_taps + multibuy ต่อ boost (พิสูจน์ live ทั้ง 3).
+    <b>Phase นี้จึงไม่สร้างใหม่ — ยกของที่มีขึ้นมา share แล้วเติมให้ครบ:</b>
+  </div>
+  <ol class="steps">
+    <li><b>ย้าย <code>_BOOST_PROFILES</code></b> จาก <code>tools/run_toggle.py</code> → <code>src/boost.py</code> — ตอนนี้ผูกกับ boxrun_toggle เท่านั้น; ย้ายแล้ว config ไหนก็ใช้ได้</li>
+    <li><b>Expose ใน <code>main.py</code></b> — <code>--boost</code> flag เดียวกัน + state ที่เป็น boost probe mark ด้วย <code>"boost_probe": true</code> ใน JSON (แทน hardcode ชื่อ state <code>probe_magnet</code>/<code>start_run</code> ใน tool)</li>
+    <li><b>เติม profile อีก 8</b> — ต่อ boost: crop banner @1920×1080 + วัด buy_taps → เพิ่ม 1 entry. ทำทีละตัวได้ ไม่บล็อกกัน</li>
+  </ol>
+  <pre><span class="c"># หลังจบ phase — ทุก config ทุก boost</span>
+python main.py --config config/cookierun/boxrun_ep6.json --boost doublecoins
+python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --relay y</pre>
+  <div class="note">
+    <b>จุดที่ต่างจาก cookierun-bot:</b> อันนั้น user เลือกจาก 11 ตัวใน prompt แล้ว verify ด้วย template ของ boost นั้น
+    (<code>BOOST_*.png</code> 372×54 ครบ 11 ตัวแล้ว — ใช้เป็น <b>reference ภาพ</b>ว่า banner แต่ละตัวหน้าตาไง
+    แต่ก๊อปไฟล์มาใช้ตรง ๆ ไม่ได้เพราะ crop @1280×720 คนละ scale กับ 1920×1080)
+  </div>
+  <p><b>Registry ทั้ง 11 ตัว</b> — 3 ตัวมี banner template ใน netrunner แล้ว (กรอบเขียว),
+  8 ตัวต้อง crop ใหม่ (กรอบส้ม — โชว์ template ของ cookierun-bot เป็น reference ว่าหน้าตาอะไร):</p>
+  <div class="tpl-grid">
+        <div class="tpl-card hit"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="magneticaura_banner.png" width="300" height="43" loading="lazy"></div><div class="tpl-name">Magnetic Aura</div><div class="tpl-dim">--boost magnetic_aura</div><div class="tpl-dim" style="font-size:9.5px">netrunner/templates/cookierun/magneticaura_banner.png</div><div class="tpl-tag"><span class="pill ok"><span class="dot"></span>พร้อมใช้</span></div></div>
+    <div class="tpl-card hit"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,UklGRuYHAABXRUJQVlA4INoHAAAwKQCdASosAS4APpU8mUgloyKhLFUe2LASiWgAx2kM+rDDB6/zs7d/qN9FND2z5xP+B64fzt7AHQX8x/nBeiHzwOpk9EDpn5dnkWcHvAC9Zf57MArPTWSWTeKFe2THLrER1m6mhtev+JkXwBW4usmNu7WtglXPvz3HExkZusn3SZ7RJKoiRAO58xCDrn7GP09Th6i5SH6Gw0WSV69FvSumQQxLB1/GznGnaK9c0tXFqmgsBd3HyMu+skUEu5Lhd6ixhZcVDScxqQ0pdBxKrdaY4GHHNgVQhUpV+V+GQ/GTS3avH7sRDo5K7FVHYJxuMdDOyRI93iNVAeloxAk7x4Po1IhHEWwa1fp2mr7mOOFg/aXMRr9YObep3Mh/srirwDNv7/2nWX33uSKcB+Ue3Bd2Twsx8x6jO/GB8FqjpkpMqzb7RIAPTXvehYIzbcujt0+AgADLT/ZgZrcWXYwDZjcuLJ4APKSfgzP/ygazcGTfyf908r/jQrPPnD8INz+/fso2/rhp8o2c1vZ7SfO6HoatR9xiAH5A+7OjwdMN3SZjM1e3ChHdtiu9EYxfdNv6hp4DXahlUsxt60hZnx8FHJXZUTFiAnYonlZwb7Cp9e6ClkKAPJcOfbg+69by+c2oaDJAkr/2q/APsICq9dIc9RyBaAXOcOOb2uAi5dyXfKi7bJdMB0QBs5cpm1N3qUDo3D4QUvfQIgLZoGdbnX6cj72ivotLUC7wHP2bi4F9s9ju6xGg9Z4eSpDwWFoLOKu/pKpSILeMuy+/6vDLaFzMn00p6jNHE8BHgx5wW/oAAhMxZfyw9EtqbajKLG4sODTf0PMa5+EzWr5ToaQE9D4dmUDP5gUzMb5AmGgfdSIZYwmlOFx5rQVmSjbEg8NZkcuMJcwGm/XeHEUzPGDEh//ZSfndWwZ/j3DzgZXKYcdBC1ZtHwzeaSE1uATkK3c4uOrkH+wKyGekmg5cxPwJHA2YMFxzpHjXsI5DalhOZau8Oyc29n4XVhERToFYGnVVfQIk5WGu8PCUwl4aOyzsyyvy+zcyFSodWUINXOs+xtzN8Rh0dHUCEaUUfa97ZcOLLY9GLTMNekleJCGV3Rfgoq8Vcj6BtoPG7HKlPNMPlcCeRaCiLGZCSeEuF8458/ItkARyJsecEPblt3LKj5l/XKQsJ4XreWcV6+w0SsW64ldHWo/cytxuezYaT1b+98IjdGgEJy6CEWKM7WQmHLOKn5neGEBxO509VstaETSRpSwG/aI91w5zcsBbdHOtrCc77uTxsQNWOSSClH8Sq1Xs1fhzd1yJP66L0m4t1tD4PfTaMg/Bpviz+4+bdHUG5xQ0cvn4zIWTWODArpu6sNEyx0KqkxnwleNqg7c5HZGn+HxHyp36CfU18XtaHidQVK2Vtn9hTz2eoPMoV7WDmDeZ4chVkdcyYUyu520yQaX47L5mu0cws5DgAatPgAtZedw11ZCP1/7LBGIxGqBwD3zrADRNzqjmNBaTwlhaUgO3Ygs6c5l4tbgtGXO1SmwRTmGINrSDeZocpWaQUPNDmswZED2X6qzqpV6BlexcuBW9DQnqIG7QomSygWiQYifTihlVOoiS6b/k8mxUbFsBL75xJpWZbHv/lmNqVtjJ76zrWaPqtneUEnTiN1O4L/n5qTWBohNqsE0r9ybqiL95oK7LX2muQJNWg47MsXJXfRvNm0+BwiD78NRAk6FMg9mSIqYtk+WdlqQHEQkxiDZGQPbvJ1hS0TUg5OrbTpfTDqb/BgfbwGhHkvnnjH6dviBYE95PN2E22VBruKt+Mw30qWgIGIHEI0Bm4kyNbFr5mECVLH3bZ2/6Tax2Tt7Ghow9DQidGoWq6Eq6RlgS4i1q9h6kZ5d8WAc/vr4d6BSr4Bu6ZPTlt+MuXeuuPimophDKHMZkHxNM3vWoPxSPkjyCe/TLbRQqg0kjNYIL88BIaE5I/uWvwedR+qP04/dAwibfJtG1myZKMiDA1zFi/stk5URry+Jg6KWJTS7erMspay1AwMdrJkOdLBziMm5rF5A4HvdzPU0ZlADnQtyFrFVvwPl9DUh5xTlGYSTOwfJQ7+CJ4ZuTt+zizb/Q+BWs3BnQzI9pvU19Lj8H5tbZzN93brJIQvkwMRyATuOjco0R3POOd3Zq2i7V/yXGf6lhwUVJL6stauzwEnemc21XUMFoN7eRzkl9DgqHYxTRb+I2t6DMHglemofKAjaHPJnHUbdq8QD32fi4tJ52ntyuX1hYydjTBcMZCsBe6k8E2NR9GniDdAxR1Nqf1NEl/QDDCkWxfjkI+dpC3hVZwFxEHitOCrZFklygH5LkrvtSf+0iGb3ZHcFSOS0KXYb6C2s1lOtT8E7Xlx2Q9qa/XyHV8ulp/JvVjovVcmZUMYqrjStpmS1zJ1nc+51vk5mCmmavZm3hqlyHTo1SP4EqqKQ/1o/k69mL+UCd73Joz99Gp+dsScRt3FEtSzlyAI8TXJdJHFoNanxRYn0hegljkjUIF17J8IUziNeMcnt4qtW9748G7T9V9IhbonKxoF5h4cjxgeDO9SVyT2E9SIdN61NeXN1ky5N7ppPvUVZRTy8fOp+4CFtsT+UikhpFM+j9OJqkLW08HxKkIGH2HyS9V7Vn5dBYp9JnkoFulbl+RHv8HaZ+JmM72FOpMipCtQrEdxcwMPgAAAA=" alt="doublecoins_banner.png" width="300" height="46" loading="lazy"></div><div class="tpl-name">Double Coins</div><div class="tpl-dim">--boost double_coins</div><div class="tpl-dim" style="font-size:9.5px">netrunner/templates/cookierun/doublecoins_banner.png</div><div class="tpl-tag"><span class="pill ok"><span class="dot"></span>พร้อมใช้</span></div></div>
+    <div class="tpl-card hit"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="speedbase17_banner.png" width="300" height="46" loading="lazy"></div><div class="tpl-name">+17% Base Speed</div><div class="tpl-dim">--boost base_speed_17</div><div class="tpl-dim" style="font-size:9.5px">netrunner/templates/cookierun/speedbase17_banner.png</div><div class="tpl-tag"><span class="pill ok"><span class="dot"></span>พร้อมใช้</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_GOLD_COIN_MAGIC_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">Gold Coin Magic</div><div class="tpl-dim">--boost gold_coin_magic</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_GOLD_COIN_MAGIC_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_70P_CRUSH_CHANCE_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">70% Crush Chance</div><div class="tpl-dim">--boost crush_chance_70</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_70P_CRUSH_CHANCE_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_M15P_HP_DRAIN_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">-15% HP Drain</div><div class="tpl-dim">--boost hp_drain_m15</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_M15P_HP_DRAIN_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_REVIVE_ONCE_WITH_80HP_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">Revive Once w/ 80HP</div><div class="tpl-dim">--boost revive_80hp</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_REVIVE_ONCE_WITH_80HP_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_15P_SCORE_BONUS_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">+15% Score Bonus</div><div class="tpl-dim">--boost score_bonus_15</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_15P_SCORE_BONUS_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_20P_HP_FROM_POTIONS_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">+20% HP from Potions</div><div class="tpl-dim">--boost hp_potions_20</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_20P_HP_FROM_POTIONS_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_M30P_COLLISION_DAMAGE_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">-30% Collision Damage</div><div class="tpl-dim">--boost collision_m30</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_M30P_COLLISION_DAMAGE_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+    <div class="tpl-card todo"><div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="BOOST_2PIT_LIFTS_1.png" width="300" height="44" loading="lazy"></div><div class="tpl-name">2 Pit Lifts</div><div class="tpl-dim">--boost pit_lifts_2</div><div class="tpl-dim" style="font-size:9.5px">← cookierun-bot: BOOST_2PIT_LIFTS_1.png</div><div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง crop</span></div></div>
+  </div>
+  <div class="note info">
+    <b>ทำไม่ reuse template จาก cookierun-bot ตรง ๆ:</b> ของนั้น crop ที่ <b>1280×720</b>
+    (372×54 px) — netrunner ใช้ <b>1920×1080</b> (banner 460–595 px). คนละ scale
+    → <code>matchTemplate</code> ไม่เจอ (single-scale). ใช้เป็นแค่ <b>ตัวอย่างว่าต้อง crop อะไร</b>
+    — ต้อง snap ที่ 1920×1080 เอง
+  </div>
+  <div class="note danger">
+    <b>ยังไม่ครบ 11 ตัวจนกว่าจะ crop template.</b> Phase นี้ส่ง mechanism พร้อม 3 boost ที่มี template แล้ว;
+    ที่เหลือเพิ่มได้ทีละตัวโดยไม่แตะโค้ด (แค่ PNG + 1 บรรทัดใน registry). ระบุใน CLI help ว่าตัวไหนพร้อมใช้
+  </div>
+
+  <div class="phase-hd"><span class="badge">PHASE 4</span><h3>Anti-bot captcha — odd-one-out (port จาก cookierun-bot)</h3></div>
+  <p class="lead">
+    Cookie Run เด้ง popup กันบอทแบบสุ่ม: การ์ด 6 ใบ (grid 3×2) ตัวละครเดียวกัน
+    <b>4 ใบเหมือนกัน + 2 ใบต่าง</b> — ต้องแตะ 2 ใบที่ต่างแล้วยืนยัน. ตอบผิด = เสี่ยงแบนไอดี
+  </p>
+  <div class="note info">
+    <b>เลิกใช้ <code>PLAN_captcha-jumpslide-handler.html</code> (ลบแล้ว)</b> — แพลนนั้นแก้โจทย์
+    "find the jumping/sliding card" ด้วยการ match template ท่าถูก vs ท่าผิด ซึ่ง
+    <b>ต้องมี template 4 ไฟล์ที่ยังไม่มี</b> (แพลนบอกเอง "0 snap · ยังไม่เคยเจอจริง").
+    ใช้วิธีของ <code>cookierun-bot/detection.py:131-177</code> แทน:
+    <b>เทียบการ์ดกันเอง ไม่ต้องมี template เลย</b> → ทำได้เลยไม่ต้องรอ crop
+  </div>
+
+  <h4 style="font-size:14px;font-weight:600;margin:20px 0 8px">Algorithm — pairwise similarity</h4>
+  <ol class="steps">
+    <li><b>Crop 6 cell</b> — จาก <code>cells[]</code> (พิกัด center) + <code>cell_size</code>; validate ทุก crop ขนาดเท่ากัน (ล้นขอบ = raise ไม่ใช่เงียบ)</li>
+    <li><b>Similarity matrix 6×6</b> — grayscale NCC ทุกคู่ (<code>i≠j</code>)</li>
+    <li><b>Avg ต่อใบ</b> — เฉลี่ยความเหมือนของแต่ละใบเทียบกับอีก 5 ใบ</li>
+    <li><b>2 ใบคะแนนต่ำสุด = ตัวต่าง</b> — เพราะ 4 ใบเหมือนกันจะดันคะแนนกันเองขึ้น</li>
+    <li><b><code>gap_min</code> gate</b> — ช่องว่างระหว่างอันดับ 2 กับ 3 ต้องกว้างพอ ไม่งั้น <b>ไม่แตะเลย</b> → bail</li>
+    <li><b>แตะ 2 ใบ</b> — ผ่าน <code>_jitter</code> เดิม (สุ่มจุดในการ์ด + delay) → Confirm</li>
+  </ol>
+  <pre>{ <span class="k">"type"</span>: <span class="s">"solve_cards"</span>,
+  <span class="k">"cells"</span>: [[cx,cy], ...×6],   <span class="c">// center แต่ละใบ — TODO วัดจริง</span>
+  <span class="k">"cell_size"</span>: [w, h],
+  <span class="k">"pick"</span>: <span class="s">2</span>,                  <span class="c">// จำนวนใบที่ต้องแตะ</span>
+  <span class="k">"gap_min"</span>: <span class="s">0.04</span>,             <span class="c">// ⭐ ช่องว่างขั้นต่ำ อันดับ pick vs pick+1</span>
+  <span class="k">"confirm_xy"</span>: [cx, cy] }    <span class="c">// ปุ่มยืนยัน — TODO วัดจริง</span></pre>
+  <div class="note">
+    <b>ไม่มี <code>correct_tpl</code>/<code>wrong_tpl</code>/<code>mode</code>.</b>
+    Field ทั้งหมดเป็นพิกัด+เลข ไม่มี template path — นี่คือเหตุผลที่เลือกวิธีนี้:
+    ตัด dependency บนรูปที่ยังไม่มีออกทั้งหมด
+  </div>
+
+  <div class="tpl-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+    <div class="tpl-card">
+      <div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="ANTI_BOT_1.png" width="300" height="40" loading="lazy"></div>
+      <div class="tpl-name">ANTI_BOT_1.png</div>
+      <div class="tpl-dim">649×87 @1280×720 · จาก cookierun-bot</div>
+      <div class="tpl-dim" style="font-size:9.5px">ใช้ detect ว่า “captcha มาแล้ว” เท่านั้น<br>การ solve ไม่ใช้ template</div>
+      <div class="tpl-tag"><span class="pill warn"><span class="dot"></span>ต้อง re-crop @1920×1080</span></div>
+    </div>
+    <div class="tpl-card">
+      <div class="tpl-shot" style="background:none;border:none;padding:0">
+        <svg viewBox="0 0 290 150" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto"
+             role="img" aria-label="6 card grid 3 by 2 with two odd cards highlighted">
+          <text x="145" y="12" font-size="9" text-anchor="middle" fill="#64748b" font-family="monospace">grid 3×2 · cells[] ชี้ center แต่ละใบ</text>
+          <g font-family="monospace" font-size="9" text-anchor="middle">
+            <rect x="14" y="22" width="80" height="52" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+            <text x="54" y="44" fill="#64748b">card 1</text><text x="54" y="58" fill="#94a3b8">same</text>
+            <rect x="104" y="22" width="80" height="52" rx="6" fill="#ffe4e6" stroke="#f43f5e" stroke-width="2"/>
+            <text x="144" y="44" fill="#be123c" font-weight="700">card 2</text><text x="144" y="58" fill="#be123c">ODD</text>
+            <rect x="194" y="22" width="80" height="52" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+            <text x="234" y="44" fill="#64748b">card 3</text><text x="234" y="58" fill="#94a3b8">same</text>
+            <rect x="14" y="82" width="80" height="52" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+            <text x="54" y="104" fill="#64748b">card 4</text><text x="54" y="118" fill="#94a3b8">same</text>
+            <rect x="104" y="82" width="80" height="52" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+            <text x="144" y="104" fill="#64748b">card 5</text><text x="144" y="118" fill="#94a3b8">same</text>
+            <rect x="194" y="82" width="80" height="52" rx="6" fill="#ffe4e6" stroke="#f43f5e" stroke-width="2"/>
+            <text x="234" y="104" fill="#be123c" font-weight="700">card 6</text><text x="234" y="118" fill="#be123c">ODD</text>
+          </g>
+        </svg>
+      </div>
+      <div class="tpl-name">pick: 2 · เทียบกันเอง</div>
+      <div class="tpl-dim">เทียบ 6×6 → avg similarity → 2 ตัวต่ำสุด</div>
+      <div class="tpl-tag"><span class="pill ok"><span class="dot"></span>ไม่ต้องมี template</span></div>
+    </div>
+  </div>
+
+  <figure>
+    <div class="fsm">
+      <svg viewBox="0 0 700 190" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="gap_min gate: accept when the score gap between pick and pick+1 is wide, bail when it is narrow">
+        <text x="8" y="16" font-size="11" font-weight="700" fill="#047857">กรณี gap กว้าง → แตะ 2 ใบ</text>
+        <g font-family="monospace" font-size="9">
+          <rect x="8" y="26" width="26" height="44" rx="3" fill="#f43f5e"/><text x="21" y="80" text-anchor="middle" fill="#64748b">c2</text>
+          <rect x="40" y="30" width="26" height="40" rx="3" fill="#f43f5e"/><text x="53" y="80" text-anchor="middle" fill="#64748b">c6</text>
+          <rect x="80" y="52" width="26" height="18" rx="3" fill="#cbd5e1"/><text x="93" y="80" text-anchor="middle" fill="#64748b">c1</text>
+          <rect x="112" y="54" width="26" height="16" rx="3" fill="#cbd5e1"/><text x="125" y="80" text-anchor="middle" fill="#64748b">c3</text>
+          <rect x="144" y="55" width="26" height="15" rx="3" fill="#cbd5e1"/><text x="157" y="80" text-anchor="middle" fill="#64748b">c4</text>
+          <rect x="176" y="56" width="26" height="14" rx="3" fill="#cbd5e1"/><text x="189" y="80" text-anchor="middle" fill="#64748b">c5</text>
+        </g>
+        <path d="M70,44 L78,44" stroke="#10b981" stroke-width="2"/>
+        <text x="212" y="46" font-size="10" fill="#047857" font-weight="700">gap = 0.19 ≥ gap_min (0.04)</text>
+        <text x="212" y="60" font-size="10" fill="#047857">→ แตะ c2 + c6 → Confirm</text>
+
+        <line x1="8" y1="98" x2="692" y2="98" stroke="#e2e8f0"/>
+        <text x="8" y="120" font-size="11" font-weight="700" fill="#be123c">กรณี gap แคบ → bail ไม่เดา</text>
+        <g font-family="monospace" font-size="9">
+          <rect x="8" y="130" width="26" height="26" rx="3" fill="#fb923c"/><text x="21" y="166" text-anchor="middle" fill="#64748b">c2</text>
+          <rect x="40" y="131" width="26" height="25" rx="3" fill="#fb923c"/><text x="53" y="166" text-anchor="middle" fill="#64748b">c6</text>
+          <rect x="80" y="133" width="26" height="23" rx="3" fill="#cbd5e1"/><text x="93" y="166" text-anchor="middle" fill="#64748b">c1</text>
+          <rect x="112" y="134" width="26" height="22" rx="3" fill="#cbd5e1"/><text x="125" y="166" text-anchor="middle" fill="#64748b">c3</text>
+          <rect x="144" y="134" width="26" height="22" rx="3" fill="#cbd5e1"/><text x="157" y="166" text-anchor="middle" fill="#64748b">c4</text>
+          <rect x="176" y="135" width="26" height="21" rx="3" fill="#cbd5e1"/><text x="189" y="166" text-anchor="middle" fill="#64748b">c5</text>
+        </g>
+        <text x="212" y="140" font-size="10" fill="#be123c" font-weight="700">gap = 0.01 &lt; gap_min</text>
+        <text x="212" y="154" font-size="10" fill="#be123c">→ ไม่แตะอะไร → captcha_bail → alert + stop</text>
+        <text x="212" y="168" font-size="9.5" fill="#64748b">cookierun-bot จุดนี้เดาเสมอ = argsort[:2] ไม่เช็ค gap</text>
+      </svg>
+    </div>
+    <figcaption>
+      <b>แกนของ <code>gap_min</code>:</b> <code>np.argsort(avg_sim)[:2]</code> เอา 2 ตัวล่างสุด<b>เสมอ</b>
+      — 6 ใบเหมือนกันหมด (layout เปลี่ยน / crop เพี้ยน / captcha คนละแบบที่ยังไม่รู้จัก) ก็ยังตอบ 2 ตัวมั่นใจ.
+      ตอบผิด = เสี่ยงแบน — แพงกว่ารอคนมาก
+    </figcaption>
+  </figure>
+  <div class="note">
+    <b><code>gap_min</code> = fix bug ที่ cookierun-bot มี.</b> อันนั้นใช้ <code>np.argsort(avg_sim)[:2]</code>
+    เอา 2 ตัวล่างสุด <i>ไม่ว่าคะแนนต่างจริงมั้ย</i> — layout เปลี่ยน (3 ใบ / 1 ใบ) = tap ผิด = เสี่ยงแบน.
+    ที่นี่: ช่องว่างไม่ถึง <code>gap_min</code> → <b>ไม่แตะอะไรเลย</b> → goto <code>captcha_bail</code> → alert + stop.
+    <b>ตอบมั่วแพงกว่ารอคน</b>
+  </div>
+  <div class="note info">
+    <b>เลี่ยง bug shape-mismatch:</b> cookierun-bot ใช้ <code>matchTemplate(crop_i, crop_j)</code> ซึ่ง throw ถ้า crop
+    ขนาดต่างกัน 1px (cell ล้นขอบภาพ → NumPy slice ตัดสั้น). ที่นี่ validate ทุก crop ขนาดเท่ากันก่อน
+    ไม่งั้น bail — และ crop ที่ล้นขอบ = config ผิด ต้องดังไม่ใช่เงียบ
+  </div>
+
+  <div class="phase-hd"><span class="badge">PHASE 5</span><h3>Lives routine — social behavior ทุก 25–35 นาที</h3></div>
+  <p class="lead">
+    Port พฤติกรรมจาก <code>cookierun-bot/bot.py:193-199</code>: ทุก <code>uniform(25, 35)</code> นาที
+    แวะส่ง lives ให้เพื่อน แล้วกลับมา farm ต่อ — bot ที่ farm 12 ชม. โดยไม่แตะ social เลย = ลายเซ็นบอทอีกแบบ
+  </p>
+  <pre><span class="c">// config JSON — top level</span>
+{
+  <span class="k">"periodic_routines"</span>: [
+    { <span class="k">"name"</span>: <span class="s">"send_lives"</span>,
+      <span class="k">"interval_s"</span>: [<span class="s">1500</span>, <span class="s">2100</span>],   <span class="c">// 25–35 นาที — ค่าเดียวกับ cookierun-bot</span>
+      <span class="k">"at_state"</span>: <span class="s">"home"</span>,           <span class="c">// แทรกเฉพาะตอนอยู่จุดปลอดภัย (ไม่ตัด run กลางคัน)</span>
+      <span class="k">"goto"</span>: <span class="s">"lives_scan"</span>,         <span class="c">// เข้า sub-chain</span>
+      <span class="k">"after_reset"</span>: <span class="s">true</span> }         <span class="c">// = pending_send_friend_life ของ cookierun-bot</span>
+  ]
+}</pre>
+  <ul class="tight">
+    <li><b>Engine:</b> timer ต่อ routine ใน <code>Runner.run()</code> — ครบกำหนด <b>และ</b> transition เข้า <code>at_state</code> → redirect ไป <code>goto</code> แล้วสุ่ม interval ใหม่. Timer เกินแต่ยังไม่ถึง home = รอ (pattern เดียวกับ <code>reset_at_state</code> ของ Phase 2)</li>
+    <li><b>State chain:</b> <b>reuse จาก <code>sendlife.json</code> ที่พิสูจน์แล้ว</b> — scan / confirm_dialog (2 format) / message_sent / scroll_retry ×6. Append เข้า boxrun config โดยเปลี่ยนปลายทาง <code>stop</code> → <code>goto home</code></li>
+    <li><b>หลัง session reset (Phase 2):</b> <code>after_reset: true</code> → รัน routine หนึ่งรอบเมื่อกลับถึง home — ตรงกับ cookierun-bot ที่ส่ง lives หลัง restart app เสมอ</li>
+    <li><b>Mailbox receive</b> (quick receive ของ cookierun-bot) = OUT — ต้อง template ใหม่ 4 ตัว (mailbox btn / lives tab / no-lives / all-received); ทำเป็น extension เมื่อ send-side นิ่งแล้ว</li>
+  </ul>
+
+  <div class="phase-hd"><span class="badge">PHASE 6</span><h3>Popup coverage — 10 ตัวที่ cookierun-bot ปิดได้แต่ netrunner ค้าง</h3></div>
+  <p class="lead">
+    เทียบ popup guard ทั้งสองฝั่ง: netrunner มี 13 (บางตัว cookierun-bot ไม่มี เช่น settings/fortune bakery) —
+    แต่ขาด 10 ตัวที่ cookierun-bot handle. โผล่เมื่อไหร่ตอนนี้ = bot ค้างจน livelock warn แล้วรอคน
+  </p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Popup</th><th style="width:90px">ความถี่</th><th>Handling (จาก cookierun-bot)</th></tr></thead>
+    <tbody>
+      <tr><td><code>CONNECTION_LOST</code> ⭐</td><td><span class="pill err"><span class="dot"></span>สุ่ม</span></td>
+        <td>เน็ตหลุด — <b>ตัวเดียวที่ไม่ใช่แค่ปิด popup</b>: cookierun-bot restart app + re-login → route เข้า flow ของ Phase 2 (<code>session.reset_app</code> → <code>recover_login</code>)</td></tr>
+      <tr><td><code>PARTY_RUN</code></td><td>หลัง announcement</td><td>ปิดโหมด party ก่อนกลับ home (<code>close_party_run_mode</code> — tap X มุมขวาบน)</td></tr>
+      <tr><td><code>ENTER_LEAGUE</code> / <code>LEAGUE_RESULTS</code></td><td>ต้นฤดู/จบฤดู</td><td>confirm ปุ่มกลาง — ฟรี ไม่มีความเสี่ยง</td></tr>
+      <tr><td><code>OVERTAKE_BREAK_SCORE</code></td><td>หลังรันที่ทำสถิติ</td><td>confirm — cookierun-bot จัดเป็น POST_GAME group</td></tr>
+      <tr><td><code>TOO_MANY_TREASURES</code></td><td>treasure เต็ม</td><td>confirm</td></tr>
+      <tr><td><code>RELIC_COMPLETE</code> / <code>RELIC_CLAIM</code></td><td>สะสม relic ครบ</td><td>เปิด → claim → ปิด; หลังปิด<b>รอ 10–15s</b> (cutscene — <code>actions.py:226</code>)</td></tr>
+      <tr><td><code>DAILY_NEW</code> / <code>DAILY_CHECKIN_BOOST_SET</code></td><td>รายวัน</td><td>ปิด X / confirm — เสริม chain รายวันที่มีอยู่ (dailycheckin/treasure)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul class="tight">
+    <li><b>ทุกตัว:</b> crop template ใหม่ @1920×1080 (ของ cookierun-bot @1280×720 = reference ภาพเท่านั้น) → probe state append เข้า chain เดิม (<code>probe_fortunebakery</code> → ตัวใหม่ → <code>probe_prevresults</code>)</li>
+    <li><b>Adopt <code>close_popup</code>:</b> action มีแล้วตั้งแต่ <code>406f408</code> (tap + settle + verify + retry) แต่ <b>0 usage ใน config</b> — probe state ใหม่ทุกตัวใช้ <code>close_popup</code> + <code>verify</code> แทน tap_xy+wait เปล่า = ปิดยืนยันผล ไม่ใช่เดา</li>
+    <li><b>Engine ไม่ต้องแก้เลย</b> — phase นี้เป็นงาน config + template ล้วน (ดู section 03)</li>
+  </ul>
+  <div class="note">
+    <b>ทำไมสำคัญกับ "เหมือนคนเล่น":</b> คนจริงเจอ popup แล้ว<b>ปิดใน 1–3 วินาที</b> —
+    bot ที่จ้อง popup นิ่ง 100 poll (~1 นาที) แล้วค่อยมีคนมาช่วยปิด = pattern ที่ต่างจาก user ปกติชัดเจน.
+    Coverage ครบ = ไม่มีจังหวะ "นิ่งผิดธรรมชาติ"
+  </div>
+
+  <div class="phase-hd"><span class="badge">PHASE 7</span><h3>Observability — ปลุกของที่เขียนแล้วแต่ไม่มีใครเรียก</h3></div>
+  <p class="lead">
+    ตรวจ caller แล้ว 2 ฟังก์ชันเสร็จสมบูรณ์แต่ <b>0 usage</b> — ชะตาเดียวกับ <code>close_popup</code> ก่อน Phase 6:
+    <code>send_alert_with_image()</code> (<span class="file">alert.py:67</span>) และ <code>read_text()</code>
+    (<span class="file">perceive.py:120</span>, ไป Phase 8)
+  </p>
+  <h4 style="font-size:14px;font-weight:600;margin:20px 0 8px">7a — Unknown-screen collector (~20 บรรทัด)</h4>
+  <ul class="tight">
+    <li><b>Hook จุดเดียว:</b> livelock detector ใน <code>fsm.py</code> (ทั้ง same-state และ no-act) ตอนนี้ส่งแค่ text alert —
+      เพิ่ม: <code>grab()</code> → save <code>unknown_screens/&lt;ts&gt;_&lt;state&gt;.png</code> → <code>send_alert_with_image()</code></li>
+    <li><b>Rate limit:</b> 1 ภาพ / state / 10 นาที (ผูกกับ alert cooldown ของ Phase 0 ข้อ 4) — ไม่ spam Discord</li>
+    <li><b>ได้ 2 ต่อ:</b> เห็น popup ใหม่ทันทีจากมือถือ (ไม่ต้องรอกลับมาดูจอค้างทั้งคืน) +
+      ภาพที่เก็บ = วัตถุดิบ crop template ของ <b>Phase 6</b> และภาพ captcha แรกของ <b>Phase 4 gate</b> โดยอัตโนมัติ</li>
+  </ul>
+  <h4 style="font-size:14px;font-weight:600;margin:20px 0 8px">7b — Run analytics report</h4>
+  <ul class="tight">
+    <li><b>วัตถุดิบมีแล้ว:</b> log rotate รายชั่วโมง เก็บ 72 ชม. (<span class="file">alert.py:19</span>) — แต่ไม่มีใครอ่านย้อน</li>
+    <li><b><span class="file">tools/report_runs.py</span></b> (ใหม่) — parse <code>logs/netrunner.log*</code> →
+      runs/hour · box yield (จาก check_box log) · adb fail rate · livelock warns · perceive OOM count → HTML report</li>
+    <li><b>ทำไมต้องมีก่อน Phase 1–2 ลงจริง:</b> pacing + session reset ทำให้ yield <i>ลด</i> โดยตั้งใจ (แลกกับ detection risk) —
+      ไม่มีตัวเลข baseline = ไม่รู้ว่าลดไปเท่าไหร่ / คุ้มมั้ย. Tuning ทุกอย่างตอนนี้ใช้ความรู้สึก</li>
+  </ul>
+
+  <div class="phase-hd"><span class="badge">PHASE 8</span><h3>OCR box counter — quit logic ที่แม่นต่อ run</h3></div>
+  <p class="lead">
+    <code>run_toggle.py</code> สารภาพใน docstring เอง: <i>"there's no OCR reading the '[?] xN' counter's
+    actual number — the engine can't tell box #1 from #4"</i> → <code>quit_after</code> เลยต้องนับ
+    "run ที่มีกล่อง" ข้าม session แบบประมาณ (<span class="file">run_toggle.py:76-96</span>)
+  </p>
+  <ul class="tight">
+    <li><b><code>read_text()</code> มีแล้ว</b> (pytesseract, lazy import) — เพิ่ม helper <code>read_counter(frame, roi)</code>:
+      crop ROI ของ "[?] xN" → grayscale → <code>--psm 7 digits-only</code> → int</li>
+    <li><b>ใช้ที่:</b> <code>BoxQuitRunner._run_actions</code> — อ่านเลขจริงแทนนับ match ครั้ง →
+      <code>--quit-after-boxes</code> แม่นต่อ run ไม่ใช่ต่อ session</li>
+    <li><b>Fallback บังคับ:</b> OCR อ่านไม่ออก (confidence ต่ำ / เลขเพี้ยน) → พฤติกรรมเดิม (session count) + log —
+      pytesseract เป็น optional dep, เครื่องไม่มี tesseract binary ต้องไม่พัง</li>
+    <li><b>ROI จาก template ที่มีอยู่:</b> <code>boxcounter_marker.png</code> / <code>ep6_boxcounter_marker.png</code>
+      ใช้หา anchor แล้ว offset ไปตำแหน่งเลข — ไม่ต้อง crop ใหม่</li>
+  </ul>
+</section>
+
+
+<section>
+  <h2><span class="section-num">05</span>P0 bug — เห็นเป็นกราฟ</h2>
+
+  <h3>Bug 1 — <code>mb_gate</code> detect ผิด marker</h3>
+  <p class="lead">
+    <code>_note</code> ของ state อธิบายเรื่อง Mystery Box layout 2 แบบ —
+    แต่ <code>detect</code> เป็น <code>inactive_marker.png</code> คนละหน้ากันเลย
+  </p>
+  <div class="tpl-grid">
+    <div class="tpl-card hit">
+      <div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,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" alt="mysterybox_marker.png" width="300" height="63" loading="lazy"></div>
+      <div class="tpl-name">mysterybox_marker.png</div>
+      <div class="tpl-dim">520×110 · ที่ <code>_note</code> หมายถึง</div>
+      <div class="tpl-tag"><span class="pill ok"><span class="dot"></span>ควร detect อันนี้</span></div>
+    </div>
+    <div class="tpl-card miss">
+      <div class="tpl-shot"><img class="tpl-img" src="data:image/webp;base64,UklGRoQKAABXRUJQVlA4IHgKAACQMACdASosATgAPpVGnUolpCKhplRL6LASiWcA1enLtj69SqAP6r2e/2b8c/N38S+WfwP9f/af1gv53x087f430N/j/3I/N/2nzG/Vzxf98eoF+M/yT/O/mXwG2peYF6+/Sf2E8VX+S9Avrp/ufcA/mf8//4fG+0B/1L6r/9x+1Ho5/NP9n/6fcO/nf97DGrf1zHI+LiKEDRJ4KwMz1boXPOAmPoiEtbPQJxnp94qROZ/bqZWYCHMJMZWLnSyUjMFdPXk/QrCbiICFbhnIAAmZTzlaqQ48wZxSeYAbr9QaBgdV7KGXmon5LCtU/oe0CS70bhVPr5bkcITQUpxJLiio91/SZhK3/368VbENs9FMf7nuXdfoC4DKshvRC47/ACeSAzeVOz1gV0XN9+KVla5zXLxgGtT/H/sRQ+3xu/BpWVHbphnh0iYBaUt7Myi3g+Eo+bQxXeYQwn7n7amulOhdoPpik5XhTaX5qINP+Hr/k94ZIrvydWqLi3gEhUefGzRJsbyuV3BpCXeY90ZIAP1oMz8e2VimLGLvfLYR2xGo8gs6ZKWJ8XclDdJQLR4Rzk3IuWz91+VssQAHYhIpWHp9oJi0si+HIQRvNS3Np4yS2uMd/hVRA/z9PxPdwR80pxGYzqFoP4N7yh3g1etfROjBO7KvIxNSu6wq0cr4aoTuEhb8zZ14NzA21lQaNg1vS6YkJ5IXBhg99hz9oayF9sAXcqkcNWpcrHoBggZlHdrxSM1LRtCcBafel30Jihu3xSjM8OPRY1WoJ/w5OwXwmDH2BiczzfKNaAsvBq4VzSTeGa8KIB7sWvjddCOc44RMSVdPtt9kjS+s6esCIKKj+gmeqq9BYAFmQtrJWrVvOe4JvoWp9ZdAm+XRKF4pppdjLAKyTpTZgumprADHH4NY2uYYA9Jopoe7InLaUjFxrZ+onKf2OTwTIlfyZrwWxtfPKPCaoVjQzUc3g2pm+WE2qrl2tk4fSV+FsOigwgZOFbN3gosXW+yG7FdVreI5eiQL5rYwBecoiGX0+m15S6131PRR2yI8ZySkpesGTQJysnaTU93n0y4ofQhvqOBmY8yh0fzUa2grqqBQFiokjhP40qJMrRU5QP7Qruh3tYRIt+sbkuQJ/no+KKbaDRb2wTyhLRehm+956E8WwRgMMHysFTa4olDmVjJJYhrL5Z0XogpWjDVt/cAlnoC3PhlbP4e1Xpv6rOIKfLm/8KGiaDqPg8zdWSEpMswU5oKrgqhpon1IFPGfMwdIvRTo+cow8UWY8xq8vDNV0bL8soYgHjbN8p0Ey+Bpr+uNzzhRZvgWtSanTq+6sEyhAKmpjDPYZduVQAu89gViWtSPv4YGJ+j9z/tBIfJrk7SYmr6q0l7x64J0eN+0dkNg+lHlXS3zke/xHZ35hjeyieU3zKV8X/FxliCCzDJg2AHmTfhGx4vLcuyScfgrZ/1Nblmno/RPjdAsaru+9qJCNL8YMBW1sFFmlgDToHoSA1dCC4E2a5TUlMv4km1H5GANzMlIGNLH+IeLWvgUyPqOjFf1Ek0CUF/duihieliwvqOrIPcfyihoBiPpGa32N0EYytn5j292slKGGWsQOcVF4gOkOZ28Fb3N4/04ZK4TfYgfmokAO5YFT7c0txPETKjXHlF8SQTO9KZ8TH5rNScMPKOBmY81hWcGTmkPxU6WYfbgZFYkUavmFDNsrh4mvHkc4wmvBdJQuuimf+XovFZ2/wlefq6aKc+RAMRX+VolixBpT7ooKjrx8XbOXhX64Ui97fnzaIv41v8yi83fK5uou/ulQkrOKqocLZoBFUY9cZkuHShgVClFSB2jSFje4SlaWC5U+utvpU4xEnE8+Su6eojQCGvvZJXKcxb3tgAr7fq3xr5y78RRLmRMMqUs0alUbds3vt4sMecspQ0AMtRX+fWlANJ7KHzcPYMP+Ck/hvWyeaMeYcpSKry2pbhyjKnvrcdjPRn//OQjr0+QhCXXzWdMGOOPMBlgprHwqgFxoFrK41RRQwdVvr4b6BwMfiUQC3KeWctwRlHz6Dsi45LbfHH0GRqS3iQRvMbEHRW2ZGoj1Q7eEHFSKPNTRy7zH1JHNaw4w70XP8RznoLoBsmgr6YGMCyYfLr59BjlFFuRvgIOdE7fPzJu96olrzA9y0uf6suQJh/OrjISUHNlPhxYOybP/Ne+Gw3apNIDtIkY3ZhoO/zI7z+NpMpf0WDoowXuuHWzPTazWk8Ys7PJz3ONCTPv2Qigxviec95lSOtKYn116011qO6Dgkj27fBiTGA2Eq8UY1QyXo/Ky7zm+tMKwEl5XbUfxr4+VREkyqmGoFJcWv+SV1/yCEhNIsZKAokutFYs+AQ8zjTQyxrBD+W1x7gq+KYKEJsVdBNm3Lhq9f8sqTFzWAT7/Pk7dmjKpY6jXSK4mO1yzUKFAgC54AaGJu3+VWPFgeYqsVDu+qdUJ9PZcx9OBlmzvX5ctXBdK0crcdYw6IgaAgaItDFO6xwsugkcH7y63jDijh4lOoGM++wNh/TghP/8pnSKZ3l0vtbUxkVoaOTP20i5Wm+Zuj+gdOcXLU7ar5Mvac9G2QmhHNnJWBlGVPjYek7v7/yYRyXD83tYOr7UFt9AuFBiGhI8Xn26U4RoDs70Yo/dU9G927xKjCh/F299I4BYOSYsrBNHB9AEuTFNK1QB8k2jVE6gXQ78DrlwoXqbHAGZ1tbOF8KB+vl8f3xZ47VxaIPf8y9ZodBDhM/i3Esox+oxWR+MIkx3tf8LGbQX0GRdvhpPWofE1vPhx9J7i/HSor7a22ELFyFX/mi917c+zWLMHtS0Wil0VGMt2ykeNELdtDfC7kMv0bERQlO8ACKK2PS2fOlabBHuHT6AtVYYc6CpMUD6orvJwJdmfY1s1ejEi02e+BTmCycPRFqDMvVkdqDwX0IjM2SiLvNlrBgtkktTM4cPoWg6866RJDJPqdm0vaFv5274LdpO55ySwIULHs+JSnXfVzuD5fitVaf6/6+RjqdmBzCuEFitBxCAUV/lepL7qj9AqyeT7r2jchyAY37o0zuZovopg31vOm94Q0u9ZwZPQAoF7aXm6dc2EVzIJkUKe7N8F/C5LoGzF2FQuKqKlTkpjsqoXWgQoJ+BB+VHhNFEBN8m2PoK/iyEauAlmRd+9d7LfXeLSSCInlD0wodRXBTQNefGnDeAhoc+iK0qZBNnPxhv2ZjSrX0s8jcc8/alzK7QJoJX1FaZVpu+PiNX40GOMF94AINGnDVKwbCMMSkUlcysn+yA//jxGZOW0xM1/MNQPUI7EgXTHfMl6vckyi7kEjCbW4fI3iam1v3Z2Pgo1KGjXW+8dyXpMFQqBwVsWzkg7HC9u3i/NnkL+o65+Lz8Z61Ya/5kgDgkP9U9MokId5siulOBc70EaJrfEMBHlFa+VhtCHho90CYc8Ls3R47GvgH4LutXgTtMqH7dQbrKf9qTbxaXN+Yy2dqWTzxaGgCcdZiqdd46c/esd/G0ViAcJ9AnzpNYLZyKf8WA56pWsLBaZDg4Lu1DxAo8D9b4MePE6QBBxTRDjkKt5gAAAAAAAAAA" alt="inactive_marker.png" width="300" height="56" loading="lazy"></div>
+      <div class="tpl-name">inactive_marker.png</div>
+      <div class="tpl-dim">800×150 · ที่ <code>detect</code> เขียนจริง</div>
+      <div class="tpl-tag"><span class="pill err"><span class="dot"></span>คนละหน้า</span></div>
+    </div>
+  </div>
+  <div class="note">
+    สองตัวหน้าตาคนละอย่างชัดเจน — ไม่มีทาง match กันได้.
+    ผล: อยู่หน้า Mystery Box → <code>inactive</code> ไม่เจอ → เข้า <code>on_absent</code> ตลอด
+    (บังเอิญ tap ถูกจุด จึงดูเหมือนทำงาน) — แต่ inactive popup <b>จริง</b> ตอนอยู่หน้านี้
+    จะเข้า <code>on_match</code> → tap (953,690) → <code>recover_login</code> ผิดทั้งหมด
+  </div>
+
+  <h3>Bug 2 — escape hatch ที่ขาดตอน: <code>_3</code>..<code>_6</code> เป็น dead state</h3>
+  <div class="fsm">
+    <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img"
+         aria-label="mb_reveal_retry chain: retry_2 loops back to mystery_box_reveal instead of retry_3, leaving retry_3 through retry_6 unreachable">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+        </marker>
+        <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#f43f5e"/>
+        </marker>
+      </defs>
+
+      <text x="8" y="18" font-size="11" font-weight="700" fill="#64748b">ที่ _note อ้าง (caps at 6 dual-taps)</text>
+      <rect x="8" y="28" width="150" height="34" rx="7" fill="#e0f2fe" stroke="#7dd3fc"/>
+      <text x="83" y="49" font-size="10.5" text-anchor="middle" fill="#0369a1">mystery_box_reveal</text>
+      <line x1="158" y1="45" x2="196" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+      <rect x="198" y="28" width="104" height="34" rx="7" fill="#d1fae5" stroke="#6ee7b7"/>
+      <text x="250" y="49" font-size="10.5" text-anchor="middle" fill="#047857">retry_2</text>
+      <line x1="302" y1="45" x2="336" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+      <rect x="338" y="28" width="104" height="34" rx="7" fill="#d1fae5" stroke="#6ee7b7"/>
+      <text x="390" y="49" font-size="10.5" text-anchor="middle" fill="#047857">retry_3</text>
+      <line x1="442" y1="45" x2="476" y2="45" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+      <text x="500" y="49" font-size="11" fill="#64748b">…</text>
+      <line x1="516" y1="45" x2="550" y2="45" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+      <rect x="552" y="28" width="104" height="34" rx="7" fill="#d1fae5" stroke="#6ee7b7"/>
+      <text x="604" y="49" font-size="10.5" text-anchor="middle" fill="#047857">retry_6</text>
+      <line x1="656" y1="45" x2="690" y2="45" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="694" y="42" font-size="9.5" fill="#64748b">give</text>
+      <text x="694" y="53" font-size="9.5" fill="#64748b">up</text>
+
+      <line x1="8" y1="88" x2="752" y2="88" stroke="#e2e8f0" stroke-width="1"/>
+
+      <text x="8" y="112" font-size="11" font-weight="700" fill="#be123c">ที่เป็นจริง — วนไม่จำกัด</text>
+      <rect x="8" y="126" width="150" height="34" rx="7" fill="#ffe4e6" stroke="#fda4af" stroke-width="1.5"/>
+      <text x="83" y="147" font-size="10.5" text-anchor="middle" fill="#be123c">mystery_box_reveal</text>
+      <line x1="158" y1="143" x2="196" y2="143" stroke="#f43f5e" stroke-width="1.8" marker-end="url(#ahr)"/>
+      <rect x="198" y="126" width="104" height="34" rx="7" fill="#ffe4e6" stroke="#fda4af" stroke-width="1.5"/>
+      <text x="250" y="147" font-size="10.5" text-anchor="middle" fill="#be123c">retry_2</text>
+
+      <path d="M250,160 L250,186 L83,186 L83,162" fill="none" stroke="#f43f5e" stroke-width="1.8" marker-end="url(#ahr)"/>
+      <text x="166" y="200" font-size="10" text-anchor="middle" fill="#be123c" font-weight="700">on_match → mystery_box_reveal (ไม่ใช่ retry_3)</text>
+      <text x="166" y="213" font-size="9.5" text-anchor="middle" fill="#be123c">วน 2 state นี้ตลอดกาล · ไม่มี exit</text>
+
+      <rect x="338" y="126" width="318" height="34" rx="7" fill="#f1f5f9" stroke="#cbd5e1" stroke-dasharray="5 4"/>
+      <text x="497" y="147" font-size="10.5" text-anchor="middle" fill="#94a3b8">retry_3 · retry_4 · retry_5 · retry_6 — unreachable</text>
+      <text x="497" y="176" font-size="10" text-anchor="middle" fill="#94a3b8">ไม่มี goto ชี้เข้าเลย — ยืนยันจาก reachability scan</text>
+
+      <line x1="8" y1="236" x2="752" y2="236" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="8" y="260" font-size="11" font-weight="700" fill="#047857">ทำแล้ว ✔ — mb_open self-loop + match_timeout_ms 25000 แทน chain ทั้งชุด (8 state → 1)</text>
+      <rect x="8" y="274" width="150" height="34" rx="7" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1.5"/>
+      <text x="83" y="295" font-size="10.5" text-anchor="middle" fill="#047857">mystery_box_reveal</text>
+      <path d="M83,274 C 20,258 20,258 30,272" fill="none" stroke="#10b981" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="172" y="288" font-size="10" fill="#047857">self-loop tap — มี match_timeout_ms: 8000</text>
+      <text x="172" y="302" font-size="10" fill="#047857">เกินเวลา → goto mystery_box_recheck (escape จริง)</text>
+      <rect x="480" y="274" width="176" height="34" rx="7" fill="#e0f2fe" stroke="#7dd3fc"/>
+      <text x="568" y="295" font-size="10.5" text-anchor="middle" fill="#0369a1">mystery_box_recheck</text>
+      <line x1="440" y1="291" x2="476" y2="291" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+    </svg>
+    <div class="legend">
+      <span><i style="background:#d1fae5;border-color:#6ee7b7"></i>ทำงาน / reachable</span>
+      <span><i style="background:#ffe4e6;border-color:#fda4af"></i>วนไม่จำกัด</span>
+      <span><i style="background:#f1f5f9;border-color:#cbd5e1"></i>dead state</span>
+    </div>
+  </div>
+  <div class="note danger">
+    <b>4 state × 9 config = 36 state ที่ไม่มีทางเรียกถึง.</b>
+    แก้ด้วย <code>match_timeout_ms</code> กิน chain ทั้งชุด ไม่ใช่ต่อ goto ให้ถูก
+    — escape จาก timeout ครอบ<b>ทุก</b> state ไม่ใช่แค่ Mystery Box
+  </div>
+
+  <h3>Orphan state ต่อ config — จาก reachability scan (BFS จาก <code>start_state</code>)</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Config</th><th style="width:70px">states</th><th style="width:80px">reachable</th><th style="width:70px">orphan</th><th>กราฟ</th></tr></thead>
+    <tbody>
+      <tr><td><code>boxrun_ep3.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">41 <span style="color:var(--text-faint);font-size:11px">(76%)</span></div><div class="bar"><i style="width:76%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>13</span></td><td style="font-size:12px">boost chain ทั้งชุด orphan — buy_speed · picker · wait_roll · start_run · probe_speed</td></tr>
+      <tr><td><code>boxrun_norelay_noquit.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">40 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>14</span></td><td style="font-size:12px">เหมือน ep3 + quit_run orphan</td></tr>
+      <tr><td><code>boxrun_ep6box.json</code></td><td style="font-family:'JetBrains Mono',monospace">45</td><td><div style="font-family:'JetBrains Mono',monospace">33 <span style="color:var(--text-faint);font-size:11px">(73%)</span></div><div class="bar"><i style="width:73%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>12</span></td><td style="font-size:12px">probe chain 6 ตัว + check_shop_after_run + quit_run</td></tr>
+      <tr><td><code>boxrun_ep5.json</code></td><td style="font-family:'JetBrains Mono',monospace">43</td><td><div style="font-family:'JetBrains Mono',monospace">32 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>11</span></td><td style="font-size:12px">probe chain 6 ตัว (congrats/levelup/giftdraw/…) + check_shop_after_run</td></tr>
+      <tr><td><code>boxrun_ep6v2.json</code></td><td style="font-family:'JetBrains Mono',monospace">42</td><td><div style="font-family:'JetBrains Mono',monospace">31 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>11</span></td><td style="font-size:12px">เหมือน ep5</td></tr>
+      <tr><td><code>boxrun_ep4.json</code></td><td style="font-family:'JetBrains Mono',monospace">53</td><td><div style="font-family:'JetBrains Mono',monospace">48 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>boxrun_ep6.json</code></td><td style="font-family:'JetBrains Mono',monospace">51</td><td><div style="font-family:'JetBrains Mono',monospace">46 <span style="color:var(--text-faint);font-size:11px">(90%)</span></div><div class="bar"><i style="width:90%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>boxrun_toggle.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">49 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>coinrun.json</code></td><td style="font-family:'JetBrains Mono',monospace">53</td><td><div style="font-family:'JetBrains Mono',monospace">48 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>xpstat.json</code></td><td style="font-family:'JetBrains Mono',monospace">43</td><td><div style="font-family:'JetBrains Mono',monospace">39 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>4</span></td><td style="font-size:12px">mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>addfriend.json</code></td><td style="font-family:'JetBrains Mono',monospace">15</td><td><div style="font-family:'JetBrains Mono',monospace">15 <span style="color:var(--text-faint);font-size:11px">(100%)</span></div><div class="bar"><i style="width:100%;background:var(--green)"></i></div></td><td><span class="pill ok"><span class="dot"></span>0</span></td><td style="font-size:12px">—</td></tr>
+      <tr><td><code>giftdraw.json</code></td><td style="font-family:'JetBrains Mono',monospace">13</td><td><div style="font-family:'JetBrains Mono',monospace">13 <span style="color:var(--text-faint);font-size:11px">(100%)</span></div><div class="bar"><i style="width:100%;background:var(--green)"></i></div></td><td><span class="pill ok"><span class="dot"></span>0</span></td><td style="font-size:12px">—</td></tr>
+      <tr><td><code>sendlife.json</code></td><td style="font-family:'JetBrains Mono',monospace">16</td><td><div style="font-family:'JetBrains Mono',monospace">16 <span style="color:var(--text-faint);font-size:11px">(100%)</span></div><div class="bar"><i style="width:100%;background:var(--green)"></i></div></td><td><span class="pill ok"><span class="dot"></span>0</span></td><td style="font-size:12px">—</td></tr>
+      <tr><td><code>example_game.json</code></td><td style="font-family:'JetBrains Mono',monospace">3</td><td><div style="font-family:'JetBrains Mono',monospace">3 <span style="color:var(--text-faint);font-size:11px">(100%)</span></div><div class="bar"><i style="width:100%;background:var(--green)"></i></div></td><td><span class="pill ok"><span class="dot"></span>0</span></td><td style="font-size:12px">—</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note">
+    <b>อ่านกราฟอย่างนี้:</b> แท่งสีเข้ม = state ที่ engine เรียกจริง,
+    แท่งจาง = เขียนไว้แต่ไม่มีอะไร goto ถึง.
+    <code>ep3</code> กับ <code>norelay_noquit</code> หนักสุด — orphan รวม boost chain ทั้งชุด
+    (<code>buy_speed</code> · <code>picker</code> · <code>wait_roll</code> · <code>start_run</code>) = <b>เล่นไม่มี boost เงียบ ๆ</b>
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">06</span>Bug ที่เจอตอน review — แก้ควบไปด้วย</h2>
+  <p class="lead">พบจากอ่าน <code>src/</code> + สแกน reachability ทั้ง 14 config.
+  <b>Re-verify หลัง commit <code>8054cc2</code> แล้ว — ทุกตัวยังอยู่</b>, เพิ่มที่เจอใหม่ 4 ตัว (B7–B10)</p>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ Phase 0 ทำแล้วบน branch <code>feature/parity-anti-detection</code></b> (ยังไม่ commit) —
+    ทุก bug ในตารางนี้แก้เสร็จ · <b>pytest 105 passed</b> ·
+    orphan: xpstat 4→0, ep4/ep6/toggle/coinrun 5→1, ep3 13→9 (ที่เหลือ = broken chain จริง แสดงเป็น warning ตาม design) ·
+    configs เล็กลงอีก −2,000+ บรรทัด (mb chain 8 state → 1) ·
+    เจอเพิ่มระหว่างทำ: <b>B11</b> (stale test) + linter จับ hint ใหม่เอง (ep6v2 <code>check_box</code>
+    detect <code>boxcount2</code> แต่ note พูดถึง <code>boxcount3</code>)
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:60px">P</th><th>Bug</th><th>ผล</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="pill err"><span class="dot"></span>P0</span></td>
+        <td>
+          <b><code>mb_gate</code> / <code>mb_reveal_gate</code> detect ผิด marker</b><br>
+          <span class="file">boxrun_ep6.json:1161, :1206</span> — <code>_note</code> อธิบายเรื่อง Mystery Box layout
+          แต่ <code>detect</code> เป็น <code>inactive_marker.png</code>
+        </td>
+        <td>
+          Mystery Box screen จะเข้า path <code>on_absent</code> ตลอด (inactive ไม่อยู่บนจอ) —
+          บังเอิญยังทำงานได้เพราะ absent-branch tap ถูกจุด แต่ <b>เจตนากับโค้ดไม่ตรงกัน</b> และ inactive popup
+          จริงตอนอยู่หน้านี้จะถูกจัดการผิด
+        </td>
+        <td>สลับให้ <code>detect: mysterybox_marker.png</code> แล้วย้าย inactive check เป็น state แยกก่อนหน้า</td>
+      </tr>
+      <tr>
+        <td><span class="pill err"><span class="dot"></span>P0</span></td>
+        <td>
+          <b><code>mb_reveal_retry_2</code> ไม่ต่อกับ <code>_3.._6</code></b><br>
+          <code>_2.on_match</code> → <code>mystery_box_reveal</code> ไม่ใช่ <code>_3</code>
+        </td>
+        <td>
+          <code>_note</code> อ้างว่า "caps it at 6 total dual-taps" แต่จริง ๆ <b>วน <code>_2</code> ↔ <code>mystery_box_reveal</code> ไม่จำกัด</b> —
+          <code>_3</code>–<code>_6</code> เป็น dead state. Escape hatch ที่โฆษณาไว้ไม่มีจริง ทุก config
+        </td>
+        <td>ต่อ chain ให้ถูก <b>หรือ</b> ลบ <code>_3.._6</code> ทิ้งแล้วพึ่ง livelock detector (ตรงกว่า)</td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P1</span></td>
+        <td>
+          <b>Orphan state 4–14 ตัวต่อ config</b><br>
+          <code>ep3</code>: 13 · <code>norelay_noquit</code>: 14 · <code>ep5</code>/<code>ep6box</code>/<code>ep6v2</code>: 11–12
+        </td>
+        <td>
+          <code>ep3</code> มี <code>buy_speed</code>, <code>picker</code>, <code>wait_roll</code>, <code>start_run</code>
+          เป็น orphan = <b>boost chain ทั้งชุดไม่ถูกเรียก</b> — bot เล่นไม่มี boost โดยเงียบ.
+          <code>ep5</code>/<code>ep6v2</code> มี probe chain 6 ตัว (congrats/levelup/giftdraw/...) orphan = popup พวกนั้นไม่ถูกปิด
+        </td>
+        <td>
+          เพิ่ม reachability check ใน <code>config._validate()</code> → warn ตอน load (ไม่ raise — orphan อาจตั้งใจไว้ทดลอง)
+        </td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P1</span></td>
+        <td>
+          <b><code>timeout_ms</code> ไม่ครอบ path ที่ match</b><br>
+          <span class="file">fsm.py:305-315</span> — timeout เช็คใน <code>_handle_absent</code> เท่านั้น
+        </td>
+        <td>
+          state ที่ <b>match ค้าง</b> ไม่มี timeout เลย — เป็นเหตุผลตรง ๆ ที่ต้องมี <code>mb_reveal_retry</code> chain
+          (ซึ่งพังตาม P0). <code>_note</code> ของ <code>mb_gate</code> พูดไว้เอง: "timeout only fires on the ABSENT path,
+          so a stuck MATCH has no built-in exit"
+        </td>
+        <td>
+          เพิ่ม <code>match_timeout_ms</code> — state เดิม match ค้างเกินกำหนด → goto/raise เหมือน absent.
+          ทำแล้วลบ retry chain ได้ทั้งหมด
+        </td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P2</span></td>
+        <td>
+          <b><code>_detect</code> คืน <code>Match | None</code> แต่ annotate เป็น <code>Match</code></b><br>
+          <span class="file">fsm.py:226, :242</span>
+        </td>
+        <td>
+          <code>detect_names()</code> คืน list ว่าง (state ไม่มี <code>detect</code>) → <code>best</code> = <code>None</code> →
+          <code>m.found</code> = <code>AttributeError</code>. ปัจจุบัน <code>_validate_state</code> กันไว้ให้
+          แต่ <code>run_toggle.py</code> patch dict <b>หลัง</b> validate — strip action หมดแล้วยัง type ไม่ตรง
+        </td>
+        <td>คืน <code>Match(found=False, score=0.0, ...)</code> เมื่อไม่มี detect แทน <code>None</code></td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P2</span></td>
+        <td>
+          <b><code>send_alert</code> ไม่มี rate limit</b><br>
+          <span class="file">alert.py:46</span>
+        </td>
+        <td>
+          livelock alert ยิงครั้งเดียว (มี <code>stuck_alerted</code> flag) แต่ <code>perceive_fail_streak == 2</code>
+          ยิงทุกครั้งที่ streak แตะ 2 — OOM สลับขึ้นลงบนเครื่อง RAM ตึง = spam Discord จนโดน rate limit ของ Discord เอง
+        </td>
+        <td>cooldown ต่อ alert key (เช่น 10 นาที) ใน <code>send_alert</code></td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P2</span></td>
+        <td>
+          <b><code>device._run</code> raise <code>MemoryError</code> เปล่าหลัง retry หมด</b><br>
+          <span class="file">device.py:79</span> — <code>raise last_err</code> ไม่ wrap
+        </td>
+        <td>
+          fsm จับเฉพาะ <code>AdbError</code> — MemoryError จาก <b>tap path</b> (Actor → device.shell ตรง)
+          ทะลุ tolerance ฆ่า run ทั้งอัน. Capture path รอดเพราะ <code>grab()</code> catch ให้ —
+          ความคุ้มครองไม่สมมาตรทั้งที่ตั้งใจให้ RAM-starved machine รอด (comment บอกเอง)
+        </td>
+        <td>wrap เป็น <code>AdbError</code> ก่อน raise ที่ <code>_run</code> ทางออกเดียว ครอบทุก caller</td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P2</span></td>
+        <td>
+          <b><code>connect()</code> / <code>list_devices()</code> ไม่ catch <code>TimeoutExpired</code></b><br>
+          <span class="file">device.py:104-133</span>
+        </td>
+        <td>
+          adb daemon แขวนตอน connect (เจอจริงบนเครื่อง RAM ตึงที่ comment อื่นพูดถึง) →
+          traceback ดิบทะลุถึง user แทน <code>AdbError</code> message ที่อ่านรู้เรื่อง —
+          <code>main.py</code> ทุกจุด catch <code>AdbError</code> ไว้แล้วแต่ไม่เคยได้ใช้
+        </td>
+        <td>catch <code>TimeoutExpired</code> → raise <code>AdbError</code> เหมือน <code>_run</code></td>
+      </tr>
+      <tr>
+        <td><span class="pill warn"><span class="dot"></span>P2</span></td>
+        <td>
+          <b>Discord embed timestamp ไม่มี timezone</b><br>
+          <span class="file">alert.py:56, :83</span> — <code>time.strftime("%Y-%m-%dT%H:%M:%S")</code>
+        </td>
+        <td>
+          ISO string ไม่มี offset → Discord ตีความเป็น UTC → alert จากเครื่องไทยโชว์เวลา<b>เพี้ยน +7 ชม.</b> —
+          ตอน investigate "bot ตายกี่โมง" จะไล่ log ผิดช่วง
+        </td>
+        <td><code>datetime.now(timezone.utc).isoformat()</code> จุดเดียว ใช้ทั้ง 2 ฟังก์ชัน</td>
+      </tr>
+      <tr>
+        <td><span class="pill ok"><span class="dot"></span>P3</span></td>
+        <td>
+          <b><code>_note</code> stale หลัง refactor chain</b><br>
+          <span class="file">boxrun_ep6.json (probe_inactive)</span> ฯลฯ
+        </td>
+        <td>
+          note บอก "Absent → probe_prevresults" แต่ goto จริง = <code>probe_settings</code>
+          (chain ถูกแทรก settings/fortunebakery ทีหลัง) — คนอ่าน note เพื่อแก้ config จะเดินผิดทาง.
+          doc-level ไม่กระทบ runtime
+        </td>
+        <td>sync <code>_note</code> ตอนแตะไฟล์ใน Phase 0 ข้อ 3 อยู่แล้ว — แก้ควบ</td>
+      </tr>
+      <tr>
+        <td><span class="pill ok"><span class="dot"></span>P3</span></td>
+        <td>
+          <b>B11 — test stale หลังขยาย retry</b> (เจอตอนรัน suite ใน Phase 0)<br>
+          <span class="file">tests/test_resilience.py:46</span>
+        </td>
+        <td>
+          commit <code>202664b</code> ขยาย <code>Device.retries</code> 2→4 แต่ string ใน test ยัง
+          "timed out after 3 attempts" → suite <b>แดงอยู่แล้วก่อนแตะอะไร</b>. assert อีกตัวใน test เดียวกัน
+          ใช้ <code>d.retries + 1</code> dynamic ถูกต้อง — พลาดเฉพาะ string
+        </td>
+        <td>เปลี่ยนเป็น f-string จาก <code>d.retries</code> — แก้แล้ว</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note info">
+    <b>P0 ทั้งสองอยู่ในทุก config ที่มี mystery box</b> (ep3–ep6, coinrun, toggle, xpstat = 9 ไฟล์) — เป็น copy-paste ตัวเดียวกัน.
+    แก้ = แก้ทุกไฟล์ หรือดีกว่า: ทำ P1 <code>match_timeout_ms</code> ก่อน แล้วลบ chain ทิ้งทั้งชุด
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">07</span>Build steps</h2>
+
+  <div class="tl">
+    <div class="tl-row">
+      <div class="tl-badge p0">PHASE 0</div>
+      <div class="tl-body">
+        <b>Bug fix</b> ✅ <b>DONE</b> — lint_config.py · match_timeout · mb_open restructure · alert cooldown+UTC · device wraps
+        <div class="tl-meta">6 ขั้น · src ×4 + 10 JSON + tool + 15 tests · pytest 105 passed · ยังไม่ commit</div>
+        <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p1">PHASE 1</div>
+      <div class="tl-body">
+        <b>Inter-game delay</b> — wait 30–60s ระหว่างเกม
+        <div class="tl-meta">3 ขั้น · config field 2 ตัว · เล่กสุด · anti-detection 1/3</div>
+        <div class="bar"><i style="width:28%;background:var(--accent)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p2">PHASE 2</div>
+      <div class="tl-body">
+        <b>Session reset</b> — restart app 1.5–3 ชม. + stability verify 3×20s
+        <div class="tl-meta">4 ขั้น · src/session.py ใหม่ · reuse launcher._start_app · anti-detection 2/3</div>
+        <div class="bar"><i style="width:62%;background:var(--green)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p3">PHASE 3</div>
+      <div class="tl-body">
+        <b>Boost picker</b> — ต่อยอด <code>_BOOST_PROFILES</code> (<code>8054cc2</code>) ให้ครบ 11
+        <div class="tl-meta">4 ขั้น · ย้าย profiles → src/boost.py + expose main.py · 8 ตัวรอ crop</div>
+        <div class="bar"><i style="width:45%;background:var(--violet)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p1">PHASE 5</div>
+      <div class="tl-body">
+        <b>Lives routine</b> — social ทุก 25–35 นาที + หลัง reset (reuse sendlife.json)
+        <div class="tl-meta">4 ขั้น · engine timer + append states · ต่อจาก Phase 2 hook</div>
+        <div class="bar"><i style="width:40%;background:var(--accent)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p3">PHASE 6</div>
+      <div class="tl-body">
+        <b>Popup coverage</b> — 10 popups + adopt close_popup (0→ใช้จริง)
+        <div class="tl-meta">4 ขั้น · config+template ล้วน engine ไม่แตะ · CONNECTION_LOST ผูก Phase 2</div>
+        <div class="bar"><i style="width:50%;background:var(--violet)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p2">PHASE 7</div>
+      <div class="tl-body">
+        <b>Observability</b> — unknown-screen collector + run analytics (ปลุก 0-caller functions)
+        <div class="tl-meta">3 ขั้น · เล็ก · ทำก่อน 1–2 เพื่อเก็บ baseline · ป้อนภาพให้ 4/6</div>
+        <div class="bar"><i style="width:22%;background:var(--green)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p0">PHASE 8</div>
+      <div class="tl-body">
+        <b>OCR box counter</b> — quit_after แม่นต่อ run (read_text 0-caller → ใช้จริง)
+        <div class="tl-meta">3 ขั้น · เล็ก · optional dep tesseract + fallback บังคับ</div>
+        <div class="bar"><i style="width:25%;background:var(--red)"></i></div>
+      </div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-badge p4">PHASE 4</div>
+      <div class="tl-body">
+        <b>Captcha solver</b> — odd-one-out (ไม่ต้องมี template)
+        <div class="tl-meta">5 ขั้น · หนักสุด · <b>gate: ต้องเห็น captcha จริงก่อน</b> · anti-detection 3/3</div>
+        <div class="bar"><i style="width:88%;background:var(--amber)"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="note info">
+    แท่ง = น้ำหนักงานโดยประมาณ (ไม่ใช่เวลาจริง).
+    Phase 0 เต็มแท่งเพราะ <b>บล็อก phase อื่นทั้งหมด</b> — เพิ่ม feature ทับ bug เดิม = หาสาเหตุยากขึ้น
+  </div>
+
+  <div class="phase-hd"><span class="badge">PHASE 0</span><h3>Bug fix ก่อน — กัน feature ใหม่ทับ bug เดิม
+    <span class="pill ok" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>DONE — pytest 105 passed</span></h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/config.py</span> + <span class="file">tools/lint_config.py</span></b> (ใหม่) —
+      reachability warn (BFS จาก <code>start_state</code>) ใน <code>_validate</code> + ยกเป็น linter CLI ถาวร:
+      orphan · goto ชี้ state ไม่มีจริง · <b><code>_note</code> vs <code>detect</code> mismatch</b> (จับ P0 mb_gate ได้เลย) ·
+      gen FSM graph SVG ต่อ config (เห็น chain ขาดเป็นภาพ). + คืน <code>Match</code> ว่างแทน <code>None</code> ใน <code>fsm._detect</code>.
+      <b>เทส:</b> config ที่มี orphan ต้อง warn ไม่ raise</li>
+    <li><b><span class="file">src/fsm.py</span></b> — <code>match_timeout_ms</code> + <code>on_match_timeout</code> goto
+      (escape สำรอง = on_absent goto, ไม่มีเลย → FsmError). Timer นับจาก<b>เข้า state ต่อเนื่อง</b> — reset เมื่อ state เปลี่ยน.
+      <b>ผลจากการ implement: จับได้เฉพาะ self-loop ไม่จับ ping-pong A↔B</b> (timer reset ทุกครั้งที่สลับ) → เป็นเหตุให้ข้อ 3 ต้อง restructure ไม่ใช่แค่แก้ detect</li>
+    <li><b><span class="file">config/cookierun/*.json</span> ×10</b> (นับจริง 10 ไม่ใช่ 9 — xpstat ด้วย) —
+      <b>restructure แรงกว่าที่วางไว้:</b> collapse chain 8 state (<code>mb_gate</code>/<code>mystery_box_reveal</code>/<code>mb_reveal_gate</code>/<code>retry_2..6</code>)
+      → <code>mb_open</code> self-loop เดียว + <code>match_timeout_ms: 25000</code> — เพราะ match-timeout จับ ping-pong reveal↔gate ไม่ได้ (ข้อ 2)
+      ต้องยุบให้เป็น self-loop ก่อน timer ถึงทำงาน. Inactive-check ต่อรอบของ gate เดิม → absent path ครอบแทน
+      (popup บัง marker → absent → recheck → probe chain ถึง recover_login เอง).
+      <b>โบนัส:</b> <code>wait_roll</code> ได้ <code>match_timeout_ms: 90000</code> — dead-timeout class เดียวกันเป๊ะ.
+      <b>Caveat ที่ต้องรู้:</b> <code>check_heart</code> เป็น self-loop ที่<b>ตั้งใจ</b> (รอ heart regen ไม่จำกัด) — <b>ห้าม</b>ใส่ match_timeout</li>
+    <li><b><span class="file">src/alert.py</span></b> — cooldown ต่อ title 10 นาที (<code>critical</code> bypass เสมอ) + <b>B9:</b> timestamp เป็น UTC ISO (<code>Z</code> suffix)</li>
+    <li><b><span class="file">src/device.py</span></b> — <b>B7:</b> ท้าย retry wrap ทุก exception ที่ไม่ใช่ AdbError (รวม MemoryError) เป็น <code>AdbError</code> ให้ fsm tolerance จับได้ทั้ง tap path · <b>B8:</b> <code>connect()</code>/<code>list_devices()</code> catch <code>TimeoutExpired</code> → AdbError</li>
+    <li><b><span class="file">tests/test_phase0.py</span></b> (ใหม่, 15 tests) — match_timeout escape/raise/ping-pong-ไม่-trip · detect-less state ไม่ crash · reachability warn · validation bounds · MemoryError/TimeoutExpired wrapped · cooldown mute/bypass/expire · timestamp UTC</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 1</span><h3>Inter-game delay</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/config.py</span></b> — parse + validate <code>inter_game_delay_s</code> (list 2 ตัว, min&lt;max, &gt;0), <code>inter_game_state</code> (ต้องเป็น state ที่มีจริง)</li>
+    <li><b><span class="file">src/fsm.py</span></b> — ตรวจ transition <b>เข้า</b> <code>inter_game_state</code> (ไม่ใช่อยู่ค้าง) → sleep random → log ค่าที่สุ่มได้</li>
+    <li><b><span class="file">src/act.py + src/fsm.py</span></b> — <code>wait.ms</code> รับ <code>[min,max]</code> (สุ่มต่อครั้ง) + <code>poll_ms</code> รับ range (สุ่มต่อ cycle); int เดียว = เดิมเป๊ะ</li>
+    <li><b><span class="file">tests/test_pacing.py</span></b> (ใหม่) — monkeypatch <code>time.sleep</code> เก็บค่าที่ถูกเรียก → ยืนยันอยู่ในช่วง + ต่างกันจริงข้ามรอบ + รอบแรกไม่ sleep</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 2</span><h3>Session reset</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/session.py</span></b> (ใหม่) — <code>reset_app(device, ldconsole, index, package)</code>: force-stop → รอ 15s → <code>launcher._start_app()</code> → verify <code>pidof</code> 3×20s → retry ≤5</li>
+    <li><b><span class="file">src/config.py</span></b> — parse <code>session_reset_s</code>, <code>package</code>, <code>reset_at_state</code></li>
+    <li><b><span class="file">src/fsm.py</span></b> — timer ใน <code>run()</code>: ถึงเวลา <b>และ</b> อยู่ <code>reset_at_state</code> → เรียก reset → reset counter ทุกตัว + สุ่ม interval ใหม่ + กลับ <code>start_state</code></li>
+    <li><b><span class="file">tests/test_session.py</span></b> (ใหม่) — fake device ที่ <code>pidof</code> คืนค่าตามสคริปต์: crash รอบแรกแล้วติดรอบสอง = ต้อง retry แล้วผ่าน; crash ทั้ง 5 = ต้อง raise + alert</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 3</span><h3>Boost picker</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/boost.py</span></b> (ใหม่) — <b>ย้าย</b> <code>_BOOST_PROFILES</code> จาก <code>tools/run_toggle.py</code> + เติม slot 8 ตัวที่เหลือ (<code>None</code> = ยังไม่มี banner); <code>run_toggle</code> import จากที่ใหม่</li>
+    <li><b><span class="file">main.py</span></b> — <code>--boost</code> + CLI help list เฉพาะตัวที่ profile ครบ; เลือกตัวที่ยังไม่ครบ → error ชัดว่าต้อง crop/วัดอะไร</li>
+    <li><b><span class="file">config/cookierun/*.json</span></b> — mark <code>"boost_probe": true</code> ที่ boost-probe states (แทน hardcode ชื่อ state ใน tool)</li>
+    <li><b>เติม 8 profile</b> — ต่อตัว: <code>tools/snap.py</code> ตอน banner โผล่ → crop @1080p + วัด buy_taps → 1 entry (ทำต่อได้เรื่อย ๆ ไม่บล็อก phase อื่น)</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 4</span><h3>Captcha solver</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/perceive.py</span></b> — <code>classify_cells(frame, cells, size)</code> คืน similarity matrix + validate crop ขนาดเท่ากันทุกใบ (ล้นขอบ = raise ไม่ใช่เงียบ)</li>
+    <li><b><span class="file">src/act.py</span></b> — action <code>solve_cards</code> + <code>gap_min</code> gate; ไม่มั่นใจ → คืน sentinel ให้ FSM ไป bail (ไม่แตะ ไม่ Confirm)</li>
+    <li><b><span class="file">src/config.py</span></b> — validate <code>solve_cards</code>: <code>cells</code> 6 จุด, <code>pick</code> &lt; จำนวน cell, <code>gap_min</code> &gt; 0, <code>confirm_xy</code> ต้องมี</li>
+    <li><b><span class="file">config/cookierun/*.json</span></b> — <code>probe_captcha</code> → <code>solve_cards</code> → <code>captcha_recheck</code> → <code>captcha_bail</code> (append-only ไม่แตะ state เดิม; ไม่มี <code>captcha_which</code> แล้วเพราะไม่ต้องแยกโจทย์)</li>
+    <li><b><span class="file">tests/test_captcha.py</span></b> (ใหม่) — synthetic 6 cell (4 เหมือน + 2 ต่าง) ต้องหา 2 ใบถูก; 6 ใบเหมือนกันหมด (gap ไม่ถึง) ต้อง bail ไม่ใช่เดา</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 5</span><h3>Lives routine</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/config.py</span></b> — parse + validate <code>periodic_routines</code> (interval range, <code>at_state</code>/<code>goto</code> ต้องมีจริง)</li>
+    <li><b><span class="file">src/fsm.py</span></b> — timer ต่อ routine: due + transition เข้า <code>at_state</code> → redirect ไป <code>goto</code> + สุ่ม interval ใหม่; hook <code>after_reset</code> จาก Phase 2</li>
+    <li><b><span class="file">config/cookierun/boxrun_toggle.json</span></b> — append lives states จาก <code>sendlife.json</code> (เปลี่ยน <code>stop</code> → <code>goto home</code>) + <code>periodic_routines</code> entry — ลองที่ config เดียวก่อนค่อยขยาย</li>
+    <li><b><span class="file">tests/test_routine.py</span></b> (ใหม่) — fake clock: fire เมื่อ due+at_state เท่านั้น · ไม่ fire กลาง run · interval ใหม่หลังจบ · after_reset fire หนึ่งครั้ง</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 6</span><h3>Popup coverage</h3></div>
+  <ol class="steps">
+    <li><b>Snap + crop @1080p</b> — 10 popups (rare ตัวไหนยังไม่เจอ = ข้ามไว้ probe ตัวอื่นก่อน; ใช้ template @720p ของ cookierun-bot เป็น reference ภาพ)</li>
+    <li><b><span class="file">config/cookierun/*.json</span></b> — append probe states เข้า chain (<code>probe_fortunebakery</code> → ใหม่ → <code>probe_prevresults</code>) — ทุกตัวใช้ <code>close_popup</code> + <code>verify</code> (adopt จาก 0 usage)</li>
+    <li><b><code>CONNECTION_LOST</code></b> — ไม่ใช่ปิด popup: route เข้า <code>session.reset_app</code> (Phase 2) → <code>recover_login</code></li>
+    <li><b>Reachability check</b> (Phase 0 ข้อ 1) ยืนยัน chain ต่อครบ ไม่มี orphan ใหม่</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 7</span><h3>Observability</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/fsm.py</span></b> — hook collector ใน livelock detector 2 จุด: grab → save <code>unknown_screens/</code> → <code>send_alert_with_image</code> (+ rate limit ผูก alert cooldown)</li>
+    <li><b><span class="file">tools/report_runs.py</span></b> (ใหม่) — log parser → HTML report; รันบน log 72 ชม. ที่มีอยู่ = ได้ baseline ก่อน Phase 1–2 ลงจริง</li>
+    <li><b><span class="file">tests/test_collector.py</span></b> (ใหม่) — fake livelock → save + alert ครั้งเดียวใน window · Discord ตายต้องไม่ crash (contract เดิมของ send_alert)</li>
+  </ol>
+
+  <div class="phase-hd"><span class="badge">PHASE 8</span><h3>OCR box counter</h3></div>
+  <ol class="steps">
+    <li><b><span class="file">src/perceive.py</span></b> — <code>read_counter(frame, roi)</code>: reuse <code>read_text</code> + digits-only psm + คืน <code>int | None</code> (None = อ่านไม่ออก)</li>
+    <li><b><span class="file">tools/run_toggle.py</span></b> — <code>BoxQuitRunner</code> ใช้เลขจริงเมื่ออ่านได้; <code>None</code> → นับแบบเดิม + log ว่า fallback</li>
+    <li><b><span class="file">tests/test_ocr.py</span></b> (ใหม่) — synthetic ภาพเลข → อ่านถูก · ภาพ noise → คืน None ไม่ crash · ไม่มี tesseract → PerceiveError ชัดเจน</li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="section-num">08</span>Risk / Trade-off</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:38%">Risk</th><th>Mitigate</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Captcha ตอบผิด = เสี่ยงแบนไอดี</b> — cost สูงสุดในแพลนนี้ทั้งใบ. odd-one-out ไม่มี template ยืนยัน = พึ่ง <code>gap_min</code> อย่างเดียว</td>
+        <td><code>gap_min</code> gate + bail-on-uncertain (ไม่แตะเลยดีกว่าเดา) + alert เรียกคน. Default <code>gap_min</code> ตั้งสูงไว้ก่อน ค่อยลดเมื่อเห็นสถิติจริง</td>
+      </tr>
+      <tr>
+        <td><b>ลบ <code>mb_reveal_retry</code> chain แล้วเจอ layout ที่ 3 จริง</b> → ค้างที่ Mystery Box</td>
+        <td><code>match_timeout_ms</code> (Phase 0 ข้อ 2) ครอบทุก state ไม่ใช่แค่ chain นี้ = ครอบกว่าเดิม. + livelock alert ยังทำงาน</td>
+      </tr>
+      <tr>
+        <td><b>Session reset กลางรอบเกม</b> = เสียหัวใจ/รอบ</td>
+        <td><code>reset_at_state</code> บังคับรอถึง home. Timer เกินแล้วแต่ยังไม่ถึง home = รอต่อ ไม่ force</td>
+      </tr>
+      <tr>
+        <td><b>Reset ทำให้ boost ที่ซื้อไว้หาย</b> (ซื้อแล้วยังไม่ได้ใช้)</td>
+        <td>reset ที่ home = ก่อนเข้า shop เสมอ → ยังไม่ได้ซื้อ. ถ้าเจอว่าเสียจริงตอนเทส → เพิ่มเงื่อนไข "reset เฉพาะรอบที่ยังไม่ซื้อ"</td>
+      </tr>
+      <tr>
+        <td><b>Config field ใหม่ 6 ตัว = surface โตขึ้น</b> เดิมมี 6 ตอนนี้ 12</td>
+        <td>ทุกตัว optional + default = behavior เดิมเป๊ะ. 13 config เดิมรันได้ไม่ต้องแก้. Validate ครบตอน load</td>
+      </tr>
+      <tr>
+        <td><b>แก้ 9 JSON พร้อมกัน (Phase 0 ข้อ 3)</b> = เสี่ยงพัง flow ที่ทดสอบแล้ว</td>
+        <td>ทำเป็น script + <code>--dry-run</code> ยืนยันทุก config ก่อน commit. Reachability check (ข้อ 1) จับ goto ที่ชี้ state ที่ลบไปแล้ว</td>
+      </tr>
+      <tr>
+        <td><b>Anti-detection ไม่มีทางวัดผลได้</b> — ไม่รู้ว่าช่วยจริงมั้ยจนกว่าจะ (ไม่) ถูกแบน</td>
+        <td>ยอมรับตรง ๆ: 3 feature นี้เป็น <i>defense in depth</i> ไม่มี metric. เหตุผลที่ทำ = cookierun-bot ทำแล้วรันได้ยาว + ต้นทุนต่ำ</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">09</span>Verification</h2>
+  <pre><span class="c"># unit — ไม่ต้องมี emulator (pattern เดิมของ repo: _FakeDevice + monkeypatch)</span>
+pytest tests/ -v
+
+<span class="c"># config ทุกไฟล์ยัง load ผ่าน + ไม่มี orphan ใหม่</span>
+for f in config/cookierun/*.json; do python main.py --config "$f" --list-devices; done
+
+<span class="c"># dry-run บนจอจริง — ไม่ส่ง tap</span>
+python main.py --config config/cookierun/boxrun_ep6.json --dry-run --max-cycles 60 -v
+
+<span class="c"># pacing: ยืนยัน delay สุ่มจริง ไม่ใช่ค่าคงที่</span>
+grep <span class="s">"inter-game delay"</span> logs/netrunner.log | tail -20
+
+<span class="c"># session reset: บีบเวลาให้สั้นเพื่อเทส (ไม่ต้องรอ 1.5 ชม.)</span>
+<span class="c"># แก้ session_reset_s เป็น [60, 90] ชั่วคราวใน config สำเนา</span>
+python main.py --config /tmp/ep6_fastreset.json -v</pre>
+  <ul class="tight">
+    <li><b>Phase 0 ✅</b> — pytest <b>105 passed</b> (รวม 15 ใหม่) · ทุก config load ผ่าน ·
+      orphan: xpstat 4→0 · ep4/ep6/toggle/coinrun 5→1 · ep3 13→9 (เหลือ = broken chain จริง โชว์เป็น warning) ·
+      <code>run_toggle</code> patch functions ทำงานบน config ใหม่ครบ (strip/boost/BoxQuitRunner states ยังอยู่) ·
+      <b>Deferred (ตกลงแล้ว):</b> dry-run บนจอจริงเลื่อนไปรวบเฟสสุดท้ายทีเดียว — ยอมรับได้เพราะ
+      mb_open ไม่มี coord ใหม่ (ก๊อปจาก chain เดิมที่พิสูจน์ live), fail mode ที่คิดออก = degrade แล้ว recover
+      (match_timeout + livelock alert เป็น safety net 2 ชั้น), และเครื่อง dev ไม่มี LDPlayer</li>
+    <li><b>Phase 1</b> — log แสดง delay ต่างกันทุกรอบ อยู่ในช่วง 30–60 · รอบแรกไม่ delay · config ที่ไม่ระบุ field = ไม่มี delay เลย</li>
+    <li><b>Phase 2</b> — reset จริง: app ปิด+เปิดใหม่, <code>pidof</code> verify ผ่าน 3 รอบ, กลับเข้า home loop ต่อได้, counter reset จริง (ดู log) · เทส crash path ด้วย package ผิด → ต้อง retry 5 แล้ว alert</li>
+    <li><b>Phase 3</b> — <code>--boost double_coins</code> → log ยืนยัน detect เปลี่ยนเป็น <code>doublecoins_banner.png</code> · เลือกตัวที่ยังไม่มี template → error บอกชัดว่าต้อง crop ไฟล์อะไร</li>
+    <li><b>Phase 4</b> — synthetic test: 4 เหมือน + 2 ต่าง → หา 2 ใบถูก · 6 เหมือนกันหมด → bail ไม่เดา · cell ล้นขอบ → raise ไม่เงียบ · <b>เจอ captcha จริงครั้งแรก: snap เก็บภาพก่อน อย่าให้ solve ทันที</b></li>
+    <li><b>Phase 5</b> — fake-clock test ผ่าน · dry-run: log แสดง redirect เข้า lives_scan เมื่อ due+home เท่านั้น · จบ chain กลับ home แล้ว farm ต่อ · after_reset fire ครั้งเดียว</li>
+    <li><b>Phase 6</b> — ต่อ popup: dry-run บนจอที่มี popup จริง → probe เจอ + <code>close_popup</code> verify ผ่าน · reachability scan = 0 orphan ใหม่ · CONNECTION_LOST → เข้า reset flow ไม่ใช่แค่ tap</li>
+    <li><b>Phase 7</b> — จำลอง livelock (config ping-pong) → ภาพโผล่ใน <code>unknown_screens/</code> + Discord ได้ embed พร้อมรูป · ยิงซ้ำใน 10 นาที → ไม่ส่งซ้ำ · <code>report_runs.py</code> บน log จริง 72 ชม. → ตัวเลข baseline ออกครบ</li>
+    <li><b>Phase 8</b> — ภาพ counter จริง (จาก snap) → อ่านเลขตรง · เครื่องไม่มี tesseract → fallback ทำงาน ไม่ crash · <code>--quit-after-boxes 2</code> จบที่กล่องใบที่ 2 จริง ไม่ใช่ match ครั้งที่ 2</li>
+  </ul>
+  <div class="note danger">
+    <b>Phase 4 ต้อง gate ด้วยของจริง.</b> ยังไม่เคยเห็น captcha จริง (plan เดิมบอก "0 snap") — พิกัด <code>cells</code>
+    ทั้งหมดเป็น TODO. อย่า enable solve บน account จริงจนกว่าจะมีภาพจริง + วัดพิกัดแล้ว.
+    ระหว่างนั้นให้ <code>probe_captcha</code> ทำแค่ <b>snap + alert + stop</b> — เก็บภาพไว้ก่อน.
+    <b>Phase 7 collector ทำสิ่งนี้ให้อัตโนมัติ</b> — captcha ที่ไม่ match state ไหนเลยจะถูก snap + ส่ง Discord เอง
+  </div>
+  <div class="note info">
+    <b>Final gate ก่อน merge/รันบน account จริง:</b> dry-run รวบทุก phase บนจอจริงทีเดียว
+    (<code>--dry-run --max-cycles 120 -v</code> ต่อ config ที่ใช้จริง) — จ้อง mb_open flow เป็นพิเศษ
+    (จุดเดียวที่ restructure โดยยังไม่เคยรันบนเกม: เปิดกล่องครบ, inactive ระหว่าง mb ต้อง recover ผ่าน absent path,
+    match_timeout 25000 ไม่ escape กลางคันตอน reveal หลายกล่อง — สั้นไปค่อยขยาย).<br><br>
+    <b>ลำดับที่แนะนำ:</b> Phase 0 ✅ → <b>7</b> → 1 → 2 —
+    เปิดตา (collector + baseline analytics) <i>ก่อน</i>ปรับ pacing/reset จะได้วัดผลได้ว่า yield เปลี่ยนเท่าไหร่.
+    ต่อด้วย 5 (reuse states เดิม เร็ว) → 6 (collector จาก Phase 7 เก็บภาพ popup ให้แล้ว) →
+    3 (เมื่อต้องการ boost อื่น) → 8 (เมื่อใช้ quit_after จริงจัง) → 4 (gate: ต้องเห็น captcha จริง —
+    collector จะ snap ให้เองตอนมันโผล่)
+  </div>
+</section>
+
+
+
+<section>
+  <h2><span class="section-num">10</span>Backlog — โจทย์ถัดไป นอก scope แพลนนี้</h2>
+  <p class="lead">คุ้มแต่ใหญ่/มี dependency — บันทึกไว้พร้อมเหตุผล จะได้ไม่ต้องวิเคราะห์ใหม่</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>โจทย์</th><th>คุณค่า</th><th>ทำไมยังไม่เข้าแพลน</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Obstacle dodge — reactive play</b><br>
+          <span class="file">docs/plans/PLAN_obstacle-dodge.html</span> (มี plan แล้ว ยังไม่ implement)</td>
+        <td>เลิก blind J→J→S→J → อ่าน obstacle จริง = run รอดนานขึ้น, yield/run พุ่ง.
+          Synergy กับ Phase 1: การตอบสนองจริงดูเป็นคนกว่า pattern คงที่</td>
+        <td>หนักสุดเชิง CV (ROI + latency budget ต่อเฟรม บน capture ~335ms) — ควรมี analytics (Phase 7b)
+          วัด yield ก่อน/หลังถึงจะรู้ว่าคุ้ม</td>
+      </tr>
+      <tr>
+        <td><b>Multi-resolution templates</b></td>
+        <td>อ่าน <code>wm size</code> → auto-rescale template ตาม ratio — template 43 ไฟล์ @720p ของ
+          cookierun-bot กลับมาใช้ได้ + รัน emulator resolution ไหนก็ได้</td>
+        <td>rescale = interpolation artifact → score ตก, threshold ต้อง re-tune ทุกตัว.
+          ตอนนี้ crop @1080p ตรง ๆ (Phase 3/6) ชัวร์กว่า — คุ้มเมื่อจะรองรับหลายเครื่องจริง</td>
+      </tr>
+      <tr>
+        <td><b>Multi-instance farm</b></td>
+        <td>LDPlayer หลาย instance = ผลคูณตรง ๆ. Engine รองรับ 1 device/process แล้ว —
+          เหลือ orchestrator + alert แยก tag ต่อ instance</td>
+        <td>RAM คือกำแพงจริง (LDPlayer กิน 1.5–3GB/ตัว — เครื่องนี้มี MemoryError comment ทั่ว codebase อยู่แล้ว).
+          ควรแก้ B9 (MemoryError ทะลุ tolerance) ก่อนคูณ instance</td>
+      </tr>
+      <tr>
+        <td><b>เกมที่สอง (digimon)</b><br>
+          <span class="file">docs/plans/PLAN_autofarm-engine-digimon.html</span> (มี plan แล้ว ยังไม่มี config)</td>
+        <td>พิสูจน์ engine generic จริง — ตอนนี้ "generic" มีเกมเดียวเป็นหลักฐาน.
+          จะบังคับให้ engine feature (routine/reset/boost) ออกแบบไม่ผูกเกม</td>
+        <td>เริ่มได้เมื่อ Phase 0–2 นิ่ง — เพิ่มเกมบน engine ที่ bug P0 ยังอยู่ = debug สองเกมพร้อมกัน</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="section-num">11</span>Screenshot หน้าเกม — รอเติม</h2>
+  <p class="lead">
+    หน้าจริงที่แพลนอ้างถึง — ต้อง snap เองจาก emulator ที่ <b>1920×1080</b>.
+    เครื่องนี้ยังไม่ได้ติดตั้ง LDPlayer (ไม่มี <code>C:\LDPlayer</code>, <code>adb</code> ไม่อยู่ใน PATH) — ช่องเหล่านี้เติมทีหลัง
+  </p>
+  <pre><span class="c"># snap ทีละหน้า — รันตอนอยู่หน้านั้นจริง</span>
+python tools/snap.py --device 127.0.0.1:5555 --out docs/plans/shots/
+
+<span class="c"># หน้าที่ต้องเก็บ (5 หน้า)</span>
+<span class="c">#   1. home        — ยืนยัน home_play_marker + พิกัด Play (1650,970)</span>
+<span class="c">#   2. boost shop  — Random Boost slot (810,875) + Multi toggle (1645,340)</span>
+<span class="c">#   3. picker      — ดูว่า Magnetic Aura pre-ticked จริงมั้ง + Multi-Buy (950,880)</span>
+<span class="c">#   4. mystery box — เช็ค layout: Open-all (960,965) vs box-center (960,540)  [bug P0]</span>
+<span class="c">#   5. captcha     — วัด cells[] 6 จุด + confirm_xy                          [Phase 4 gate]</span>
+<span class="c">#   6.-15. popups  — 10 ตัวของ Phase 6 (snap ตอนโผล่จริง; @720p ของ cookierun-bot = reference)</span></pre>
+  <div class="tpl-grid" style="grid-template-columns:repeat(auto-fill,minmax(215px,1fr))">
+    <div class="shot-ph"><div class="ph-icon">🏠</div><div class="ph-t">home</div><div class="ph-s">Play (1650,970)</div></div>
+    <div class="shot-ph"><div class="ph-icon">🛒</div><div class="ph-t">boost shop</div><div class="ph-s">slot (810,875)</div></div>
+    <div class="shot-ph"><div class="ph-icon">🎰</div><div class="ph-t">picker</div><div class="ph-s">Multi-Buy (950,880)</div></div>
+    <div class="shot-ph"><div class="ph-icon">🎁</div><div class="ph-t">mystery box</div><div class="ph-s">P0 — วัด 2 layout</div></div>
+    <div class="shot-ph"><div class="ph-icon">🤖</div><div class="ph-t">captcha</div><div class="ph-s">Phase 4 — cells[]</div></div>
+  </div>
+  <div class="note danger">
+    <b>Captcha shot = gate ของ Phase 4.</b> ยังไม่เคยเห็น captcha จริง
+— พิกัด <code>cells[]</code> + <code>confirm_xy</code> ทั้งหมดเป็น TODO
+    (แพลน captcha เดิมที่ลบไปก็ระบุไว้ว่า “0 snap · ยังไม่เคยเจอจริง”).
+    เจอครั้งแรก: <b>snap เก็บก่อน อย่าให้ solve</b>
+  </div>
+</section>
+
+</div>
