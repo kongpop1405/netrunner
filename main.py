@@ -115,15 +115,37 @@ def _resolve_device(address: str, adb: str) -> Device:
     return Device(address, adb=adb)
 
 
+def _wants_restarter(cfg) -> bool:
+    """True when the config needs a Restarter — for scheduled resets OR for a
+    restart_app action (Connection Lost hands off to it). Without this the
+    action degrades to a warn-and-noop, which is exactly the recovery path a
+    dropped connection cannot afford."""
+    if cfg.session_reset_s is not None:
+        return True
+    for state in cfg.states.values():
+        blocks = []
+        om = state.get("on_match")
+        blocks.extend(om.values()) if isinstance(om, dict) else (
+            blocks.append(om) if isinstance(om, list) else None)
+        oa = state.get("on_absent")
+        if isinstance(oa, list):
+            blocks.append(oa)
+        for actions in blocks:
+            if any(a.get("type") == "restart_app" for a in actions):
+                return True
+    return False
+
+
 def build_restarter(cfg, device: Device, adb: str, instance: int | None):
-    """A Restarter for the config's session resets, or None if it wants none.
+    """A Restarter for the config's session resets or restart_app actions, or
+    None if it uses neither.
 
     Prefers ldconsole runapp (same path --launch uses) when the LDPlayer install
     can be found, because `am start` needs a resolvable launcher activity and
     some builds don't expose one. Falls back to plain adb otherwise, which is
     all a bare `--device` connection can do.
     """
-    if cfg.session_reset_s is None:
+    if not _wants_restarter(cfg):
         return None
     from src.session import DEFAULT_PACKAGE, Restarter
 
