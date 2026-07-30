@@ -563,6 +563,22 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     Cookie Run เด้ง popup กันบอทแบบสุ่ม: การ์ด 6 ใบ (grid 3×2) ตัวละครเดียวกัน
     <b>4 ใบเหมือนกัน + 2 ใบต่าง</b> — ต้องแตะ 2 ใบที่ต่างแล้วยืนยัน. ตอบผิด = เสี่ยงแบนไอดี
   </p>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ Algorithm + safety ทำแล้ว</b> (commit <code>58fc394</code>) —
+    <code>odd_cells_out()</code> · action <code>solve_cards</code> · <code>gap_min</code> gate ·
+    <code>bail_goto</code> routing · validation ครบ · <b>35 เทสด้วย synthetic grid</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>เทสได้ 100% ไม่ต้องมีภาพจริง</b> — สร้าง grid 6 ช่องด้วย noise (4 เหมือน + 2 ต่าง) →
+        ยืนยันหาถูกทุกตำแหน่ง · 6 เหมือนหมด = refuse · <b>6 ต่างหมด = refuse ด้วย</b>
+        (ไม่มี majority ให้เทียบ = ไม่มีสัญญาณ) · <code>gap_min</code> เป็นตัวตัดสินจริง · cell ล้นขอบ = raise</li>
+      <li><b>UNSURE sentinel</b> — action คืน <code>__unsure__</code> แล้ว FSM แปลงเป็น <code>bail_goto</code>
+        ของ action นั้น. <b>ไม่แตะอะไรเลย</b> ตอนไม่มั่นใจ (ไม่ใช่แตะแล้วหวัง)</li>
+      <li><b>Human-like tap</b> — สุ่มจุดในการ์ด (ไม่ใช่ center เป๊ะ) + เว้น 0.35–0.9s ระหว่างการ์ด +
+        พัก 0.6–1.4s ก่อน Confirm (เหมือนคนตรวจคำตอบ)</li>
+      <li><b>ค้าง: พิกัด <code>cells[]</code> + <code>confirm_xy</code></b> — ยังไม่เคยเห็น challenge จริง
+        → <b>ไม่มี config ไหน wire ไว้เลย</b> (ตั้งใจ). Phase 7 collector จะ snap ให้ตอนมันโผล่</li>
+    </ul>
+  </div>
   <div class="note info">
     <b>เลิกใช้ <code>PLAN_captcha-jumpslide-handler.html</code> (ลบแล้ว)</b> — แพลนนั้นแก้โจทย์
     "find the jumping/sliding card" ด้วยการ match template ท่าถูก vs ท่าผิด ซึ่ง
