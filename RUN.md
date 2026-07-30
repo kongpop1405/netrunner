@@ -44,7 +44,7 @@ run since** — treat the first live run of each bot as a smoke test (`--max-cyc
   one cached frame; the engine now forces a re-grab + poll-sleep once a goto chain revisits
   a state, and fires a "possible livelock" Discord alert if states keep flipping with no
   action for ~100 polls (same threshold as the same-state warning).
-- **Tests**: `python -m pytest tests/` (57 tests — perceive/config/fsm/act/cli).
+- **Tests**: `python -m pytest tests/` (259 tests — perceive/config/fsm/act/cli/session/routine/pacing/boost/popup/ocr/captcha/observability; 7 skip without tesseract).
 
 ## Shared action types (2026-07-29) — fix one place, every bot gets it
 
@@ -88,6 +88,36 @@ config keeps working.
 python tools/migrate_action_types.py                    # report only
 python tools/migrate_action_types.py --write <config>   # apply to one file
 ```
+
+## Parity + anti-detection upgrade (2026-07-30) — not yet live-verified
+
+Everything below shipped on `feature/parity-anti-detection` and is covered by the
+test suite (259 passed), but none of it has run against a live emulator yet — see
+**HANDOFF.md** for the verification gate and the work that still needs a real screen.
+The full plan with per-phase findings: `docs/plans/PLAN_feature-parity-anti-detection.html`.
+
+- **Human pacing** — `poll_ms: [500,750]`, `wait.ms: [800,1400]` (fresh draw each
+  time), `inter_game_delay_s: [30,60]` idle between games. Enabled in
+  `boxrun_toggle.json` only; every other config keeps fixed pacing until it is proven.
+- **Session reset** — `session_reset_s: [5400,10800]` force-stops and relaunches the
+  game every 1.5-3h, verified alive via `pidof` across 3 spaced checks. Also in
+  `boxrun_toggle.json` only.
+- **Send-lives errand** — `periodic_routines` detours to the grafted `lives_*` chain
+  every 25-35 min and right after each reset (`boxrun_toggle.json`).
+- **Verified popup closes** — 194 blind `tap_xy`+`wait` dismisses became
+  `close_popup` + `verify` across all 13 configs.
+- **`--boost` everywhere** — `main.py --boost {magnet,speed,doublecoins,none}` works
+  on any config whose chain carries `boost_role` markers (6 configs). 8 more boosts
+  are listed but refused until their banners are cropped.
+- **OCR box counter** — `--quit-after-boxes N` reads the actual "[?] xN" pill when
+  tesseract is installed; falls back to the old per-run counting when not.
+- **Captcha solver (odd-cards-out)** — implemented and tested, wired into **no**
+  config: the cell coordinates have never been measured against a real challenge.
+- **Observability** — a stalled loop archives its frame to `unknown_screens/` and
+  posts it to Discord; `tools/report_runs.py` summarizes the rotated logs
+  (runs/hour, boxes, failures) into an HTML report.
+- **Zero orphan states** — `tools/lint_config.py` guards it; ep3's boost chain and
+  the ep5 family's popup probes were silently unreachable before.
 
 ## cd into repo first
 

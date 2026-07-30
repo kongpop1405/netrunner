@@ -1455,7 +1455,7 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
     <b>Phase 7 collector ทำสิ่งนี้ให้อัตโนมัติ</b> — captcha ที่ไม่ match state ไหนเลยจะถูก snap + ส่ง Discord เอง
   </div>
   <div class="note info">
-    <b>Final gate ก่อน merge/รันบน account จริง:</b> dry-run รวบทุก phase บนจอจริงทีเดียว
+    <b>Final gate ก่อน merge/รันบน account จริง</b> (ฉบับปฏิบัติสำหรับทีมที่มี emulator: <code>HANDOFF.md</code> ที่ root repo)<b>:</b> dry-run รวบทุก phase บนจอจริงทีเดียว
     (<code>--dry-run --max-cycles 120 -v</code> ต่อ config ที่ใช้จริง) — จ้อง mb_open flow เป็นพิเศษ
     (จุดเดียวที่ restructure โดยยังไม่เคยรันบนเกม: เปิดกล่องครบ, inactive ระหว่าง mb ต้อง recover ผ่าน absent path,
     match_timeout 25000 ไม่ escape กลางคันตอน reveal หลายกล่อง — สั้นไปค่อยขยาย).<br><br>
