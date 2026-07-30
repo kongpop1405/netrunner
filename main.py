@@ -150,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--boost", default=None,
                     help="which boost to Multi-Buy before each run, for configs "
                          "with a labelled buy chain ('none' skips buying). "
-                         + boostmod.describe_choices())
+                         + boostmod.describe_choices().replace("%", "%%"))
     ap.add_argument("--dry-run", action="store_true",
                     help="run the FSM but send no taps (validate a config live)")
     ap.add_argument("--max-cycles", type=int, default=None,
