@@ -200,6 +200,7 @@
           รื้อ JSON เป็น DSL ใหม่ ·
           <s>แก้ config bloat</s> <span class="pill ok" style="vertical-align:1px"><span class="dot"></span>แก้แล้ว upstream</span>
           (<code>42e5b66</code> migrate เข้า shared actions, −2,286 บรรทัด) ·
+          crop template 10 popup ของ Phase 6 (ต้องมี emulator — ดู <code>docs/popup-coverage.md</code>) ·
           multi-instance farm · obstacle dodge · multi-resolution templates · เพิ่มเกมใหม่ (digimon) —
           ทั้งหมดย้ายไป <b>Backlog (section 10)</b> พร้อมเหตุผล ·
           mailbox receive-lives (extension ของ Phase 5 — ต้อง template ใหม่)
@@ -703,7 +704,8 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     routine <code>[1500, 2100]</code> ที่ home + <code>after_reset: true</code>
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 6</span><h3>Popup coverage — 10 ตัวที่ cookierun-bot ปิดได้แต่ netrunner ค้าง</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 6</span><h3>Popup coverage — 10 ตัวที่ cookierun-bot ปิดได้แต่ netrunner ค้าง
+    <span class="pill warn" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>PARTIAL — engine เสร็จ, 10 crop ค้าง</span></h3></div>
   <p class="lead">
     เทียบ popup guard ทั้งสองฝั่ง: netrunner มี 13 (บางตัว cookierun-bot ไม่มี เช่น settings/fortune bakery) —
     แต่ขาด 10 ตัวที่ cookierun-bot handle. โผล่เมื่อไหร่ตอนนี้ = bot ค้างจน livelock warn แล้วรอคน
@@ -728,6 +730,30 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <li><b>Adopt <code>close_popup</code>:</b> action มีแล้วตั้งแต่ <code>406f408</code> (tap + settle + verify + retry) แต่ <b>0 usage ใน config</b> — probe state ใหม่ทุกตัวใช้ <code>close_popup</code> + <code>verify</code> แทน tap_xy+wait เปล่า = ปิดยืนยันผล ไม่ใช่เดา</li>
     <li><b>Engine ไม่ต้องแก้เลย</b> — phase นี้เป็นงาน config + template ล้วน (ดู section 03)</li>
   </ul>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ส่วนที่ทำได้ทำแล้ว</b> (commit <code>2f2ea3e</code> · <code>2075184</code> · <code>608ede6</code>) —
+    <b>เจอเพิ่มระหว่างสำรวจ: ปัญหาใหญ่กว่า 10 popup ที่ขาด คือ 194 popup ที่ "ปิดอยู่แล้ว" แบบเดา</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>Migrate 194 จุด → <code>close_popup</code></b> — ทุก popup state ที่ <code>detect</code> เป็น marker เดียว
+        ตอนนี้ verify การปิดของตัวเอง (tap → settle → re-read → tap ซ้ำถ้า marker ยังอยู่).
+        เดิมเป็น <code>tap_xy + wait</code> ล้วน = สมมติว่า tap โดน; tap ที่ลงตอน dialog กำลัง fade in ไม่มีผล
+        และ pair นั้น<b>ไม่มีทางรู้</b> → loop เดินต่อโดยเชื่อว่าจอโล่งแล้ว. นี่คือเหตุผลที่ <code>close_popup</code>
+        ถูกเขียนไว้ตั้งแต่ <code>406f408</code> — แต่ไม่มี config ไหนเรียกเลย</li>
+      <li><b>ข้ามโดยเจตนา 286 จุด</b> — state ที่ marker บอก "จอที่ควรอยู่ต่อ" (home / boost shop / in-run guard /
+        <code>mb_open</code> ที่ self-loop) — verify จะไปรอให้จอหายซึ่งขัดกับ flow · + friendinfo ที่ tap 2 ชั้น
+        (ไม่ใช่รูปแบบที่ action นี้ครอบ)</li>
+      <li><b>Action ใหม่ <code>restart_app</code></b> — <code>CONNECTION_LOST</code> <b>ไม่ใช่ popup ที่ปิดได้</b>:
+        ปุ่ม reload มักกลับมาที่จอตายเดิม → ต้อง cycle process จากข้างนอก. Reuse <code>Restarter</code>
+        ตัวเดียวกับ scheduled reset (Phase 2) = config ได้ของฟรีไม่ต้องต่อท่อเอง; ไม่มี restarter → warn ไม่ crash.
+        <b>ต่างจาก inactive popup</b> ที่ confirm แล้ว<b>เกม</b> restart เองและ <code>recover_login</code> จัดการต่อ</li>
+      <li><b>ทำต่อไม่ได้: 10 popup ต้อง crop @1920×1080</b> — template ของ cookierun-bot เป็น 1280×720
+        (<code>matchTemplate</code> single-scale = ใช้ข้าม scale ไม่ได้) และเครื่อง dev ไม่มี LDPlayer →
+        ทำ <a href="../popup-coverage.md"><code>docs/popup-coverage.md</code></a> เป็น shopping list:
+        marker ที่ต้อง crop · handling ที่ต้อง port · probe แทรกตรงไหนในchain · priority</li>
+      <li><b>Phase 7 collector เก็บให้เอง</b> — จอที่ค้างจะถูก snap เข้า <code>unknown_screens/</code> + ส่ง Discord
+        → รัน unattended สองสามวันน่าจะได้ครบลิสต์โดยไม่ต้องนั่งเฝ้า</li>
+    </ul>
+  </div>
   <div class="note">
     <b>ทำไมสำคัญกับ "เหมือนคนเล่น":</b> คนจริงเจอ popup แล้ว<b>ปิดใน 1–3 วินาที</b> —
     bot ที่จ้อง popup นิ่ง 100 poll (~1 นาที) แล้วค่อยมีคนมาช่วยปิด = pattern ที่ต่างจาก user ปกติชัดเจน.
@@ -1144,9 +1170,9 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p3">PHASE 6</div>
       <div class="tl-body">
-        <b>Popup coverage</b> — 10 popups + adopt close_popup (0→ใช้จริง)
-        <div class="tl-meta">4 ขั้น · config+template ล้วน engine ไม่แตะ · CONNECTION_LOST ผูก Phase 2</div>
-        <div class="bar"><i style="width:50%;background:var(--violet)"></i></div>
+        <b>Popup coverage</b> ⚠️ <b>PARTIAL</b> — 194 blind closes → verified · restart_app · 10 crop ค้าง
+        <div class="tl-meta">pytest 185 passed · engine ส่วนเสร็จ · crop ต้องมี emulator (ดู docs/popup-coverage.md)</div>
+        <div class="bar"><i style="width:70%;background:var(--amber)"></i></div>
       </div>
     </div>
     <div class="tl-row">
@@ -1346,7 +1372,12 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
       after_reset ดึงมาก่อน · routine entry นับเป็น reachable · validation 6 เคส ·
       <b>+ เทสกับ config จริง</b>: lives chain ครบไม่ orphan, ไม่มี <code>stop</code> ค้าง, routine ชี้ <code>lives_scan</code>.
       <b>ค้าง:</b> errand จริงบนเกม (รวมใน final dry-run gate)</li>
-    <li><b>Phase 6</b> — ต่อ popup: dry-run บนจอที่มี popup จริง → probe เจอ + <code>close_popup</code> verify ผ่าน · reachability scan = 0 orphan ใหม่ · CONNECTION_LOST → เข้า reset flow ไม่ใช่แค่ tap</li>
+    <li><b>Phase 6 ⚠️ PARTIAL</b> — pytest <b>185 passed</b> (+12): tap ครั้งเดียวเมื่อ popup หาย ·
+      tap ซ้ำเมื่อ marker ยังอยู่ · เลิกหลัง retries ไม่วนตลอด · ไม่มี verify = blind เหมือนเดิม ·
+      close tap ยัง jitter · <code>restart_app</code> เรียก restarter / dry-run เงียบ / ไม่มี restarter = warn ·
+      <b>+ เทสกับ config จริง</b>: ทุก <code>close_popup</code> verify marker ของ state ตัวเอง (&gt;150 จุด),
+      navigation state ยัง blind, ทุก config ยัง load ผ่าน.
+      <b>ค้าง:</b> crop 10 popup (ต้องมี emulator) — Phase 7 collector จะเก็บภาพให้</li>
     <li><b>Phase 7 ✅</b> — pytest <b>114 passed</b> (+9 ใหม่): archive 1 ครั้ง/episode (ทั้ง same-state และ ping-pong) ·
       <code>cv2.imwrite</code> พังต้องไม่ฆ่า run · loop สุขภาพดีไม่สร้างโฟลเดอร์เลย ·
       parser: midnight wrap · traceback continuation ไม่นับ · empty log → placeholder ·
