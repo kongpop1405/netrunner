@@ -41,7 +41,9 @@
           "type": "goto",
           "state": "running"
         }
-      ]
+      ],
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -118,7 +120,9 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "picker": {
       "_note": "'Pick desired Boosts!' popup. Magnetic Aura stays PRE-TICKED — DO NOT tap any row (each toggles). Tap Multi-Buy ONCE — game AUTO-ROLLS, spending coins, until Magnetic Aura lands, then stops. Hand to wait_roll. ABSENT -> picker never opened -> settle-retry then retry_buy.",
@@ -143,7 +147,8 @@
       "on_absent": {
         "goto": "retry_buy"
       },
-      "timeout_ms": 10000
+      "timeout_ms": 10000,
+      "boost_role": "picker"
     },
     "wait_roll": {
       "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until Magnetic Aura lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (Magnetic-Aura-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
@@ -227,7 +232,8 @@
       },
       "timeout_ms": 8000,
       "absent_retries": 4,
-      "absent_wait_ms": 800
+      "absent_wait_ms": 800,
+      "boost_role": "probe"
     },
     "retry_buy": {
       "_note": "Re-buy gate: we ended up without the +17% speed boost and must roll again. Check the wallet FIRST so we never spin on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play — the ONLY sanctioned Play-without-speed path). No popup -> coins remain, loop back into buy_speed. Termination is natural (each roll drains coins until the game raises nocoins); a genuinely stuck loop trips the engine's 100-poll livelock warning.",
@@ -652,7 +658,8 @@
       },
       "timeout_ms": 8000,
       "absent_retries": 3,
-      "absent_wait_ms": 800
+      "absent_wait_ms": 800,
+      "boost_role": "probe"
     },
     "buy_magnet": {
       "_note": "No Magnetic Aura equipped. The shop opens on the HP-Upgrade view where no Multi toggle exists, so FIRST tap the Random Boost slot (810,875 — the mystery-box tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. Magnetic Aura opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Coords verified live ep6.",
@@ -684,7 +691,8 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "buy"
     },
     "probe_inactive": {
       "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",

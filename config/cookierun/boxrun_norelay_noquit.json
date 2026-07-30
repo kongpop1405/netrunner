@@ -34,7 +34,9 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -111,7 +113,9 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "probe_speed": {
       "_note": "SPEED GUARD: the run must be played with +17% base speed equipped. speedbase17_banner.png ('+17% base speed' pill) shows on the shop's right panel whenever that boost is currently rolled/equipped (CV: pill present score=1.000; absent ~0.33-0.38, split clean by the 0.82 threshold). Present -> skip buying, go to the Play gate. Absent -> buy_speed opens the Multi picker to roll it. RETRY GRACE (3x800ms): the equipped-boost banner takes ~1-2s to render after the shop opens, so detecting with no grace read the still-fading panel, thought the boost was absent, and re-bought/re-rolled every cycle — burning coins. Same fix as boxrun_ep6 probe_magnet.",
@@ -127,7 +131,8 @@
       },
       "timeout_ms": 8000,
       "absent_retries": 3,
-      "absent_wait_ms": 800
+      "absent_wait_ms": 800,
+      "boost_role": "probe"
     },
     "buy_speed": {
       "_note": "No +17% speed equipped (probe_speed confirmed pill absent). Tap the pink 'Multi' toggle (1649,337) on the Random Boost panel to open the 'Pick desired Boosts!' picker. The picker opens with +17% base speed ALREADY TICKED (CV verified live — the only checked row), so we do NOT tap any boost row (tapping the +17% row would un-tick it). Hand to picker.",
@@ -150,7 +155,8 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "buy"
     },
     "picker": {
       "_note": "'Pick desired Boosts!' popup (picker_marker, CV 1.000 @960,100). +17% base speed stays PRE-TICKED — DO NOT tap any row (each is a toggle; tapping the ticked row un-ticks it). Tap Multi-Buy (953,899) ONCE — the game then AUTO-ROLLS by itself, spending coins repeatedly, until the ticked boost (+17% speed) lands, then stops on its own. Do NOT re-tap or re-open. Hand to wait_roll to sit still until the roll UI is gone. ABSENT means the picker never opened (Multi tap missed or still animating): one settle-retry (~1.2s), then retry_buy (re-check coins, re-open the buy flow) — NO roll is in flight, so never fall through to Play with no boost.",
@@ -175,7 +181,8 @@
       "on_absent": {
         "goto": "retry_buy"
       },
-      "timeout_ms": 10000
+      "timeout_ms": 10000,
+      "boost_role": "picker"
     },
     "wait_roll": {
       "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_ep6. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
@@ -257,7 +264,8 @@
       "on_absent": {
         "goto": "retry_buy"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "probe"
     },
     "retry_buy": {
       "_note": "Re-buy gate: we ended up without the +17% speed boost and must roll again. Check the wallet FIRST so we never spin on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play — the ONLY sanctioned Play-without-speed path). No popup -> coins remain, loop back into buy_speed. Termination is natural (each roll drains coins until the game raises nocoins); a genuinely stuck loop trips the engine's 100-poll livelock warning.",

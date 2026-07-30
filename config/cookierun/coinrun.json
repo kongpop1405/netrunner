@@ -39,7 +39,9 @@
           "state": "await_shop_2"
         }
       ],
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "await_shop_2": {
       "_note": "Second (final) shop-settle re-check. Shop up -> coin guard. Still absent after this second wait -> we are genuinely not in the shop (bot started mid-run, or a run auto-started), so fall through to running and let the guard chain sort out where we actually are. Only ONE bounce back into the running/guard machinery, not an unbounded loop.",
@@ -130,7 +132,9 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "probe_dc_owned": {
       "_note": "COIN GUARD: Multi-Buy must fire ONLY when Double Coins is NOT already equipped. doublecoins_banner.png (same template start_run uses) shows on the boost-shop right panel whenever the boost is active. Present -> skip the whole buy flow, go straight to the Play gate. Absent -> buy_boost opens the Multi picker as before. RETRY GRACE (3x800ms): the equipped-boost banner takes ~1-2s to render after the shop opens, so detecting with no grace read the still-fading panel, thought the boost was absent, and re-bought/re-rolled every cycle — burning coins. Same fix as boxrun_ep6 probe_magnet.",
@@ -178,7 +182,8 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "buy"
     },
     "picker": {
       "_note": "Pick desired Boosts popup. Double Coins stays pre-ticked by default — DO NOT tap it (the row is a toggle; tapping un-ticks it). Tap Multi-Buy ONCE — the game then AUTO-ROLLS by itself, repeatedly, until the ticked boost (Double Coins) lands, then stops on its own. A 'Stop'/progress animation plays the whole time. We must NOT tap Stop or anything else during it, and must NOT re-open Multi/re-buy — the game is already rolling. Hand off to wait_roll to sit still until the roll UI is gone. ABSENT means the picker never opened (the Multi tap missed, or the popup was still animating in past the 1500ms wait) — the old config sent that straight to wait_roll, whose marker is also absent (nothing is rolling), so the bot fell all the way through check_boost_result -> start_run -> Play with NO boost at all. Observed live 2026-07-12 01:13:13-01:13:20: buy cell + Multi tapped, no Multi-Buy tap ever logged, Play tapped 5s later. Now: settle-and-recheck via picker_2 (same pattern as await_shop/await_shop_2) instead of assuming a roll happened.",
@@ -208,7 +213,8 @@
           "state": "picker_2"
         }
       ],
-      "timeout_ms": 10000
+      "timeout_ms": 10000,
+      "boost_role": "picker"
     },
     "picker_2": {
       "_note": "Second (final) picker-settle re-check. Popup finally up -> tap Multi-Buy and roll as normal. Still absent -> the picker genuinely never opened, so NO roll is in flight: do NOT fall through to Play (that was the bug). Go to retry_buy, which re-checks coins and re-opens the buy flow.",
@@ -313,7 +319,8 @@
       "on_absent": {
         "goto": "retry_buy"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "probe"
     },
     "retry_buy": {
       "_note": "Re-buy gate: we ended up without Double Coins (wrong boost rolled, or the picker never opened) and must buy again. Check the wallet FIRST so we never spin re-opening the shop on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play with whatever we have — the ONLY sanctioned Play-without-DC path). No popup -> coins remain, so loop back into buy_boost. Termination is natural rather than a retry counter: the FSM has no state variables, so counting rounds would need a chain of retry_1..retry_N states; instead each buy drains coins until the game itself raises nocoins, which ends the loop. A genuinely stuck loop still trips the engine's livelock warning (100 identical polls -> Discord alert).",

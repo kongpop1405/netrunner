@@ -41,7 +41,9 @@
           "type": "goto",
           "state": "running"
         }
-      ]
+      ],
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "buy_boosts": {
       "_note": "Buy the 3 boosts in the \"Buy some Boosts!\" top row: HP potion (340,655), clock (570,655), x2 (800,655). Each tile is 800 coins; a tile already bought (green check) just no-ops on re-tap, so tapping all 3 every entry is safe. These y=655 tiles are far from the Fast Start spam (985,515) and Play taps. Then check_heart.",
@@ -82,7 +84,8 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "buy"
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -159,7 +162,9 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "check_heart": {
       "_note": "SINGLE Play gate. heart_empty present -> wait 30s self-loop until a heart regenerates. Absent (>=1 heart) -> tap Play, then SPAM-TAP the Fast Start button spot (985,515) every ~400ms from the load screen through the whole prompt window and into the run. Blind spam instead of detect+tap: the prompt appears ~5.6s after Play and lingers only ~2s, so a fixed cadence of taps across 0-8s can never miss it, and taps that land before/after the prompt are harmless (empty run area). Ends at running. Its Play tap is (1365,931) and the Fast Start spam is (985,515) — both well clear of the HP-potion (~340,875) and clock (~570,875) boost tiles, so the run is never charged for a boost. NEVER add taps in the 250-680 x / 800-960 y zone here.",

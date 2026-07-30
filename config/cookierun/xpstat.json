@@ -39,7 +39,9 @@
           "state": "await_shop_2"
         }
       ],
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "await_shop_2": {
       "_note": "Settle hop 2/2. Still no shop -> we're genuinely elsewhere; let the guard chain locate us.",
@@ -130,7 +132,9 @@
       "on_absent": {
         "goto": "running"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "boost_role": "gate",
+      "boost_skip_goto": "check_heart"
     },
     "check_heart": {
       "_note": "Play gate, identical to coinrun.json: heart_empty.png (separator + leftmost heart gray) present = 0 hearts -> 30s wait self-loop under a 25-min timeout; absent -> tap Play (1365,931). HARD RULE: never buy hearts.",
