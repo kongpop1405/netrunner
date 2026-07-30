@@ -207,3 +207,49 @@ def test_shared_actions_send_nothing_in_dry_run(tmp_path):
     a.run({"type": "faststart_tap", "taps": 3}, FRAME)
     a.run({"type": "close_popup", "x": 1, "y": 2}, FRAME)
     assert a.device.calls == []
+
+
+# --- tap_template roi + optional ------------------------------------------------
+
+
+def _two_marker_frame(tdir, frame):
+    """A frame holding marker.png twice, so a roi is the only way to pick one."""
+    import cv2
+    tpl = cv2.imread(str(tdir / "marker.png"))
+    th, tw = tpl.shape[:2]
+    wide = np.zeros((th + 200, tw + 400, 3), dtype=np.uint8)
+    wide[10:10 + th, 10:10 + tw] = tpl              # copy A, top-left
+    wide[150:150 + th, 300:300 + tw] = tpl          # copy B, lower-right
+    return wide
+
+
+def test_tap_template_roi_selects_the_copy_inside_it(tdir, frame):
+    a = Actor(FakeDevice(), TemplateStore(tdir))
+    a.delay_range = (0, 0)
+    a.hesitate_chance = 0
+    wide = _two_marker_frame(tdir, frame)
+
+    a.run({"type": "tap_template", "template": "marker.png",
+           "roi": [300, 150, 200, 120]}, wide)
+
+    (call,) = a.device.calls
+    x, y = int(call[2]), int(call[3])
+    assert 300 <= x <= 500 and 150 <= y <= 270, f"tapped ({x},{y}), outside the roi"
+
+
+def test_tap_template_optional_skips_when_absent(tdir):
+    a = Actor(FakeDevice(), TemplateStore(tdir))
+    a.delay_range = (0, 0)
+    a.hesitate_chance = 0
+    blank = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    a.run({"type": "tap_template", "template": "marker.png", "optional": True}, blank)
+
+    assert a.device.calls == []
+
+
+def test_tap_template_still_raises_when_not_optional(tdir):
+    a = Actor(FakeDevice(), TemplateStore(tdir))
+    blank = np.zeros((100, 100, 3), dtype=np.uint8)
+    with pytest.raises(ActError, match="not on screen"):
+        a.run({"type": "tap_template", "template": "marker.png"}, blank)

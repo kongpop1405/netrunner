@@ -335,8 +335,17 @@ class Actor:
             return None
         if kind == "tap_template":
             thr = float(action.get("threshold", self.default_threshold))
-            m = find_named(frame, self.store, action["template"], thr)
+            roi = action.get("roi")
+            m = find_named(frame, self.store, action["template"], thr,
+                           roi=tuple(roi) if roi else None)
             if not m.found:
+                if action.get("optional"):
+                    # The template is a state we may or may not need to change
+                    # — a picker row that is already ticked, say. Absent is a
+                    # legitimate outcome, not a failure.
+                    log.debug("tap_template '%s' absent (optional), skipping",
+                              action["template"])
+                    return None
                 raise ActError(
                     f"tap_template '{action['template']}' not on screen "
                     f"(best score {m.score:.2f} < {thr:.2f})"

@@ -117,6 +117,34 @@ def test_missing_tap_template_file(tmp_path, tdir):
         cfgmod.load(_write(tmp_path, data))
 
 
+@pytest.mark.parametrize("roi", [
+    [1, 2, 3],                  # too few
+    [1, 2, 3, 4, 5],            # too many
+    "1,2,3,4",                  # not a sequence of ints
+    [1, 2, 3.5, 4],             # float
+    [-1, 0, 10, 10],            # negative origin
+    [0, 0, 0, 10],              # zero width
+])
+def test_tap_template_roi_must_be_four_positive_ints(tmp_path, tdir, roi):
+    data = _minimal(tdir)
+    data["states"]["a"]["on_match"] = [
+        {"type": "tap_template", "template": "marker.png", "roi": roi},
+        {"type": "stop"},
+    ]
+    with pytest.raises(cfgmod.ConfigError, match="roi"):
+        cfgmod.load(_write(tmp_path, data))
+
+
+def test_tap_template_roi_accepted(tmp_path, tdir):
+    data = _minimal(tdir)
+    data["states"]["a"]["on_match"] = [
+        {"type": "tap_template", "template": "marker.png", "roi": [10, 20, 30, 40]},
+        {"type": "stop"},
+    ]
+    cfg = cfgmod.load(_write(tmp_path, data))
+    assert cfg.states["a"]["on_match"][0]["roi"] == [10, 20, 30, 40]
+
+
 def test_detect_required(tmp_path, tdir):
     data = _minimal(tdir)
     del data["states"]["a"]["detect"]
