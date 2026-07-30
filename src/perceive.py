@@ -117,6 +117,61 @@ def find_named(
     return find(frame, store.get(name), threshold, roi=roi)
 
 
+def odd_cells_out(frame: np.ndarray, cells: list[tuple[int, int]],
+                  size: tuple[int, int], pick: int = 2,
+                  gap_min: float = 0.04) -> list[int] | None:
+    """Indices of the `pick` cards that differ from the rest, or None if unclear.
+
+    The anti-bot challenge shows a grid of the same character in two poses — four
+    alike, two odd — and demands the odd ones be tapped. With no template for
+    either pose, the cards are compared against each other: crop every cell,
+    correlate every pair, and average each cell's similarity to the others. The
+    majority reinforce one another, so the odd ones fall to the bottom.
+
+    `gap_min` is the safety rail. cookierun-classic-bot took the bottom two by
+    rank alone (`np.argsort(avg)[:2]`), which returns an answer even when all six
+    are identical — a different challenge, a bad crop, or a layout change would
+    silently produce two confident wrong taps, and a wrong answer here risks the
+    account. So the gap between the last pick and the first reject must exceed
+    `gap_min`; otherwise this returns None and the caller is expected to bail
+    rather than guess.
+
+    Raises PerceiveError when the geometry itself is wrong — a cell reaching past
+    the frame edge means the coordinates are misconfigured, which must be loud
+    rather than silently comparing differently-sized crops.
+    """
+    if pick < 1 or pick >= len(cells):
+        raise PerceiveError(
+            f"pick={pick} makes no sense for {len(cells)} cells — it must leave at "
+            f"least one cell as the majority to compare against")
+    w, h = size
+    crops = []
+    for i, (cx, cy) in enumerate(cells):
+        x0, y0 = cx - w // 2, cy - h // 2
+        crop = frame[y0 : y0 + h, x0 : x0 + w]
+        if x0 < 0 or y0 < 0 or crop.shape[0] != h or crop.shape[1] != w:
+            raise PerceiveError(
+                f"cell {i} at ({cx},{cy}) size {w}x{h} falls outside the "
+                f"{frame.shape[1]}x{frame.shape[0]} frame — check the cell coords")
+        crops.append(crop if crop.ndim == 2 else cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY))
+
+    n = len(crops)
+    sim = np.zeros((n, n), dtype=np.float32)
+    for i in range(n):
+        for j in range(i + 1, n):
+            # Equal-sized inputs make matchTemplate a single correlation value.
+            score = float(cv2.matchTemplate(crops[i], crops[j], cv2.TM_CCOEFF_NORMED)[0][0])
+            sim[i][j] = sim[j][i] = score
+
+    avg = sim.sum(axis=1) / (n - 1)
+    order = list(np.argsort(avg))          # least similar first
+    picked, rejected = order[:pick], order[pick:]
+    gap = float(avg[rejected[0]] - avg[picked[-1]])
+    if gap < gap_min:
+        return None
+    return [int(i) for i in picked]
+
+
 def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None,
               config: str = "") -> str:
     """OCR a frame (or a sub-region x,y,w,h) via pytesseract. Optional dependency.

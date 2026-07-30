@@ -487,6 +487,14 @@ class Runner:
                 # action list and let the next poll re-read the screen.
                 log.warning("action failed in state '%s', skipping rest: %s", state, e)
                 return None, acted
+            if result == Actor.UNSURE:
+                # The action refused to answer (an unreadable card puzzle). Its
+                # own bail_goto says where that leaves the loop — validation has
+                # already checked the state exists.
+                target = action["bail_goto"]
+                log.warning("action in state '%s' could not act confidently -> goto '%s'",
+                            state, target)
+                return target, acted
             if result is not None:
                 return result, acted  # goto target or _STOP
         return None, acted

@@ -11,7 +11,7 @@ import time
 
 from .capture import CaptureError, grab
 from .device import AdbError, Device
-from .perceive import PerceiveError, TemplateStore, find_named
+from .perceive import PerceiveError, TemplateStore, find_named, odd_cells_out
 
 log = logging.getLogger("netrunner.act")
 
@@ -265,6 +265,43 @@ class Actor:
         log.warning("close_popup: '%s' still on screen after %d attempt(s)",
                     verify, attempts)
 
+    #: Returned instead of a state name when a card puzzle cannot be read
+    #: confidently. The FSM turns it into the action's `bail_goto`.
+    UNSURE = "__unsure__"
+
+    #: gap (seconds) between taps on separate cards — a person does not tap two
+    #: things in the same instant.
+    card_tap_gap: tuple[float, float] = (0.35, 0.9)
+    #: pause before Confirm, as if checking the picks.
+    card_confirm_pause: tuple[float, float] = (0.6, 1.4)
+
+    def solve_cards(self, frame, cells, size, *, pick=2, gap_min=0.04,
+                    confirm_xy=None) -> str | None:
+        """Tap the odd cards out of a grid, then Confirm.
+
+        Returns None on success, or UNSURE when the puzzle could not be read
+        confidently — in which case nothing is tapped at all. A wrong answer here
+        risks the account, so refusing to answer is the cheaper mistake: the
+        caller routes to a bail state that stops and alerts for a human.
+        """
+        picked = odd_cells_out(frame, cells, size, pick=pick, gap_min=gap_min)
+        if picked is None:
+            log.warning("solve_cards: the odd cards are not clearly separated — "
+                        "tapping nothing")
+            return self.UNSURE
+        log.info("solve_cards: odd cards %s of %d%s",
+                 [i + 1 for i in picked], len(cells), " [dry]" if self.dry_run else "")
+        for n, idx in enumerate(picked):
+            if n:
+                time.sleep(random.uniform(*self.card_tap_gap))
+            cx, cy = cells[idx]
+            # Land anywhere on the card, like a finger would.
+            self.tap(*self._rand_in_zone(cx, cy, size[0] // 3, size[1] // 3))
+        if confirm_xy is not None:
+            time.sleep(random.uniform(*self.card_confirm_pause))
+            self.tap(int(confirm_xy[0]), int(confirm_xy[1]))
+        return None
+
     #: per-character delay (seconds) when typing — `input text` blasts the whole
     #: string instantly, which some IMEs drop characters from. Typing char by char
     #: at a human cadence is slower but lands every keystroke.
@@ -358,6 +395,15 @@ class Actor:
                 taps=action.get("taps"), gap_ms=action.get("gap_ms"),
             )
             return None
+        if kind == "solve_cards":
+            return self.solve_cards(
+                frame,
+                [tuple(c) for c in action["cells"]],
+                tuple(action["cell_size"]),
+                pick=int(action.get("pick", 2)),
+                gap_min=float(action.get("gap_min", 0.04)),
+                confirm_xy=action.get("confirm_xy"),
+            )
         if kind == "restart_app":
             self.restart_app()
             return None

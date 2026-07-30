@@ -15,7 +15,7 @@ _ACTION_TYPES = {
     "slide", "text",
     # shared game actions — behaviour lives in Actor so a fix reaches every
     # config naming the action (see src/act.py "shared game actions").
-    "relay_tap", "faststart_tap", "close_popup", "restart_app",
+    "relay_tap", "faststart_tap", "close_popup", "restart_app", "solve_cards",
 }
 _REQUIRED_FIELDS = {
     "tap_template": {"template"},
@@ -33,6 +33,7 @@ _REQUIRED_FIELDS = {
     "faststart_tap": set(),
     "close_popup": {"x", "y"},
     "restart_app": set(),
+    "solve_cards": {"cells", "cell_size", "bail_goto"},
 }
 
 
@@ -371,6 +372,8 @@ def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path
         _require_template(state, tdir, action["template"])
     if kind == "close_popup" and action.get("verify") is not None:
         _require_template(state, tdir, action["verify"])
+    if kind == "solve_cards":
+        _validate_solve_cards(state, action, state_names)
     if kind == "wait" and isinstance(action["ms"], (list, tuple)):
         parse_range(action["ms"], f"state '{state}': wait.ms", integer=True)
     if kind == "text":
@@ -391,3 +394,50 @@ def _validate_text_value(state: str, value: object) -> None:
             f"state '{state}': action 'text' value {value!r} has characters ADB "
             f"'input text' cannot send — use letters, digits, space, and _ . - only"
         )
+
+
+def _validate_solve_cards(state: str, action: dict, state_names: set[str]) -> None:
+    """A card puzzle answered from bad geometry is worse than one not answered:
+    wrong taps risk the account. So the coordinates and the bail route are
+    checked at load time, not discovered mid-challenge.
+    """
+    cells = action["cells"]
+    if not (isinstance(cells, list) and len(cells) >= 3):
+        raise ConfigError(
+            f"state '{state}': solve_cards 'cells' needs at least 3 [x, y] points")
+    for i, c in enumerate(cells):
+        if not (isinstance(c, (list, tuple)) and len(c) == 2
+                and all(isinstance(v, int) and not isinstance(v, bool) and v >= 0
+                        for v in c)):
+            raise ConfigError(
+                f"state '{state}': solve_cards cells[{i}] must be [x, y] integers")
+    size = action["cell_size"]
+    if not (isinstance(size, (list, tuple)) and len(size) == 2
+            and all(isinstance(v, int) and v > 0 for v in size)):
+        raise ConfigError(
+            f"state '{state}': solve_cards 'cell_size' must be [w, h] positive integers")
+
+    pick = action.get("pick", 2)
+    if not isinstance(pick, int) or isinstance(pick, bool) or not 1 <= pick < len(cells):
+        raise ConfigError(
+            f"state '{state}': solve_cards 'pick' must be between 1 and "
+            f"{len(cells) - 1} (it has to leave a majority to compare against)")
+
+    gap = action.get("gap_min", 0.04)
+    if not isinstance(gap, (int, float)) or isinstance(gap, bool) or not 0 < gap < 1:
+        raise ConfigError(
+            f"state '{state}': solve_cards 'gap_min' must be a number in (0, 1) — "
+            f"it is the confidence margin below which nothing is tapped")
+
+    if action["bail_goto"] not in state_names:
+        raise ConfigError(
+            f"state '{state}': solve_cards 'bail_goto' targets undefined state "
+            f"'{action['bail_goto']}' — that is where the loop goes when the cards "
+            f"cannot be read, so it must exist")
+
+    confirm = action.get("confirm_xy")
+    if confirm is not None and not (isinstance(confirm, (list, tuple))
+                                    and len(confirm) == 2
+                                    and all(isinstance(v, int) for v in confirm)):
+        raise ConfigError(
+            f"state '{state}': solve_cards 'confirm_xy' must be [x, y] integers")
