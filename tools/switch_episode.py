@@ -3,7 +3,7 @@
     python tools/switch_episode.py --device 127.0.0.1:5555 --episode 5
 
 A box-farm config only taps Play! — it never navigates the Episode picker
-(see boxrun_ep*.json's _comment: "PRECONDITION: pick whichever episode on
+(the box-farm configs only tap Play!, so they farm whichever episode is on
 home BEFORE starting"). Switching episodes has been a manual snap/tap/swipe
 dance each time; this scripts the same steps end to end:
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 6 v2 — like ep5 (Fast Start, NO jump/slide/relay, quit at box target) but BUYS 3 boosts (HP potion + clock + x2) each run and quits at the 3rd box (x3 template DEFERRED — temporarily quits at 2nd). PRECONDITION: Episode 6 selected on home. Loop: home->Play->await_shop->buy_boosts(340/570/800,655)->check_heart(Play+FastStart spam)->run(no control)->check_box(x3?->quit_run | else die)->result->box->home.",
+  "_comment": "boxrun_passive — Mystery Box farm, NO boost, passive guard-loop run (no jump/slide), quits at box target. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. PRECONDITION: Episode 5 selected on home BEFORE starting (bot only taps Play!). Fast Start is spammed (985,515) after leaving home — on the shop path from check_heart after its Play tap, on the direct-run path from await_shop absent. Boxes collected mid-run open on the Mystery Box screen after Result. Loop: home->Play->await_shop->(shop->check_heart | direct->spam)->check_heart(Play+FastStart spam)->run(NO jump/slide; QUIT at 2nd box via check_box->quit_run, else die)->run_result->mystery_box->reveal->home. home Play coord may differ from ep6 (1650) — verify live for Episode 5.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -20,13 +20,46 @@
       },
       "timeout_ms": 20000
     },
+    "pre_play": {
+      "_note": "Between home and the Play tap: a \"Send <name> a free Life?\" dialog can sit ON TOP of home while Play! still scores 1.00 underneath — tapping Play then just hits the dialog and the run never starts. Detect the dialog (sendlife_marker) and Cancel it (727,688), back to home to re-check. Clear -> tap Play (1650,970) and proceed to await_shop.",
+      "detect": "sendlife_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 727,
+          "y": 688,
+          "verify": "sendlife_marker.png",
+          "settle_ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1650,
+          "y": 970
+        },
+        {
+          "type": "wait",
+          "ms": 3000
+        },
+        {
+          "type": "goto",
+          "state": "await_shop"
+        }
+      ],
+      "timeout_ms": 6000
+    },
     "await_shop": {
-      "_note": "After Play, poll for the boost shop. Shop present -> buy_boosts (buy all 3: HP potion, clock, x2). Absent = direct run (boost already equipped / shop skipped) -> spam Fast Start -> running.",
+      "_note": "After Play, poll for the boost shop. ep5 buys NOTHING (Fast Start only), so shop present -> check_heart directly. Absent after retries = direct run (Play went straight in) -> spam the Fast Start spot (985,515) across the prompt window (safe: off home) -> running. NO-BUY GUARD: the Fast Start spam (985,515) only fires on the direct-run branch (await_shop ABSENT = no shop on screen), never while the shop is up — so it can never land on the HP-potion (~340,875) or Timepiece/clock (~570,875) boost tiles the user forbids buying. When the shop IS present we go straight to check_heart and tap only Play (1365,931), far from those tiles.",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "buy_boosts"
+          "state": "check_heart"
         }
       ],
       "absent_retries": 6,
@@ -44,48 +77,6 @@
       ],
       "boost_role": "gate",
       "boost_skip_goto": "check_heart"
-    },
-    "buy_boosts": {
-      "_note": "Buy the 3 boosts in the \"Buy some Boosts!\" top row: HP potion (340,655), clock (570,655), x2 (800,655). Each tile is 800 coins; a tile already bought (green check) just no-ops on re-tap, so tapping all 3 every entry is safe. These y=655 tiles are far from the Fast Start spam (985,515) and Play taps. Then check_heart.",
-      "detect": "boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 340,
-          "y": 655
-        },
-        {
-          "type": "wait",
-          "ms": 600
-        },
-        {
-          "type": "tap_xy",
-          "x": 570,
-          "y": 655
-        },
-        {
-          "type": "wait",
-          "ms": 600
-        },
-        {
-          "type": "tap_xy",
-          "x": 800,
-          "y": 655
-        },
-        {
-          "type": "wait",
-          "ms": 600
-        },
-        {
-          "type": "goto",
-          "state": "check_heart"
-        }
-      ],
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000,
-      "boost_role": "buy"
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -268,7 +259,7 @@
       "timeout_ms": 6000
     },
     "guard_not_levelup": {
-      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> check_box. Ported from boxrun_ep5.",
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop when the cookie gains enough XP during a run — same class of bug as Send-Life: it sits on top of whatever screen is under it and the mid-run guard chain would otherwise never route through the home popup-peel chain to dismiss it. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> check_box.",
       "detect": "levelup_marker.png",
       "on_match": [
         {
@@ -456,12 +447,12 @@
       "timeout_ms": 15000
     },
     "check_box": {
-      "_note": "TARGET: quit at the 3rd box (user spec). x3 template (boxcount3_marker) is NOT captured yet — DEFERRED — so this TEMPORARILY detects boxcount2_marker (quits at the 2nd box). To finish: capture an x3 counter frame (run with boosts+jump), crop boxcount3_marker (x3-only, jelly bg excluded), and swap the detect here to boxcount3_marker.png. Rest of the flow (buy 3 boosts, Fast Start, no jump, quit_run) is final.",
-      "detect": "boxcount2_marker.png",
+      "_note": "STAGE 1 of the quit gate: is the Mystery Box counter even on screen? boxcounter_marker is the wooden \"?\" box icon (present for x1, x2, ... — CV: present ~0.9+, absent ~0.35). Absent -> no box collected yet -> running (never quit). Present -> check_box2 reads the digit. This guards against the x2-only crop false-matching jelly/coin noise mid-run and quitting with zero boxes (seen live).",
+      "detect": "boxcounter_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "quit_run"
+          "state": "check_box2"
         }
       ],
       "on_absent": [
@@ -476,8 +467,30 @@
       ],
       "timeout_ms": 8000
     },
+    "check_box2": {
+      "_note": "STAGE 2: the box counter IS on screen (check_box confirmed) — does it read x2? boxcount2_marker (x2-only digit crop). Present -> quit_run (2 boxes, bail). Absent -> only 1 box so far -> running to keep polling. Because we only reach here with a real counter on screen, a stray jelly/coin can no longer trigger a false quit. THRESHOLD 0.95 (not the global 0.82): the small x2 digit crop can score ~0.85 on an x1 counter (the 1 and 2 share strokes), which false-quit at 1 box live. x2 self-matches at 1.00, so 0.95 clears x1 while still catching a real x2.",
+      "detect": "boxcount2_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "quit_run"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
+      "timeout_ms": 8000,
+      "threshold": 0.95
+    },
     "quit_run": {
-      "_note": "2 boxes collected -> bail via the pause menu. pause (1790,55) -> menu Quit (960,640) -> confirm Quit (960,570, NOT Cancel 960,755) -> Result with both boxes credited -> run_result opens/reveals them. Generous waits (1200-2500ms) for each menu/dialog fade. Coords reused from boxrun_ep6.",
+      "_note": "2 boxes collected -> bail via the pause menu. pause (1790,55) -> menu Quit (960,640) -> confirm Quit (960,570, NOT Cancel 960,755) -> Result with both boxes credited -> run_result opens/reveals them. Generous waits (1200-2500ms) for each menu/dialog fade. Coords reused from boxrun_magnet.",
       "detect": "result_marker.png",
       "on_match": [
         {
@@ -717,17 +730,8 @@
       ],
       "on_absent": [
         {
-          "type": "tap_xy",
-          "x": 1650,
-          "y": 970
-        },
-        {
-          "type": "wait",
-          "ms": 3000
-        },
-        {
           "type": "goto",
-          "state": "await_shop"
+          "state": "pre_play"
         }
       ],
       "timeout_ms": 6000

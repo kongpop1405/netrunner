@@ -1,7 +1,7 @@
 """Lint farm FSM configs — the checks that caught real shipped bugs, as a CLI.
 
     python tools/lint_config.py config/cookierun/*.json
-    python tools/lint_config.py --svg docs/graphs config/cookierun/boxrun_ep6.json
+    python tools/lint_config.py --svg docs/graphs config/cookierun/boxrun_magnet.json
 
 Checks per config:
   1. loads + validates (config.load — hard errors: missing template, ghost goto)

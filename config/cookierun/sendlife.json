@@ -30,7 +30,7 @@
       "timeout_ms": 8000
     },
     "peel_popups": {
-      "_note": "No Send-Life icon visible — before deciding the list is exhausted, rule out a popup covering it. Cookie Run drops modals at any time, not just at launch (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up rewards, friend-info), and any of them hides the friends list. Each popup peels to its own confirm and the list is still underneath, so we return to scan (not home). This is a mini modal chain: dailycheckin(OK 965,985) -> treasure(Confirm 960,850) -> congrats(Confirm 954,847) -> levelup(Confirm 954,847). None present -> genuinely no icon on screen -> scroll_list. Shared templates/coords with boxrun_ep3.json.",
+      "_note": "No Send-Life icon visible — before deciding the list is exhausted, rule out a popup covering it. Cookie Run drops modals at any time, not just at launch (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up rewards, friend-info), and any of them hides the friends list. Each popup peels to its own confirm and the list is still underneath, so we return to scan (not home). This is a mini modal chain: dailycheckin(OK 965,985) -> treasure(Confirm 960,850) -> congrats(Confirm 954,847) -> levelup(Confirm 954,847). None present -> genuinely no icon on screen -> scroll_list. Shared templates/coords with boxrun_speed.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {

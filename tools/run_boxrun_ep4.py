@@ -1,9 +1,9 @@
-"""Launch boxrun_ep4.json — Episode 4 box farm, +17% base speed boost,
+"""Launch boxrun_speed_quit2.json — Episode 4 box farm, +17% base speed boost,
 quits a run early once 2 total boxes have been banked this session.
 
-    python tools/run_boxrun_ep4.py --launch
+    python tools/run_boxrun_speed_quit2.py --launch
 
-check_box/quit_run (ported into boxrun_ep4.json from boxrun_ep3.json) bail a
+check_box/quit_run (ported into boxrun_speed_quit2.json from boxrun_speed.json) bail a
 run via the pause menu the instant a Mystery Box is collected — the config
 alone can't tell "this is the 1st box run" from "this is the 2nd", since the
 static FSM has no per-run variables (see boxrun_toggle's BoxQuitRunner in
@@ -26,13 +26,13 @@ from src import config as cfgmod
 from src.device import AdbError
 from tools.run_toggle import BoxQuitRunner
 
-CONFIG_PATH = "config/cookierun/boxrun_ep4.json"
+CONFIG_PATH = "config/cookierun/boxrun_speed_quit2.json"
 QUIT_AFTER_BOXES = 2
 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(description="boxrun_ep4 launcher (fixed quit-after-2-boxes)")
+    ap = argparse.ArgumentParser(description="boxrun_speed_quit2 launcher (fixed quit-after-2-boxes)")
     ap.add_argument("--device", default=None)
     ap.add_argument("--adb", default=None)
     ap.add_argument("--launch", action="store_true")
@@ -79,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {msg}", file=sys.stderr)
         return 2
     log.info("device: %s  adb: %s", address, adb)
-    log.info("boxrun_ep4: quit_after_boxes=%d", QUIT_AFTER_BOXES)
+    log.info("boxrun_speed_quit2: quit_after_boxes=%d", QUIT_AFTER_BOXES)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
 

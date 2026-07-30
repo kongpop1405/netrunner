@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, EPISODE 6 (Plum Blossom Palace) — plays runs to the end (till death) collecting Mystery Boxes passively; no early quit. PRECONDITION: Episode 6 selected on home BEFORE starting (bot only taps Play!). BOOST: Magnetic Aura Random Boost equipped every run (probe_magnet checks the red-gold banner; buy_magnet taps the Random Boost slot 810,875 -> Multi 1645,340 -> picker with Magnetic Aura PRE-TICKED -> Multi-Buy 950,880 -> auto-roll). Fast Start prompt tapped at run start (faststart_btn tap_template + faststart_check). Cookie Relay Boost tap (960,540) once per 4-hop cycle. Boxes collected mid-run are opened on the Mystery Box screen after Result. Loop: home->Play->await_shop->probe_magnet->buy_magnet->start_run->check_heart->Play->await_faststart->faststart_check->run(J->J->S->J till death)->run_result->mystery_box->reveal->home.",
+  "_comment": "boxrun_speed_quit2 — Mystery Box farm, +17% Speed boost, jump-hop run, quits after 2 boxes. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. PRECONDITION: Episode 6 selected on home BEFORE starting (bot only taps Play!). BOOST: +17% base speed Random Boost equipped every run (probe_speed checks the speedbase17_banner pill; buy_speed taps the pink Multi toggle 1649,337 -> picker with +17% base speed PRE-TICKED -> Multi-Buy 953,899 -> auto-roll). Fast Start prompt tapped at run start (faststart_btn tap_template + faststart_check). Cookie Relay Boost tap (960,540) once per 4-hop cycle. Boxes collected mid-run are opened on the Mystery Box screen after Result. Loop: home->Play->await_shop->probe_speed->buy_speed->start_run->check_heart->Play->await_faststart->faststart_check->run(J->J->S->J till death)->run_result->mystery_box->reveal->home. QUIT-AFTER-2: check_box/quit_run (ported from boxrun_speed) bail the run early via the pause menu once a Mystery Box is collected, but ONLY on the 2nd run-with-a-box this session — a Python-level counter (see tools/run_boxrun_speed_quit2.py) tracks that across runs since the static FSM has no per-run variables; earlier box runs play to natural death.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -21,12 +21,12 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "After Play, poll for the boost shop. It settles to 1.00 within ~1s WHEN Play was tapped on a stable home; if home was still fading the tap can miss, so retry 6x/700ms. Shop present -> probe_magnet. Absent after retries = direct run (boost still equipped, no shop) -> spam the Fast Start spot (985,515) across the prompt window (safe now: we are off home) -> running.",
+      "_note": "After Play, poll for the boost shop. It settles to 1.00 within ~1s WHEN Play was tapped on a stable home; if home was still fading the tap can miss, so retry 6x/700ms. Shop present -> probe_speed. Absent after retries = direct run (boost still equipped, no shop) -> spam the Fast Start spot (985,515) across the prompt window (safe now: we are off home) -> running.",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "probe_magnet"
+          "state": "probe_speed"
         }
       ],
       "absent_retries": 6,
@@ -109,12 +109,12 @@
       "timeout_ms": 8000
     },
     "boost_shop": {
-      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_magnet to ensure Magnetic Aura is equipped before Play.",
+      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_speed to ensure +17% base speed is equipped before Play.",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "probe_magnet"
+          "state": "probe_speed"
         }
       ],
       "on_absent": {
@@ -125,7 +125,7 @@
       "boost_skip_goto": "check_heart"
     },
     "picker": {
-      "_note": "'Pick desired Boosts!' popup. Magnetic Aura stays PRE-TICKED — DO NOT tap any row (each toggles). Tap Multi-Buy ONCE — game AUTO-ROLLS, spending coins, until Magnetic Aura lands, then stops. Hand to wait_roll. ABSENT -> picker never opened -> settle-retry then retry_buy.",
+      "_note": "'Pick desired Boosts!' popup. +17% base speed stays PRE-TICKED — DO NOT tap any row (each toggles). Tap Multi-Buy ONCE — game AUTO-ROLLS, spending coins, until +17% base speed lands, then stops. Hand to wait_roll. ABSENT -> picker never opened -> settle-retry then retry_buy.",
       "detect": "picker_marker.png",
       "on_match": [
         {
@@ -151,7 +151,7 @@
       "boost_role": "picker"
     },
     "wait_roll": {
-      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until Magnetic Aura lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (Magnetic-Aura-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until +17% base speed lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (speed-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
       "detect": "rollstop_marker.png",
       "on_match": [
         {
@@ -205,8 +205,8 @@
       "timeout_ms": 8000
     },
     "start_run": {
-      "_note": "SPEED ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Pill present -> the roll landed Magnetic Aura -> check_heart -> Play. Pill ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-Magnetic Aura path is the nocoins escape (insufficient_coins -> force_play). RETRY GRACE (4x800ms): after Multi-Buy the roll animation + banner render take ~2-3s; checking instantly read a still-fading banner (0.6) and looped back into buy_magnet, re-rolling and burning coins. Same class of fix as probe_magnet.",
-      "detect": "magneticaura_banner.png",
+      "_note": "SPEED ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Pill present -> the roll landed +17% base speed -> check_heart -> Play. Pill ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-+17% base speed path is the nocoins escape (insufficient_coins -> force_play). RETRY GRACE (4x800ms): after Multi-Buy the roll animation + banner render take ~2-3s; checking instantly read a still-fading banner (0.6) and looped back into buy_speed, re-rolling and burning coins. Same class of fix as probe_speed.",
+      "detect": "speedbase17_banner.png",
       "on_match": [
         {
           "type": "goto",
@@ -231,7 +231,7 @@
         }
       ],
       "on_absent": {
-        "goto": "buy_magnet"
+        "goto": "buy_speed"
       },
       "timeout_ms": 8000
     },
@@ -313,7 +313,7 @@
       "timeout_ms": 8000
     },
     "guard_not_sendlife": {
-      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_passive.",
       "detect": "sendlife_marker.png",
       "on_match": [
         {
@@ -334,7 +334,7 @@
       "timeout_ms": 6000
     },
     "guard_not_levelup": {
-      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_passive.",
       "detect": "levelup_marker.png",
       "on_match": [
         {
@@ -430,7 +430,7 @@
         },
         {
           "type": "goto",
-          "state": "check_shop_after_run"
+          "state": "check_box"
         }
       ],
       "timeout_ms": 20000
@@ -629,56 +629,6 @@
         "goto": "probe_inactive"
       },
       "timeout_ms": 15000
-    },
-    "probe_magnet": {
-      "_note": "MAGNET GUARD: run must play with Magnetic Aura equipped. magneticaura_banner (red-gold pill above Play) shows whenever equipped — but the shop panel takes ~1-2s to render it after Play, so detect with a 3-retry grace (absent_wait_ms 800) before concluding it is absent; without this probe fired on the still-fading shop (banner 0.32-0.70), thought it was unequipped, and re-rolled every cycle, burning coins. Present -> check_heart. Absent after retries -> buy_magnet.",
-      "detect": "magneticaura_banner.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "check_heart"
-        }
-      ],
-      "on_absent": {
-        "goto": "buy_magnet"
-      },
-      "timeout_ms": 8000,
-      "absent_retries": 3,
-      "absent_wait_ms": 800,
-      "boost_role": "probe"
-    },
-    "buy_magnet": {
-      "_note": "No Magnetic Aura equipped. The shop opens on the HP-Upgrade view where no Multi toggle exists, so FIRST tap the Random Boost slot (810,875 — the mystery-box tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. Magnetic Aura opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Coords verified live ep6.",
-      "detect": "boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 810,
-          "y": 875
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "tap_xy",
-          "x": 1645,
-          "y": 340
-        },
-        {
-          "type": "wait",
-          "ms": 1500
-        },
-        {
-          "type": "goto",
-          "state": "picker"
-        }
-      ],
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000,
-      "boost_role": "buy"
     },
     "probe_connectionlost": {
       "_note": "Connection Lost — server drop popup, can appear anywhere (head of the probe chain since nothing else works while offline). Text: 'Connection lost! Tap Confirm to restart the game and reload your data.' Not a dismiss: Confirm (960,700) actually restarts the client, so we hand off to restart_app (cycles the process the same way session_reset does) then the existing recover_login chain re-auths. Absent -> probe_inactive (rest of the popup chain).",
@@ -946,6 +896,114 @@
         "goto": "probe_prevresults"
       },
       "timeout_ms": 8000
+    },
+    "probe_speed": {
+      "_note": "SPEED GUARD: run must be played with +17% base speed equipped. speedbase17_banner.png ('+17% base speed' pill) shows on the shop's right panel whenever equipped (CV: present=1.000, absent ~0.33-0.38). Present -> check_heart. Absent after retries -> buy_speed. Ported from boxrun_speed's probe_speed, wired into the ep6 box-farm skeleton (play-to-death, no early quit except the box-quit gate below).",
+      "detect": "speedbase17_banner.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "buy_speed"
+      },
+      "timeout_ms": 8000,
+      "absent_retries": 3,
+      "absent_wait_ms": 800,
+      "boost_role": "probe"
+    },
+    "buy_speed": {
+      "_note": "No +17% speed equipped (probe_speed confirmed pill absent). The shop opens on the HP-Upgrade view where no Multi toggle exists (confirmed live 2026-07-29 — buy_speed's old single-tap at 1649,337 landed on the 'Buy some Boosts!' grid instead, never opening the picker, and start_run looped retry_buy forever burning coins). FIRST tap the Random Boost slot (810,875 — the mystery-box '?' tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. +17% base speed opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Ported from boxrun_magnet's buy_magnet — same shop layout, only the target boost differs.",
+      "detect": "boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 810,
+          "y": 875
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 1645,
+          "y": 340
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "picker"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000,
+      "boost_role": "buy"
+    },
+    "check_box": {
+      "_note": "Once per 4-hop cycle: did we pick up a Mystery Box this run? The '[?] xN' counter appears top-left (boxcounter_marker at a fixed 118,360) the instant a box is collected and stays there for the rest of the run — so checking once per cycle can't miss it, it just bounds the reaction to one cycle. Present -> the run has served its only purpose (box farming), so quit_run bails out immediately instead of running to death, turning a ~4-5 min run into ~40s. Absent -> no box yet, keep running via check_shop_after_run. Counter self=1.000, no-box in-run=0.345 — clean separation.",
+      "detect": "boxcounter_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "quit_run"
+        }
+      ],
+      "on_absent": {
+        "goto": "check_shop_after_run"
+      },
+      "timeout_ms": 8000
+    },
+    "quit_run": {
+      "_note": "Box collected -> bail out via the pause menu to bank it now. Sequence (coords CV-verified live): pause button (1790,55) -> pause menu 'Quit' (960,640) -> confirm dialog 'Quit' (960,570, NOT Cancel at 960,755). Quitting drops straight to the Result popup with the box credited (Consumed Life is spent either way, so quitting loses nothing a full run would have kept). Hand to run_result -> the existing Mystery Box open/reveal chain banks it. Waits are generous (1200-1500ms) because each tap triggers a menu/dialog fade the next tap must land after.",
+      "detect": "result_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "tap_xy",
+          "x": 1790,
+          "y": 55
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 640
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 570
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "run_result"
+        }
+      ],
+      "timeout_ms": 15000
     },
     "mb_open": {
       "_note": "Mystery Box screen — one self-looping dismiss state (replaces the mb_gate/mystery_box_reveal/mb_reveal_gate/mb_reveal_retry_2..6 chain, which claimed to cap at 6 dual-taps but retry_2 looped straight back to mystery_box_reveal so _3.._6 were dead and the loop was unbounded; mb_gate/mb_reveal_gate also detected inactive_marker while their notes described the Mystery Box screen). Each pass taps Open-all (960,965), box-center (960,540) and per-item Confirm (959,960) — covers both known layouts, a tap that hits nothing is harmless. Marker gone -> mystery_box_recheck. match_timeout_ms is the REAL bound on a stuck MATCH (timeout_ms only fires on the absent path). An inactive popup here covers the marker -> absent path -> recheck -> home's probe chain reaches recover_login, so the per-pass inactive check the old gates did is redundant.",

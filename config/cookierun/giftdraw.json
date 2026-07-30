@@ -116,7 +116,7 @@
       }
     },
     "peel_popups": {
-      "_note": "Before the blind-tap backstop, rule out a launch/reward modal layered over the Gift Draw popup. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the popup and NOT matching giftreward_confirm. Peel whichever is present back to gift_draw (the popup is still underneath). None present -> fall to blind_confirm, the original (962,853) backstop for an unknown Confirm. Shared templates/coords with boxrun_ep3.json.",
+      "_note": "Before the blind-tap backstop, rule out a launch/reward modal layered over the Gift Draw popup. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the popup and NOT matching giftreward_confirm. Peel whichever is present back to gift_draw (the popup is still underneath). None present -> fall to blind_confirm, the original (962,853) backstop for an unknown Confirm. Shared templates/coords with boxrun_speed.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {

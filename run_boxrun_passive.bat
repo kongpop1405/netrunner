@@ -27,15 +27,14 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - boxrun bot (Episode 4)
-echo   Mystery Box farm - buys +17%% base speed, Fast Start
-echo   precondition: Episode 4 selected on home
-echo   quits a run after 2 boxes banked this session
+echo   NetRunner - boxrun: passive (no boost, guard-loop run)
+echo   Mystery Box farm - no boost, Fast Start only
+echo   precondition: ANY episode selected on home (bot only taps Play)
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_boxrun_ep4.py --launch
+%PY% main.py --config config/cookierun/boxrun_passive.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

@@ -58,7 +58,7 @@
       "timeout_ms": 8000
     },
     "probe_dailycheckin": {
-      "_note": "New head of the modal-peeling chain. 'Daily Check-in' calendar pops once/day at launch over home, hiding Play!; no dismiss stalls the bot. Marker self=1.000, in-run=0.232. Present -> OK (965,985) -> probe_treasurereward. Absent -> probe_treasurereward. Shared with boxrun_ep3.json.",
+      "_note": "New head of the modal-peeling chain. 'Daily Check-in' calendar pops once/day at launch over home, hiding Play!; no dismiss stalls the bot. Marker self=1.000, in-run=0.232. Present -> OK (965,985) -> probe_treasurereward. Absent -> probe_treasurereward. Shared with boxrun_speed.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {
@@ -79,7 +79,7 @@
       "timeout_ms": 8000
     },
     "probe_treasurereward": {
-      "_note": "'Power+ Treasure Rewards' popup stacks after Daily Check-in at launch, also covers Play!. Marker self=1.000, in-run=0.31, vs dailycheckin=0.40. Present -> Confirm (960,850) -> home. Absent -> probe_sendlife. Shared with boxrun_ep3.json.",
+      "_note": "'Power+ Treasure Rewards' popup stacks after Daily Check-in at launch, also covers Play!. Marker self=1.000, in-run=0.31, vs dailycheckin=0.40. Present -> Confirm (960,850) -> home. Absent -> probe_sendlife. Shared with boxrun_speed.json.",
       "detect": "treasurereward_marker.png",
       "on_match": [
         {
@@ -208,7 +208,7 @@
       "timeout_ms": 8000
     },
     "guard_not_sendlife": {
-      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_passive.",
       "detect": "sendlife_marker.png",
       "on_match": [
         {
@@ -229,7 +229,7 @@
       "timeout_ms": 6000
     },
     "guard_not_levelup": {
-      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_passive.",
       "detect": "levelup_marker.png",
       "on_match": [
         {

@@ -65,11 +65,11 @@
 
   <section>
     <h2><span class="num">2</span>ของเดิม vs ปัญหา</h2>
-    <p class="desc">อ่าน <span class="mono">tools/run_toggle.py</span> + 3 config (boxrun_toggle/boxrun_ep3/coinrun) แล้วพบ pattern ซ้ำ 3 รอบ ต่างกันแค่ template banner + 2 tap coord:</p>
+    <p class="desc">อ่าน <span class="mono">tools/run_toggle.py</span> + 3 config (boxrun_toggle/boxrun_speed/coinrun) แล้วพบ pattern ซ้ำ 3 รอบ ต่างกันแค่ template banner + 2 tap coord:</p>
     <table>
       <tr><th>Boost</th><th>Config เดิม</th><th>Banner template</th><th>Buy-cell coord</th></tr>
       <tr><td>Magnetic Aura</td><td class="mono">boxrun_toggle.json / ep6</td><td class="mono">magneticaura_banner.png</td><td>(810,875) → Multi (1645,340)</td></tr>
-      <tr><td>+17% Speed</td><td class="mono">boxrun_ep3.json</td><td class="mono">speedbase17_banner.png</td><td>Multi (1649,337)</td></tr>
+      <tr><td>+17% Speed</td><td class="mono">boxrun_speed.json</td><td class="mono">speedbase17_banner.png</td><td>Multi (1649,337)</td></tr>
       <tr><td>Double Coins</td><td class="mono">coinrun.json</td><td class="mono">doublecoins_banner.png</td><td>(755,875) → Multi (1678,305)</td></tr>
     </table>
     <p class="desc" style="margin-top:.9rem">FSM skeleton ของ 3 ตัวนี้ (probe→buy→picker→wait_roll→start_run→retry_buy) <b>เหมือนกันเป๊ะ</b> — ต่างแค่ 1 template name + tap coords 2-3 จุด. Boxrun ตอนนี้ hardcode Magnet เดียว, ไม่มีทางสลับ boost โดยไม่แก้ JSON.</p>
@@ -185,7 +185,7 @@
     <ul>
       <li>ไม่ลบ <span class="mono">tap_xy</span> / action type เดิม — backward-compatible เสมอ, config ที่ยังไม่ migrate รันได้ปกติ</li>
       <li>ไม่ทำ config-level import/fragment reference (<span class="mono">"$ref"</span> ใน JSON) — action type ตอบโจทย์ propagation แล้วโดยไม่ต้องแก้ loader</li>
-      <li>ไม่รวม <span class="mono">run_boxrun_ep3/ep5/ep6/norelay_noquit.bat</span> เข้า toggle เดียว (คำถามที่ 1 ข้อ 2 ไม่ได้เลือก) — ยังแยกไฟล์ตามเดิม</li>
+      <li>ไม่รวม <span class="mono">run_boxrun_speed/ep5/ep6/norelay_noquit.bat</span> เข้า toggle เดียว (คำถามที่ 1 ข้อ 2 ไม่ได้เลือก) — ยังแยกไฟล์ตามเดิม</li>
       <li>ไม่ migrate ทั้ง 13 config รวดเดียว — ทีละไฟล์ + verify, ไฟล์ที่ live-verified แล้วข้ามได้ถ้าไม่อยากเสี่ยง</li>
     </ul>
   </section>

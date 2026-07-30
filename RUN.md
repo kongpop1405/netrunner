@@ -193,11 +193,11 @@ Manual equivalent:
 python main.py --config config/cookierun/addfriend.json --max-cycles 50
 ```
 
-## Box Farm — Episode 3 (`run_boxrun_ep3.bat`)
+## Box Farm — Episode 3 (`run_boxrun_speed.bat`)
 
-Double-click **`run_boxrun_ep3.bat`** — runs `config/cookierun/boxrun_ep3.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
+Double-click **`run_boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
 
-**Precondition**: **Episode 3 (Dragon's Valley) already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection. Future episodes get their own `boxrun_epN.json` (same skeleton, retune coords/pattern per episode).
+**Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_speed` / `boxrun_passive` / ...), not by episode.
 
 Differences from `cookierun.json` (the coin grinder), all learned live 2026-07-15:
 
@@ -211,27 +211,27 @@ New templates added to `templates/cookierun/`: `faststart_btn.png`, `speedbase17
 Manual equivalent:
 
 ```powershell
-python main.py --config config/cookierun/boxrun_ep3.json
+python main.py --config config/cookierun/boxrun_speed.json
 ```
 
-## Box Farm — no relay, no early quit (`run_boxrun_norelay_noquit.bat`)
+## Box Farm — no relay, no early quit (`run_boxrun_speed_noquit.bat`)
 
-Double-click **`run_boxrun_norelay_noquit.bat`** — a static clone of `boxrun_ep3.json` (`config/cookierun/boxrun_norelay_noquit.json`), not tied to any specific episode, with two things permanently removed, no toggle/prompt:
+Double-click **`run_boxrun_speed_noquit.bat`** — a static clone of `boxrun_speed.json` (`config/cookierun/boxrun_speed_noquit.json`), not tied to any specific episode, with two things permanently removed, no toggle/prompt:
 
-- **No Cookie Relay Boost tap** — the (960,540) tap that `boxrun_ep3.json` fires every hop (`jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`) is gone from all four.
-- **No early quit on a box.** `boxrun_ep3.json`'s `check_box` bails via `quit_run` the instant `boxcounter_marker` shows (a ~40s run). Here `check_box` always falls through to `check_shop_after_run` instead (both `on_match` and `on_absent`) — every run plays to its natural death/end, and a collected box still gets opened normally once the run actually ends (`run_result` → `mystery_box`).
+- **No Cookie Relay Boost tap** — the (960,540) tap that `boxrun_speed.json` fires every hop (`jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`) is gone from all four.
+- **No early quit on a box.** `boxrun_speed.json`'s `check_box` bails via `quit_run` the instant `boxcounter_marker` shows (a ~40s run). Here `check_box` always falls through to `check_shop_after_run` instead (both `on_match` and `on_absent`) — every run plays to its natural death/end, and a collected box still gets opened normally once the run actually ends (`run_result` → `mystery_box`).
 
-Everything else (speed-boost buy, Fast Start, heart gate, J→J→S→J jump/slide pattern, popup-probe chain) is identical to `boxrun_ep3.json`. Not episode-locked — the bot only taps `Play!`, so whichever episode (3/5/6) is selected on home before starting is what gets played.
+Everything else (speed-boost buy, Fast Start, heart gate, J→J→S→J jump/slide pattern, popup-probe chain) is identical to `boxrun_speed.json`. Not episode-locked — the bot only taps `Play!`, so whichever episode (3/5/6) is selected on home before starting is what gets played.
 
 Manual equivalent:
 
 ```powershell
-python main.py --config config/cookierun/boxrun_norelay_noquit.json
+python main.py --config config/cookierun/boxrun_speed_noquit.json
 ```
 
 ## Box Farm — Toggle (`run_boxrun.bat`)
 
-Double-click **`run_boxrun.bat`** — asks 6 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_ep3`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+Double-click **`run_boxrun.bat`** — asks 6 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_speed`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
 
 **Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
 
@@ -241,8 +241,8 @@ The buy chain's *shape* is identical for every boost — `probe_magnet → buy_m
 
 | `--boost` | banner template | buy taps | Multi-Buy | from |
 |-----------|-----------------|----------|-----------|------|
-| `magnet` | `magneticaura_banner.png` | (810,875) → (1645,340) | (950,880) | `boxrun_ep6` |
-| `speed` | `speedbase17_banner.png` | (1649,337) | (953,899) | `boxrun_ep3` |
+| `magnet` | `magneticaura_banner.png` | (810,875) → (1645,340) | (950,880) | `boxrun_magnet` |
+| `speed` | `speedbase17_banner.png` | (1649,337) | (953,899) | `boxrun_speed` |
 | `doublecoins` | `doublecoins_banner.png` | (755,875) → (1678,305) | (953,899) | `coinrun` |
 | `none` | — | — | — | skips the buy chain entirely |
 

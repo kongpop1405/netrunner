@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run BOX-FARM run-grind, TOGGLE variant — same Mystery Box farm loop as boxrun_ep3/ep5/ep6, but every optional action (Fast Start tap, Magnetic Aura boost buy, Jump, Slide) is meant to be patched on/off per-launch by tools/run_toggle.py (see run_boxrun.bat), NOT edited directly in this file. PRECONDITION: pick whichever episode (3/5/6) on home BEFORE starting — the bot only taps Play!, it does not navigate episode selection. BOOST: Magnetic Aura Random Boost (ported from boxrun_ep6 — probe_magnet/buy_magnet/picker/wait_roll/start_run/retry_buy, magneticaura_banner.png, Multi-Buy at 950,880) replaces the ep3 +17% speed chain. Fast Start prompt spam-tap (985,515) lives in check_heart/after_play. Loop: home->Play->await_shop->probe_magnet->buy_magnet(Multi->Multi-Buy->wait_roll)->start_run(verify banner)->check_heart->Play->run(jump/slide J-J-S-J chain)->run_result->mystery_box->reveal->home. run_toggle.py strips the magnet chain, the Fast Start taps, and/or the jump/slide action entries out of the loaded states dict before handing them to the engine's Runner, based on the four Y/N flags asked by run_boxrun.bat.",
+  "_comment": "Cookie Run BOX-FARM run-grind, TOGGLE variant — same Mystery Box farm loop as boxrun_speed/ep5/ep6, but every optional action (Fast Start tap, Magnetic Aura boost buy, Jump, Slide) is meant to be patched on/off per-launch by tools/run_toggle.py (see run_boxrun.bat), NOT edited directly in this file. PRECONDITION: pick whichever episode (3/5/6) on home BEFORE starting — the bot only taps Play!, it does not navigate episode selection. BOOST: Magnetic Aura Random Boost (ported from boxrun_magnet — probe_magnet/buy_magnet/picker/wait_roll/start_run/retry_buy, magneticaura_banner.png, Multi-Buy at 950,880) replaces the ep3 +17% speed chain. Fast Start prompt spam-tap (985,515) lives in check_heart/after_play. Loop: home->Play->await_shop->probe_magnet->buy_magnet(Multi->Multi-Buy->wait_roll)->start_run(verify banner)->check_heart->Play->run(jump/slide J-J-S-J chain)->run_result->mystery_box->reveal->home. run_toggle.py strips the magnet chain, the Fast Start taps, and/or the jump/slide action entries out of the loaded states dict before handing them to the engine's Runner, based on the four Y/N flags asked by run_boxrun.bat.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": [
@@ -10,7 +10,7 @@
   "start_state": "home",
   "states": {
     "home": {
-      "_note": "Main menu, detected by the episode-independent 'Play!' button (home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). After Play, an after_play gate verifies we left home before any Fast Start spam — spamming 985,515 while still on home hits the leaderboard and opens Send-Life. Ported from boxrun_ep6.",
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). After Play, an after_play gate verifies we left home before any Fast Start spam — spamming 985,515 while still on home hits the leaderboard and opens Send-Life. Ported from boxrun_magnet.",
       "detect": "home_play_marker.png",
       "on_match": [
         {
@@ -139,7 +139,7 @@
       "boost_skip_goto": "check_heart"
     },
     "probe_magnet": {
-      "_note": "MAGNET GUARD (ported from boxrun_ep6): run must play with Magnetic Aura equipped. magneticaura_banner (red-gold pill above Play) shows whenever equipped — shop panel takes ~1-2s to render it after Play, so detect with a 3-retry grace (absent_wait_ms 800) before concluding it is absent. Present -> check_heart. Absent after retries -> buy_magnet.",
+      "_note": "MAGNET GUARD (ported from boxrun_magnet): run must play with Magnetic Aura equipped. magneticaura_banner (red-gold pill above Play) shows whenever equipped — shop panel takes ~1-2s to render it after Play, so detect with a 3-retry grace (absent_wait_ms 800) before concluding it is absent. Present -> check_heart. Absent after retries -> buy_magnet.",
       "detect": "magneticaura_banner.png",
       "on_match": [
         {
@@ -156,7 +156,7 @@
       "boost_role": "probe"
     },
     "buy_magnet": {
-      "_note": "No Magnetic Aura equipped. The shop opens on the HP-Upgrade view where no Multi toggle exists, so FIRST tap the Random Boost slot (810,875 — the mystery-box tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. Magnetic Aura opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Coords ported from boxrun_ep6 (verified live).",
+      "_note": "No Magnetic Aura equipped. The shop opens on the HP-Upgrade view where no Multi toggle exists, so FIRST tap the Random Boost slot (810,875 — the mystery-box tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. Magnetic Aura opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Coords ported from boxrun_magnet (verified live).",
       "detect": "boostshop_marker.png",
       "on_match": [
         {
@@ -224,7 +224,7 @@
       "boost_role": "picker"
     },
     "wait_roll": {
-      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_ep6. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_magnet. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
       "detect": "rollstop_marker.png",
       "on_match": [
         {
@@ -315,7 +315,7 @@
       "timeout_ms": 8000
     },
     "check_heart": {
-      "_note": "SINGLE Play gate, reached from probe_magnet/start_run/force_play (all BOOST-SHOP context, Play at 1365,931). heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> wait 30s and self-loop until a heart regenerates (timeout 25 min). HARD RULE: never buy hearts. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_ep6 — more robust than detect+tap which missed when the prompt window was short).",
+      "_note": "SINGLE Play gate, reached from probe_magnet/start_run/force_play (all BOOST-SHOP context, Play at 1365,931). heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> wait 30s and self-loop until a heart regenerates (timeout 25 min). HARD RULE: never buy hearts. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short).",
       "detect": "heart_empty.png",
       "on_match": [
         {
@@ -395,7 +395,7 @@
       "timeout_ms": 8000
     },
     "guard_not_sendlife": {
-      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_ep5.",
+      "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_passive.",
       "detect": "sendlife_marker.png",
       "on_match": [
         {
@@ -422,7 +422,7 @@
       "timeout_ms": 6000
     },
     "guard_not_levelup": {
-      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_ep5.",
+      "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_passive.",
       "detect": "levelup_marker.png",
       "on_match": [
         {
@@ -819,7 +819,7 @@
       "timeout_ms": 15000
     },
     "after_play": {
-      "_note": "Gate between Play and the Fast Start spam. home_play still visible -> Play missed (home was mid-fade) -> back to home to retap (spamming now would hit the leaderboard). home gone -> loading into a run or shop -> safe to spam 985,515 across the prompt window, then await_shop sorts shop vs direct-run. Ported from boxrun_ep6.",
+      "_note": "Gate between Play and the Fast Start spam. home_play still visible -> Play missed (home was mid-fade) -> back to home to retap (spamming now would hit the leaderboard). home gone -> loading into a run or shop -> safe to spam 985,515 across the prompt window, then await_shop sorts shop vs direct-run. Ported from boxrun_magnet.",
       "detect": "home_play_marker.png",
       "on_match": [
         {
@@ -1200,7 +1200,7 @@
       "threshold": 0.85
     },
     "lives_peel_popups": {
-      "_note": "[lives routine] No Send-Life icon visible — before deciding the list is exhausted, rule out a popup covering it. Cookie Run drops modals at any time, not just at launch (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up rewards, friend-info), and any of them hides the friends list. Each popup peels to its own confirm and the list is still underneath, so we return to scan (not home). This is a mini modal chain: dailycheckin(OK 965,985) -> treasure(Confirm 960,850) -> congrats(Confirm 954,847) -> levelup(Confirm 954,847). None present -> genuinely no icon on screen -> scroll_list. Shared templates/coords with boxrun_ep3.json.",
+      "_note": "[lives routine] No Send-Life icon visible — before deciding the list is exhausted, rule out a popup covering it. Cookie Run drops modals at any time, not just at launch (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up rewards, friend-info), and any of them hides the friends list. Each popup peels to its own confirm and the list is still underneath, so we return to scan (not home). This is a mini modal chain: dailycheckin(OK 965,985) -> treasure(Confirm 960,850) -> congrats(Confirm 954,847) -> levelup(Confirm 954,847). None present -> genuinely no icon on screen -> scroll_list. Shared templates/coords with boxrun_speed.json.",
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {

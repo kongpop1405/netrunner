@@ -503,7 +503,7 @@
     <li><b>เติม profile อีก 8</b> — ต่อ boost: crop banner @1920×1080 + วัด buy_taps → เพิ่ม 1 entry. ทำทีละตัวได้ ไม่บล็อกกัน</li>
   </ol>
   <pre><span class="c"># หลังจบ phase — ทุก config ทุก boost</span>
-python main.py --config config/cookierun/boxrun_ep6.json --boost doublecoins
+python main.py --config config/cookierun/boxrun_magnet.json --boost doublecoins
 python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --relay y</pre>
   <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
     <b>✅ ส่วนที่ทำได้ทำแล้ว</b> (commit <code>6afb674</code> + <code>25f7351</code>) — <b>เจอเพิ่มระหว่าง implement:</b>
@@ -981,13 +981,13 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
   <table>
     <thead><tr><th>Config</th><th style="width:70px">states</th><th style="width:80px">reachable</th><th style="width:70px">orphan</th><th>กราฟ</th></tr></thead>
     <tbody>
-      <tr><td><code>boxrun_ep3.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">41 <span style="color:var(--text-faint);font-size:11px">(76%)</span></div><div class="bar"><i style="width:76%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>13</span></td><td style="font-size:12px">boost chain ทั้งชุด orphan — buy_speed · picker · wait_roll · start_run · probe_speed</td></tr>
-      <tr><td><code>boxrun_norelay_noquit.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">40 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>14</span></td><td style="font-size:12px">เหมือน ep3 + quit_run orphan</td></tr>
-      <tr><td><code>boxrun_ep6box.json</code></td><td style="font-family:'JetBrains Mono',monospace">45</td><td><div style="font-family:'JetBrains Mono',monospace">33 <span style="color:var(--text-faint);font-size:11px">(73%)</span></div><div class="bar"><i style="width:73%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>12</span></td><td style="font-size:12px">probe chain 6 ตัว + check_shop_after_run + quit_run</td></tr>
-      <tr><td><code>boxrun_ep5.json</code></td><td style="font-family:'JetBrains Mono',monospace">43</td><td><div style="font-family:'JetBrains Mono',monospace">32 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>11</span></td><td style="font-size:12px">probe chain 6 ตัว (congrats/levelup/giftdraw/…) + check_shop_after_run</td></tr>
-      <tr><td><code>boxrun_ep6v2.json</code></td><td style="font-family:'JetBrains Mono',monospace">42</td><td><div style="font-family:'JetBrains Mono',monospace">31 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>11</span></td><td style="font-size:12px">เหมือน ep5</td></tr>
-      <tr><td><code>boxrun_ep4.json</code></td><td style="font-family:'JetBrains Mono',monospace">53</td><td><div style="font-family:'JetBrains Mono',monospace">48 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
-      <tr><td><code>boxrun_ep6.json</code></td><td style="font-family:'JetBrains Mono',monospace">51</td><td><div style="font-family:'JetBrains Mono',monospace">46 <span style="color:var(--text-faint);font-size:11px">(90%)</span></div><div class="bar"><i style="width:90%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>boxrun_speed.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">41 <span style="color:var(--text-faint);font-size:11px">(76%)</span></div><div class="bar"><i style="width:76%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>13</span></td><td style="font-size:12px">boost chain ทั้งชุด orphan — buy_speed · picker · wait_roll · start_run · probe_speed</td></tr>
+      <tr><td><code>boxrun_speed_noquit.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">40 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>14</span></td><td style="font-size:12px">เหมือน ep3 + quit_run orphan</td></tr>
+      <tr><td><code>boxrun_magnet_quit3.json</code></td><td style="font-family:'JetBrains Mono',monospace">45</td><td><div style="font-family:'JetBrains Mono',monospace">33 <span style="color:var(--text-faint);font-size:11px">(73%)</span></div><div class="bar"><i style="width:73%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>12</span></td><td style="font-size:12px">probe chain 6 ตัว + check_shop_after_run + quit_run</td></tr>
+      <tr><td><code>boxrun_passive.json</code></td><td style="font-family:'JetBrains Mono',monospace">43</td><td><div style="font-family:'JetBrains Mono',monospace">32 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>11</span></td><td style="font-size:12px">probe chain 6 ตัว (congrats/levelup/giftdraw/…) + check_shop_after_run</td></tr>
+      <tr><td><code>boxrun_magnet_v2.json</code></td><td style="font-family:'JetBrains Mono',monospace">42</td><td><div style="font-family:'JetBrains Mono',monospace">31 <span style="color:var(--text-faint);font-size:11px">(74%)</span></div><div class="bar"><i style="width:74%;background:var(--red)"></i></div></td><td><span class="pill err"><span class="dot"></span>11</span></td><td style="font-size:12px">เหมือน ep5</td></tr>
+      <tr><td><code>boxrun_speed_quit2.json</code></td><td style="font-family:'JetBrains Mono',monospace">53</td><td><div style="font-family:'JetBrains Mono',monospace">48 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
+      <tr><td><code>boxrun_magnet.json</code></td><td style="font-family:'JetBrains Mono',monospace">51</td><td><div style="font-family:'JetBrains Mono',monospace">46 <span style="color:var(--text-faint);font-size:11px">(90%)</span></div><div class="bar"><i style="width:90%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
       <tr><td><code>boxrun_toggle.json</code></td><td style="font-family:'JetBrains Mono',monospace">54</td><td><div style="font-family:'JetBrains Mono',monospace">49 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
       <tr><td><code>coinrun.json</code></td><td style="font-family:'JetBrains Mono',monospace">53</td><td><div style="font-family:'JetBrains Mono',monospace">48 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>5</span></td><td style="font-size:12px">check_boost_result + mb_reveal_retry_3..6</td></tr>
       <tr><td><code>xpstat.json</code></td><td style="font-family:'JetBrains Mono',monospace">43</td><td><div style="font-family:'JetBrains Mono',monospace">39 <span style="color:var(--text-faint);font-size:11px">(91%)</span></div><div class="bar"><i style="width:91%;background:var(--amber)"></i></div></td><td><span class="pill warn"><span class="dot"></span>4</span></td><td style="font-size:12px">mb_reveal_retry_3..6</td></tr>
@@ -1026,7 +1026,7 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
         <td><span class="pill err"><span class="dot"></span>P0</span></td>
         <td>
           <b><code>mb_gate</code> / <code>mb_reveal_gate</code> detect ผิด marker</b><br>
-          <span class="file">boxrun_ep6.json:1161, :1206</span> — <code>_note</code> อธิบายเรื่อง Mystery Box layout
+          <span class="file">boxrun_magnet.json:1161, :1206</span> — <code>_note</code> อธิบายเรื่อง Mystery Box layout
           แต่ <code>detect</code> เป็น <code>inactive_marker.png</code>
         </td>
         <td>
@@ -1151,7 +1151,7 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
         <td><span class="pill ok"><span class="dot"></span>P3</span></td>
         <td>
           <b><code>_note</code> stale หลัง refactor chain</b><br>
-          <span class="file">boxrun_ep6.json (probe_inactive)</span> ฯลฯ
+          <span class="file">boxrun_magnet.json (probe_inactive)</span> ฯลฯ
         </td>
         <td>
           note บอก "Absent → probe_prevresults" แต่ goto จริง = <code>probe_settings</code>
@@ -1399,7 +1399,7 @@ pytest tests/ -v
 for f in config/cookierun/*.json; do python main.py --config "$f" --list-devices; done
 
 <span class="c"># dry-run บนจอจริง — ไม่ส่ง tap</span>
-python main.py --config config/cookierun/boxrun_ep6.json --dry-run --max-cycles 60 -v
+python main.py --config config/cookierun/boxrun_magnet.json --dry-run --max-cycles 60 -v
 
 <span class="c"># pacing: ยืนยัน delay สุ่มจริง ไม่ใช่ค่าคงที่</span>
 grep <span class="s">"inter-game delay"</span> logs/netrunner.log | tail -20
