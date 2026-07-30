@@ -46,6 +46,49 @@ run since** — treat the first live run of each bot as a smoke test (`--max-cyc
   action for ~100 polls (same threshold as the same-state warning).
 - **Tests**: `python -m pytest tests/` (57 tests — perceive/config/fsm/act/cli).
 
+## Shared action types (2026-07-29) — fix one place, every bot gets it
+
+Behaviour that every bot repeats — the Fast Start spam, the Cookie Relay tap, closing a
+popup — used to be copy-pasted into each config as raw `tap_xy` entries. Fixing "the relay
+sometimes doesn't fire" then meant editing 13 JSON files and hoping none were missed.
+
+That behaviour now lives in `Actor` (`src/act.py`, section *shared game actions*) behind
+three action types. A config names the action; the engine supplies the coordinates, the
+counts, and the retry policy:
+
+| action | replaces | tune it at |
+|--------|----------|------------|
+| `relay_tap` | `tap_xy(960,540)` | `Actor.relay_xy` / `relay_taps` / `relay_gap_s` |
+| `faststart_tap` | `tap_xy(985,515)` + `wait`, ×12-14 (24 JSON entries) | `Actor.faststart_xy` / `faststart_taps` / `faststart_gap_ms` |
+| `close_popup` | `tap_xy(x,y)` + `wait` | `Actor.popup_settle_ms` / `popup_retries` |
+
+**The point**: `Actor.relay_taps = 2` is a one-line change in `src/act.py` and every config
+that says `{"type": "relay_tap"}` fires twice from the next run on — no JSON edit, no regen,
+no sync step. Every field is still overridable per action (`{"type": "relay_tap", "taps": 3}`)
+for the one screen that needs to differ.
+
+`close_popup` also takes `verify` — the popup's own marker template. With it the close is
+confirmed instead of assumed: after the settle wait a fresh frame is captured, and the tap is
+repeated while the marker is still on screen. That is the fix for a close tap that lands
+while the dialog is still fading in and silently does nothing. Verification is best-effort —
+a failed re-read logs a warning and moves on rather than crashing a farm.
+
+```json
+{"type": "close_popup", "x": 727, "y": 688, "verify": "sendlife_marker.png"}
+```
+
+**Migration**: `tools/migrate_action_types.py` rewrote the inline ladders across all 13
+configs (−2255 lines, +79). It defaults to a dry run that prints what would change; `--write`
+applies it. `close_popup` rewriting is opt-in via `--close-popups` because "tap something,
+then wait" is also the shape of buy-cell taps and menu navigation, which coordinates alone
+can't distinguish. `tap_xy` is still a valid action — nothing was removed, so an un-migrated
+config keeps working.
+
+```powershell
+python tools/migrate_action_types.py                    # report only
+python tools/migrate_action_types.py --write <config>   # apply to one file
+```
+
 ## cd into repo first
 
 ```powershell
@@ -158,14 +201,28 @@ python main.py --config config/cookierun/boxrun_norelay_noquit.json
 
 ## Box Farm — Toggle (`run_boxrun.bat`)
 
-Double-click **`run_boxrun.bat`** — asks 6 questions (Fast Start tap? Buy Magnetic Aura? Jump? Slide? Cookie Relay Boost tap? — all default `y` on Enter — then Quit after how many boxes banked?, default `0`), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_ep3`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+Double-click **`run_boxrun.bat`** — asks 6 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_ep3`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
 
 **Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
 
-What each flag strips when answered `n`:
+### Boost choice (`--boost`, default `magnet`)
 
-- **Fast Start (n)** — removes the `tap_xy(985,515)` spam + its `wait` from `check_heart`/`after_play`'s `on_absent` lists; the Play tap and trailing `goto` stay.
-- **Magnet (n)** — redirects `await_shop`/`boost_shop`'s `on_match` straight to `check_heart`, skipping the whole `probe_magnet → buy_magnet → picker → wait_roll → start_run` Magnetic-Aura-buy chain (ported from `boxrun_ep6`, Multi-Buy at 950,880).
+The buy chain's *shape* is identical for every boost — `probe_magnet → buy_magnet → picker → wait_roll → start_run → retry_buy` — so one skeleton plus a profile covers all three instead of a config file each. `_BOOST_PROFILES` in `tools/run_toggle.py` holds what actually differs, each value lifted from the config that proved it live:
+
+| `--boost` | banner template | buy taps | Multi-Buy | from |
+|-----------|-----------------|----------|-----------|------|
+| `magnet` | `magneticaura_banner.png` | (810,875) → (1645,340) | (950,880) | `boxrun_ep6` |
+| `speed` | `speedbase17_banner.png` | (1649,337) | (953,899) | `boxrun_ep3` |
+| `doublecoins` | `doublecoins_banner.png` | (755,875) → (1678,305) | (953,899) | `coinrun` |
+| `none` | — | — | — | skips the buy chain entirely |
+
+Magnet and Double Coins open on the HP-Upgrade view and need the Random Boost cell tapped before the Multi toggle; the `+17% base speed` chain reaches Multi directly, so `_apply_boost` drops the extra tap **and** the wait that was there to let its screen settle. `none` takes the same path the old `--magnet n` did: `await_shop`/`boost_shop` route straight to `check_heart`.
+
+`--boost` replaces the old `--magnet y/n`.
+
+What each remaining flag strips when answered `n`:
+
+- **Fast Start (n)** — removes the `faststart_tap` action from `check_heart`/`after_play`'s `on_absent` lists; the Play tap and trailing `goto` stay.
 - **Jump (n)** — drops the `jump` action from `jump_2`/`jump_4`/`guard_not_inactive`'s `on_absent` lists, leaving only the Cookie Relay tap (960,540) + `goto`.
 - **Slide (n)** — drops the `slide` action from `jump_3`'s `on_absent` list.
 - **Relay (n)** — drops the Cookie Relay Boost `tap_xy(960,540)` from `jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`'s `on_absent` lists, independent of the Jump/Slide flags — the relay tap is a per-hop side action, not tied to either obstacle-avoidance action.
@@ -181,7 +238,7 @@ The patching happens in `tools/run_toggle.py` (`_strip_faststart`, `_disable_mag
 Manual equivalent:
 
 ```powershell
-python tools/run_toggle.py --faststart y --magnet y --jump y --slide n --relay y --quit-after-boxes 2 --launch
+python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --relay y --quit-after-boxes 2 --launch
 ```
 
 

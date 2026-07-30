@@ -34,15 +34,24 @@ echo ============================================
 echo.
 
 set "FASTSTART=n"
-set "MAGNET=n"
+set "BOOST="
 set "JUMP=n"
 set "SLIDE=n"
 
 set /p "FASTSTART=Fast Start tap? (y/n) [y]: "
 if "%FASTSTART%"=="" set "FASTSTART=y"
 
-set /p "MAGNET=Buy Magnetic Aura boost? (y/n) [y]: "
-if "%MAGNET%"=="" set "MAGNET=y"
+:askboost
+set "BOOST="
+set /p "BOOST=Which boost to buy? (magnet/speed/doublecoins/none) [magnet]: "
+if "%BOOST%"=="" set "BOOST=magnet"
+if /i "%BOOST%"=="magnet" goto boostok
+if /i "%BOOST%"=="speed" goto boostok
+if /i "%BOOST%"=="doublecoins" goto boostok
+if /i "%BOOST%"=="none" goto boostok
+echo   [!] pick one of: magnet, speed, doublecoins, none
+goto askboost
+:boostok
 
 set /p "JUMP=Jump over pits? (y/n) [y]: "
 if "%JUMP%"=="" set "JUMP=y"
@@ -58,12 +67,12 @@ set /p "QUITBOXES=Quit a run after how many boxes banked? (0=never quit early) [
 if "%QUITBOXES%"=="" set "QUITBOXES=0"
 
 echo.
-echo   Fast Start=%FASTSTART%  Magnet=%MAGNET%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  QuitAfterBoxes=%QUITBOXES%
+echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  QuitAfterBoxes=%QUITBOXES%
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_toggle.py --faststart %FASTSTART% --magnet %MAGNET% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --quit-after-boxes %QUITBOXES% --launch
+%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --quit-after-boxes %QUITBOXES% --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

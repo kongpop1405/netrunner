@@ -1,6 +1,6 @@
-"""Launch boxrun_toggle.json with Fast Start / Magnet / Jump / Slide switched on or off.
+"""Launch boxrun_toggle.json with Fast Start / boost / Jump / Slide / Relay chosen per run.
 
-    python tools/run_toggle.py --faststart y --magnet y --jump y --slide y --launch
+    python tools/run_toggle.py --faststart y --boost magnet --jump y --slide y --relay y --launch
 
 Patches the loaded Config's states dict in memory before handing it to the
 same Runner main.py uses — the JSON on disk (config/cookierun/boxrun_toggle.json)
@@ -117,7 +117,12 @@ class BoxQuitRunner(Runner):
 
 
 def _strip_faststart(states: dict) -> None:
-    """Drop every Fast Start spam tap_xy(985,515) + its wait from on_absent lists."""
+    """Drop every Fast Start tap from on_absent lists.
+
+    Handles both shapes: the shared `faststart_tap` action, and the older inline
+    tap_xy(985,515)+wait ladder that configs carried before the migration
+    (tools/migrate_action_types.py) — configs may be in either state.
+    """
     for state in states.values():
         absent = state.get("on_absent")
         if not isinstance(absent, list):
@@ -129,6 +134,8 @@ def _strip_faststart(states: dict) -> None:
                 skip_next_wait = False
                 continue
             skip_next_wait = False
+            if action.get("type") == "faststart_tap":
+                continue
             if action.get("type") == "tap_xy" and (action.get("x"), action.get("y")) == _FASTSTART_XY:
                 skip_next_wait = True
                 continue
@@ -136,12 +143,91 @@ def _strip_faststart(states: dict) -> None:
         state["on_absent"] = kept
 
 
-def _disable_magnet(states: dict) -> None:
-    """Route straight past the magnet-buy chain: await_shop/boost_shop -> check_heart."""
-    for name in ("await_shop", "boost_shop"):
-        for action in states[name]["on_match"]:
-            if action.get("type") == "goto":
-                action["state"] = "check_heart"
+#: What each buyable boost needs, lifted from the config that proved it live.
+#: The buy chain's SHAPE is identical for all three (probe -> buy -> picker ->
+#: wait_roll -> start_run -> retry_buy); only these differ, so one skeleton plus
+#: a profile covers every boost instead of a separate config file each.
+#:
+#:   banner    — the equipped-boost pill both probe_magnet and start_run read
+#:   buy_taps  — taps that get from the shop to the open Multi picker
+#:   multibuy  — the picker's Multi-Buy button
+#:
+#: Magnet/Double Coins open on the HP-Upgrade view and need the Random Boost
+#: cell tapped first; the +17% Speed chain (boxrun_ep3) reaches Multi directly.
+_BOOST_PROFILES: dict[str, dict] = {
+    "magnet": {
+        "banner": "magneticaura_banner.png",
+        "buy_taps": [(810, 875), (1645, 340)],
+        "multibuy": (950, 880),
+        "label": "Magnetic Aura",
+    },
+    "speed": {
+        "banner": "speedbase17_banner.png",
+        "buy_taps": [(1649, 337)],
+        "multibuy": (953, 899),
+        "label": "+17% base speed",
+    },
+    "doublecoins": {
+        "banner": "doublecoins_banner.png",
+        "buy_taps": [(755, 875), (1678, 305)],
+        "multibuy": (953, 899),
+        "label": "Double Coins",
+    },
+}
+
+BOOST_CHOICES = (*_BOOST_PROFILES, "none")
+
+
+def _retarget_goto(actions: list[dict], target: str) -> None:
+    for action in actions:
+        if action.get("type") == "goto":
+            action["state"] = target
+
+
+def _apply_boost(states: dict, choice: str) -> None:
+    """Point the buy chain at `choice`, or skip buying entirely for "none".
+
+    boxrun_toggle.json ships the Magnetic Aura coords as its baseline, so
+    choosing magnet is a no-op; the others swap the banner template the two
+    guard states read and the taps the buy states send. Waits and gotos are left
+    exactly as they are — those are timing, not boost identity.
+    """
+    if choice == "none":
+        # Same path the old `--magnet n` took: never enter the buy chain.
+        for name in ("await_shop", "boost_shop"):
+            _retarget_goto(states[name]["on_match"], "check_heart")
+        return
+
+    profile = _BOOST_PROFILES[choice]
+
+    for name in ("probe_magnet", "start_run"):
+        states[name]["detect"] = profile["banner"]
+
+    taps = iter(profile["buy_taps"])
+    rebuilt: list[dict] = []
+    drop_next_wait = False
+    for action in states["buy_magnet"]["on_match"]:
+        if drop_next_wait and action.get("type") == "wait":
+            # The wait existed to let the dropped tap's screen settle.
+            drop_next_wait = False
+            continue
+        drop_next_wait = False
+        if action.get("type") == "tap_xy":
+            nxt = next(taps, None)
+            if nxt is None:
+                # Fewer taps than the baseline — the +17% speed chain reaches
+                # Multi directly instead of opening the Random Boost cell first.
+                drop_next_wait = True
+                continue
+            action = {**action, "x": nxt[0], "y": nxt[1]}
+        rebuilt.append(action)
+    states["buy_magnet"]["on_match"] = rebuilt
+
+    mb_x, mb_y = profile["multibuy"]
+    for action in states["picker"]["on_match"]:
+        if action.get("type") == "tap_xy":
+            action["x"], action["y"] = mb_x, mb_y
+            break
 
 
 def _strip_jump(states: dict) -> None:
@@ -158,14 +244,20 @@ def _strip_slide(states: dict) -> None:
 _RELAY_XY = (960, 540)
 
 
+def _is_relay(action: dict) -> bool:
+    """True for either shape of the relay tap — the shared `relay_tap` action or
+    the pre-migration inline tap_xy(960,540)."""
+    if action.get("type") == "relay_tap":
+        return True
+    return (action.get("type") == "tap_xy"
+            and (action.get("x"), action.get("y")) == _RELAY_XY)
+
+
 def _strip_relay(states: dict) -> None:
-    """Drop the Cookie Relay Boost tap_xy(960,540) from the in-run hop states."""
+    """Drop the Cookie Relay Boost tap from the in-run hop states."""
     for name in ("jump_2", "jump_3", "jump_4", "guard_not_inactive"):
         state = states[name]
-        state["on_absent"] = [
-            a for a in state["on_absent"]
-            if not (a.get("type") == "tap_xy" and (a.get("x"), a.get("y")) == _RELAY_XY)
-        ]
+        state["on_absent"] = [a for a in state["on_absent"] if not _is_relay(a)]
 
 
 def _yn(v: str) -> bool:
@@ -175,7 +267,9 @@ def _yn(v: str) -> bool:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="boxrun_toggle launcher")
     ap.add_argument("--faststart", type=_yn, required=True)
-    ap.add_argument("--magnet", type=_yn, required=True)
+    ap.add_argument("--boost", choices=BOOST_CHOICES, required=True,
+                    help="which boost to Multi-Buy before each run "
+                         "('none' skips the buy chain, as --magnet n used to)")
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
     ap.add_argument("--relay", type=_yn, required=True)
@@ -186,6 +280,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--adb", default=None)
     ap.add_argument("--launch", action="store_true")
     ap.add_argument("--max-cycles", type=int, default=None)
+    ap.add_argument("--start-state", default=None,
+                    help="override the config's start_state (resume mid-loop, or "
+                         "stage a screen and prove one state's routing)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -206,8 +303,7 @@ def main(argv: list[str] | None = None) -> int:
     states = copy.deepcopy(cfg.states)
     if not args.faststart:
         _strip_faststart(states)
-    if not args.magnet:
-        _disable_magnet(states)
+    _apply_boost(states, args.boost)
     if not args.jump:
         _strip_jump(states)
     if not args.slide:
@@ -215,6 +311,13 @@ def main(argv: list[str] | None = None) -> int:
     if not args.relay:
         _strip_relay(states)
     cfg.states = states
+
+    if args.start_state:
+        if args.start_state not in states:
+            log.error("unknown --start-state '%s'", args.start_state)
+            print(f"error: unknown --start-state '{args.start_state}'", file=sys.stderr)
+            return 2
+        cfg.start_state = args.start_state
 
     address = args.device or os.environ.get("NETRUNNER_DEVICE")
     if args.launch:
@@ -241,8 +344,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {msg}", file=sys.stderr)
         return 2
     log.info("device: %s  adb: %s", address, adb)
-    log.info("flags: faststart=%s magnet=%s jump=%s slide=%s relay=%s quit_after_boxes=%d",
-              args.faststart, args.magnet, args.jump, args.slide, args.relay, args.quit_after_boxes)
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s quit_after_boxes=%d",
+              args.faststart, args.boost, args.jump, args.slide, args.relay, args.quit_after_boxes)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
 
