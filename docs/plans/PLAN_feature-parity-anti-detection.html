@@ -490,7 +490,8 @@
     <code>reset_at_state: "home"</code> · <code>package: com.devsisters.crg</code>
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 3</span><h3>Boost picker — ต่อยอด <code>_BOOST_PROFILES</code> ให้ครบ 11</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 3</span><h3>Boost picker — ต่อยอด <code>_BOOST_PROFILES</code> ให้ครบ 11
+    <span class="pill warn" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>PARTIAL — mechanism เสร็จ, 8 crop ค้าง</span></h3></div>
   <div class="note info">
     <b>สถานะเปลี่ยนหลัง <code>8054cc2</code>:</b> <code>run_toggle.py</code> มี <code>--boost {magnet,speed,doublecoins,none}</code>
     แล้ว — <code>_BOOST_PROFILES</code> เก็บ banner + buy_taps + multibuy ต่อ boost (พิสูจน์ live ทั้ง 3).
@@ -504,6 +505,27 @@
   <pre><span class="c"># หลังจบ phase — ทุก config ทุก boost</span>
 python main.py --config config/cookierun/boxrun_ep6.json --boost doublecoins
 python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --relay y</pre>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ส่วนที่ทำได้ทำแล้ว</b> (commit <code>6afb674</code> + <code>25f7351</code>) — <b>เจอเพิ่มระหว่าง implement:</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>ที่แพลนเขียนว่า "ย้าย <code>_BOOST_PROFILES</code>" ไม่พอ</b> — ตัว <code>_apply_boost</code> เดิม
+        hardcode ชื่อ state 6 ตัว (<code>probe_magnet</code> · <code>start_run</code> · <code>buy_magnet</code> ·
+        <code>picker</code> · <code>await_shop</code> · <code>boost_shop</code>) → ย้ายเฉย ๆ ก็ยังใช้ได้แค่
+        <code>boxrun_toggle</code>. Fix: <b><code>boost_role</code> marker ใน JSON</b>
+        (probe / buy / picker / gate) — <code>src/boost.py</code> หา state จาก role ไม่ใช่ชื่อ</li>
+      <li><b>ชื่อ state ต่างกันจริงระหว่าง config</b> — <code>buy_magnet</code> (ep6/toggle) ·
+        <code>buy_speed</code> (ep3/ep4/norelay) · <code>buy_boost</code> (coinrun) · <code>buy_boosts</code> (ep6v2)
+        — ยืนยันว่า role marker จำเป็น ไม่ใช่ over-engineering. <b>ผล: 1 → 6 config ที่ retarget ได้</b></li>
+      <li><b>8 boost ที่ยังไม่มี banner = ใส่ใน registry แต่ refuse</b> พร้อมบอกว่าต้อง crop อะไร —
+        ดีกว่าไม่มีในลิสต์ (user เดาชื่อไม่ถูก) และดีกว่าปล่อยผ่าน (tap พิกัดที่ไม่มีใครวัด)</li>
+      <li><b>Test เก่าแดง 7 ตัว</b> — <code>test_run_toggle.py</code> อ้าง <code>rt._BOOST_PROFILES</code> /
+        <code>rt.BOOST_CHOICES</code> ที่ย้ายไปแล้ว + วน <b>ทุก</b> choice โดยสมมติว่า apply ได้หมด
+        (เขียนตอนมีแค่ 3+none) → repoint + scope เฉพาะ <code>ready()</code> + เพิ่มเทสว่า 8 ตัวที่ไม่พร้อม
+        <b>ถูก refuse จริง</b></li>
+    </ul>
+    <b>พร้อมใช้:</b> <code>--boost {magnet,speed,doublecoins,none}</code> ทั้ง <code>main.py</code> และ
+    <code>run_toggle.py</code> · <b>รอ crop:</b> 8 ตัว (ดู <code>describe_choices()</code> ใน CLI help)
+  </div>
   <div class="note">
     <b>จุดที่ต่างจาก cookierun-bot:</b> อันนั้น user เลือกจาก 11 ตัวใน prompt แล้ว verify ด้วย template ของ boost นั้น
     (<code>BOOST_*.png</code> 372×54 ครบ 11 ตัวแล้ว — ใช้เป็น <b>reference ภาพ</b>ว่า banner แต่ละตัวหน้าตาไง
@@ -1154,9 +1176,9 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p3">PHASE 3</div>
       <div class="tl-body">
-        <b>Boost picker</b> — ต่อยอด <code>_BOOST_PROFILES</code> (<code>8054cc2</code>) ให้ครบ 11
-        <div class="tl-meta">4 ขั้น · ย้าย profiles → src/boost.py + expose main.py · 8 ตัวรอ crop</div>
-        <div class="bar"><i style="width:45%;background:var(--violet)"></i></div>
+        <b>Boost picker</b> ⚠️ <b>PARTIAL</b> — boost_role marker → retarget ได้ 6 config (จาก 1) · 3/11 พร้อม
+        <div class="tl-meta">pytest 209 passed · src/boost.py + --boost ใน main.py · 8 ตัวรอ crop</div>
+        <div class="bar"><i style="width:75%;background:var(--amber)"></i></div>
       </div>
     </div>
     <div class="tl-row">
@@ -1365,7 +1387,11 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
       timer: fire เมื่อครบ+ถึง safe state เท่านั้น · dry-run ไม่ reset · ไม่มี restarter = ปิดเงียบ ·
       restart พัง = FsmError + critical alert · lap หลัง reset ไม่ idle ซ้ำ.
       <b>ค้าง:</b> reset จริงบนเกม (รวมใน final dry-run gate)</li>
-    <li><b>Phase 3</b> — <code>--boost double_coins</code> → log ยืนยัน detect เปลี่ยนเป็น <code>doublecoins_banner.png</code> · เลือกตัวที่ยังไม่มี template → error บอกชัดว่าต้อง crop ไฟล์อะไร</li>
+    <li><b>Phase 3 ⚠️ PARTIAL</b> — pytest <b>209 passed</b> (+24): banner/taps/multibuy ถูก rewrite ·
+      profile ที่สั้นกว่าตัด tap + wait ที่เกิน · <code>none</code> route ข้าม chain · gate ไม่มี skip target = reject ·
+      profile ไม่ครบ = บอกว่าต้อง crop อะไร · role พิมพ์ผิด = reject · probe หลายตัวถูก retarget ครบ ·
+      <b>+ เทสกับ config จริง</b>: ทุก chain ที่ label รับได้ทุก ready boost, gate มี skip target ครบ, validation ไม่พัง.
+      <b>ค้าง:</b> crop banner 8 ตัว + วัด buy taps (ต้องมี emulator)</li>
     <li><b>Phase 4</b> — synthetic test: 4 เหมือน + 2 ต่าง → หา 2 ใบถูก · 6 เหมือนกันหมด → bail ไม่เดา · cell ล้นขอบ → raise ไม่เงียบ · <b>เจอ captcha จริงครั้งแรก: snap เก็บภาพก่อน อย่าให้ solve ทันที</b></li>
     <li><b>Phase 5 ✅</b> — pytest <b>173 passed</b> (+16): fire เมื่อ due+at_state · ไม่ fire ก่อนกำหนด ·
       ไม่ตัด run กลางคัน · reschedule แล้ว fire ครั้งเดียวต่อ window · at_state default = inter_game_state ·
