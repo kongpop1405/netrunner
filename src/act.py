@@ -93,10 +93,12 @@ class Actor:
         reads far more human than a tight Gaussian on the exact center.
         """
         while True:
-            ox = random.uniform(-rx, rx)
-            oy = random.uniform(-ry, ry)
-            if (ox / rx) ** 2 + (oy / ry) ** 2 <= 1.0:  # inside ellipse
-                return int(cx + ox), int(cy + oy)
+            x = round(cx + random.uniform(-rx, rx))
+            y = round(cy + random.uniform(-ry, ry))
+            # test the ellipse on the QUANTIZED point: int()/round() on the raw
+            # sample can shift an edge hit by up to 1px and land outside the zone
+            if ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.0:
+                return x, y
 
     def jump(self, cx: int, cy: int, rx: int, ry: int) -> None:
         """Human-like jump: tap a random point inside the Jump zone, sometimes a
