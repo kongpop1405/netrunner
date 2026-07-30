@@ -1,4 +1,4 @@
-"""Launch boxrun_speed_quit2.json — Episode 4 box farm, +17% base speed boost,
+"""Launch boxrun_speed_quit2.json — box farm on any episode, +17% base speed boost,
 quits a run early once 2 total boxes have been banked this session.
 
     python tools/run_boxrun_speed_quit2.py --launch
