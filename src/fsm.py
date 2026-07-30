@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from pathlib import Path
 
@@ -76,6 +77,10 @@ class Runner:
         no_act_alerted = False
         gotos_on_frame = 0       # pure-goto transitions served by the cached frame
         frame = None  # reused across pure-goto transitions; None = must re-grab
+        # The first arrival at the inter-game state is the start of game 1, not
+        # the end of game 0 — idling there would just delay the first run.
+        inter_game_state = self.cfg.inter_game_state or self.cfg.start_state
+        pending_inter_game_delay = self.cfg.inter_game_delay_s is not None
         log.info("start state=%s device=%s dry_run=%s", state, self.device.serial, dry_run)
 
         try:
@@ -148,7 +153,7 @@ class Runner:
                     if adb_fail_streak >= _ADB_FAIL_TOLERANCE:
                         raise
                     frame = None  # whatever we had is unusable; re-grab next cycle
-                    time.sleep(self.cfg.poll_ms / 1000)
+                    time.sleep(self.cfg.poll_delay_s())
                     continue
                 except PerceiveError as e:
                     perceive_fail_streak += 1
@@ -192,6 +197,21 @@ class Runner:
                     same_state_streak = 0
                     stuck_alerted = False
                     state_entered_at = time.monotonic()
+                    # Idle between games, on ENTRY to the inter-game state only —
+                    # checking every poll would re-fire the whole time we sat on
+                    # home waiting for its marker to settle.
+                    if (self.cfg.inter_game_delay_s is not None
+                            and state == inter_game_state):
+                        if pending_inter_game_delay:
+                            pending_inter_game_delay = False  # first arrival = game 1
+                        else:
+                            delay = random.uniform(*self.cfg.inter_game_delay_s)
+                            log.info("inter-game delay %.1fs before the next game (range %s)",
+                                     delay, list(self.cfg.inter_game_delay_s))
+                            time.sleep(delay)
+                            frame = None  # the screen moved on while we idled
+                            state_entered_at = time.monotonic()  # don't bill the idle
+                                                                 # to match_timeout
                 if same_state_streak >= _STUCK_STATE_WARN_CYCLES and not stuck_alerted:
                     log.warning("state '%s' unchanged for %d consecutive polls — possible livelock",
                                 state, same_state_streak)
@@ -231,11 +251,11 @@ class Runner:
                             log.debug("pure-goto chain revisited a state on one frame "
                                       "-> re-grab + sleep")
                             frame = None
-                            time.sleep(self.cfg.poll_ms / 1000)
+                            time.sleep(self.cfg.poll_delay_s())
                     continue
 
                 frame = None  # sleeping -> screen will have moved on
-                time.sleep(self.cfg.poll_ms / 1000)
+                time.sleep(self.cfg.poll_delay_s())
         except FsmError as e:
             log.error("fatal: %s", e)
             send_alert(

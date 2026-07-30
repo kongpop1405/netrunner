@@ -291,8 +291,16 @@ class Actor:
             )
             return None
         if kind == "wait":
-            ms = int(action["ms"])
-            log.info("wait %dms", ms)
+            spec = action["ms"]
+            # A pair asks for a fresh draw every time: a fixed wait repeated
+            # thousands of times is the metronome half of a bot's signature —
+            # tap POSITION was already jittered, the gaps between taps were not.
+            if isinstance(spec, (list, tuple)):
+                ms = int(random.uniform(float(spec[0]), float(spec[1])))
+                log.info("wait %dms (jittered %s)", ms, list(spec))
+            else:
+                ms = int(spec)
+                log.info("wait %dms", ms)
             time.sleep(ms / 1000)
             return None
         if kind == "key":

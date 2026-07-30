@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,6 +48,43 @@ class Config:
     start_state: str
     states: dict[str, dict]
     path: Path = field(default_factory=Path)
+    #: (min, max) ms when `poll_ms` was given as a range — a fixed poll makes the
+    #: in-run hop cadence a metronome, which is exactly the signature a human
+    #: player does not have. None = the single `poll_ms` value, unchanged.
+    poll_ms_range: tuple[int, int] | None = None
+    #: (min, max) seconds to idle before starting another game.
+    inter_game_delay_s: tuple[float, float] | None = None
+    #: state whose entry counts as "one game finished" (default: start_state).
+    inter_game_state: str | None = None
+
+    def poll_delay_s(self) -> float:
+        """Seconds to sleep for one poll — jittered when a range was configured."""
+        if self.poll_ms_range is not None:
+            return random.uniform(*self.poll_ms_range) / 1000
+        return self.poll_ms / 1000
+
+
+def parse_range(value: object, label: str, *, integer: bool) -> tuple:
+    """Read a `[min, max]` pair. Raises ConfigError on anything else.
+
+    Ranges are how every pacing knob is expressed (poll, inter-game delay,
+    wait): a single number keeps the old fixed behaviour, a pair asks for a
+    fresh random draw each time it is used.
+    """
+    if not (isinstance(value, (list, tuple)) and len(value) == 2):
+        raise ConfigError(f"'{label}' must be a [min, max] pair")
+    lo, hi = value
+    if isinstance(lo, bool) or isinstance(hi, bool):
+        raise ConfigError(f"'{label}' bounds must be numbers")
+    want = int if integer else (int, float)
+    if not (isinstance(lo, want) and isinstance(hi, want)):
+        kind = "integers" if integer else "numbers"
+        raise ConfigError(f"'{label}' bounds must be {kind}")
+    if lo <= 0 or hi <= 0:
+        raise ConfigError(f"'{label}' bounds must be positive")
+    if lo > hi:
+        raise ConfigError(f"'{label}' min ({lo}) is greater than max ({hi})")
+    return (lo, hi)
 
 
 def load(path: str | Path) -> Config:
@@ -58,14 +96,27 @@ def load(path: str | Path) -> Config:
     except json.JSONDecodeError as e:
         raise ConfigError(f"invalid JSON in {p}: {e}") from e
 
+    poll = raw.get("poll_ms", 800)
+    poll_range = None
+    if isinstance(poll, (list, tuple)):
+        poll_range = parse_range(poll, "poll_ms", integer=True)
+        poll = poll_range[0]  # keep the int field meaningful for anything reading it
+
+    igd = raw.get("inter_game_delay_s")
+    if igd is not None:
+        igd = parse_range(igd, "inter_game_delay_s", integer=False)
+
     cfg = Config(
         device=raw.get("device"),
         templates_dir=raw.get("templates_dir", f"templates/{p.stem}"),
-        poll_ms=int(raw.get("poll_ms", 800)),
+        poll_ms=int(poll),
         match_threshold=float(raw.get("match_threshold", 0.85)),
         start_state=raw.get("start_state", ""),
         states=raw.get("states", {}),
         path=p,
+        poll_ms_range=poll_range,
+        inter_game_delay_s=igd,
+        inter_game_state=raw.get("inter_game_state"),
     )
     _validate(cfg)
     return cfg
@@ -92,6 +143,12 @@ def _validate(cfg: Config) -> None:
     tdir = Path(cfg.templates_dir)
     if not tdir.is_dir():
         raise ConfigError(f"templates_dir does not exist: {tdir}")
+    if cfg.inter_game_state is not None and cfg.inter_game_state not in cfg.states:
+        raise ConfigError(
+            f"inter_game_state '{cfg.inter_game_state}' is not a defined state"
+        )
+    if cfg.inter_game_state is not None and cfg.inter_game_delay_s is None:
+        raise ConfigError("inter_game_state set without inter_game_delay_s")
     names = set(cfg.states)
     for sname, state in cfg.states.items():
         _validate_state(sname, state, names, tdir)
@@ -252,6 +309,8 @@ def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path
         _require_template(state, tdir, action["template"])
     if kind == "close_popup" and action.get("verify") is not None:
         _require_template(state, tdir, action["verify"])
+    if kind == "wait" and isinstance(action["ms"], (list, tuple)):
+        parse_range(action["ms"], f"state '{state}': wait.ms", integer=True)
     if kind == "text":
         _validate_text_value(state, action["value"])
 
