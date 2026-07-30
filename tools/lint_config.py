@@ -52,10 +52,12 @@ def note_detect_mismatches(states: dict[str, dict]) -> list[tuple[str, str, list
     return out
 
 
-def _bfs_levels(states: dict[str, dict], start: str) -> list[list[str]]:
+def _bfs_levels(states: dict[str, dict], start: str,
+                extra_roots: list[str] | None = None) -> list[list[str]]:
     seen: set[str] = set()
     levels: list[list[str]] = []
     frontier = [start] if start in states else []
+    frontier += [r for r in (extra_roots or []) if r in states and r != start]
     while frontier:
         levels.append(frontier)
         seen.update(frontier)
@@ -68,10 +70,11 @@ def _bfs_levels(states: dict[str, dict], start: str) -> list[list[str]]:
     return levels
 
 
-def write_svg(states: dict[str, dict], start: str, out_path: Path) -> None:
+def write_svg(states: dict[str, dict], start: str, out_path: Path,
+              extra_roots: list[str] | None = None) -> None:
     """BFS-layered transition graph. Not pretty — but chain breaks jump out."""
-    levels = _bfs_levels(states, start)
-    orphans = unreachable_states(states, start)
+    levels = _bfs_levels(states, start, extra_roots)
+    orphans = unreachable_states(states, start, extra_roots)
     if orphans:
         levels.append(orphans)
 
@@ -124,7 +127,8 @@ def lint(path: Path, svg_dir: Path | None) -> int:
         return 2
 
     findings = 0
-    orphans = unreachable_states(cfg.states, cfg.start_state)
+    routine_roots = [r["goto"] for r in cfg.periodic_routines]
+    orphans = unreachable_states(cfg.states, cfg.start_state, extra_roots=routine_roots)
     if orphans:
         findings += len(orphans)
         print(f"{path.name}: {len(orphans)} unreachable state(s): {', '.join(orphans)}")
@@ -136,7 +140,7 @@ def lint(path: Path, svg_dir: Path | None) -> int:
     if svg_dir is not None:
         svg_dir.mkdir(parents=True, exist_ok=True)
         out = svg_dir / f"{path.stem}.svg"
-        write_svg(cfg.states, cfg.start_state, out)
+        write_svg(cfg.states, cfg.start_state, out, routine_roots)
         print(f"{path.name}: graph -> {out}")
 
     if not findings:

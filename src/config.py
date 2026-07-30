@@ -63,6 +63,10 @@ class Config:
     reset_at_state: str | None = None
     #: android package to force-stop/relaunch on reset.
     package: str | None = None
+    #: side errands the farm loop detours into on a timer — sending lives to
+    #: friends, say. A bot that farms for twelve hours and never touches the
+    #: social screens is as distinctive as one that never pauses.
+    periodic_routines: tuple[dict, ...] = ()
 
     def poll_delay_s(self) -> float:
         """Seconds to sleep for one poll — jittered when a range was configured."""
@@ -92,6 +96,29 @@ def parse_range(value: object, label: str, *, integer: bool) -> tuple:
     if lo > hi:
         raise ConfigError(f"'{label}' min ({lo}) is greater than max ({hi})")
     return (lo, hi)
+
+
+def _parse_routines(raw: object) -> tuple[dict, ...]:
+    """Normalize `periodic_routines`. State names are checked in _validate,
+    once the state table is known."""
+    if not isinstance(raw, list):
+        raise ConfigError("'periodic_routines' must be a list")
+    out = []
+    for i, r in enumerate(raw):
+        if not isinstance(r, dict):
+            raise ConfigError(f"periodic_routines[{i}] must be an object")
+        name = r.get("name") or f"routine{i}"
+        if not isinstance(r.get("goto"), str):
+            raise ConfigError(f"routine '{name}' needs a 'goto' state name")
+        out.append({
+            "name": name,
+            "interval_s": parse_range(
+                r.get("interval_s"), f"routine '{name}': interval_s", integer=False),
+            "goto": r["goto"],
+            "at_state": r.get("at_state"),
+            "after_reset": bool(r.get("after_reset", False)),
+        })
+    return tuple(out)
 
 
 def load(path: str | Path) -> Config:
@@ -131,6 +158,7 @@ def load(path: str | Path) -> Config:
         session_reset_s=srs,
         reset_at_state=raw.get("reset_at_state"),
         package=raw.get("package"),
+        periodic_routines=_parse_routines(raw.get("periodic_routines", [])),
     )
     _validate(cfg)
     return cfg
@@ -167,10 +195,18 @@ def _validate(cfg: Config) -> None:
         raise ConfigError(f"reset_at_state '{cfg.reset_at_state}' is not a defined state")
     if cfg.reset_at_state is not None and cfg.session_reset_s is None:
         raise ConfigError("reset_at_state set without session_reset_s")
+    for r in cfg.periodic_routines:
+        if r["goto"] not in cfg.states:
+            raise ConfigError(
+                f"routine '{r['name']}': goto targets undefined state '{r['goto']}'")
+        if r["at_state"] is not None and r["at_state"] not in cfg.states:
+            raise ConfigError(
+                f"routine '{r['name']}': at_state '{r['at_state']}' is not a defined state")
     names = set(cfg.states)
     for sname, state in cfg.states.items():
         _validate_state(sname, state, names, tdir)
-    orphans = unreachable_states(cfg.states, cfg.start_state)
+    orphans = unreachable_states(cfg.states, cfg.start_state,
+                                 extra_roots=[r["goto"] for r in cfg.periodic_routines])
     if orphans:
         # Warn, don't raise: an orphan may be parked on purpose (an experiment,
         # a state kept for reference) — but silent orphans have also hidden a
@@ -203,10 +239,17 @@ def goto_targets(state: dict) -> set[str]:
     return outs
 
 
-def unreachable_states(states: dict[str, dict], start_state: str) -> list[str]:
-    """States with no goto path from start_state (BFS over goto_targets)."""
+def unreachable_states(states: dict[str, dict], start_state: str,
+                       extra_roots: list[str] | None = None) -> list[str]:
+    """States with no goto path from start_state (BFS over goto_targets).
+
+    `extra_roots` are states the engine can jump to without a goto — a periodic
+    routine's entry point, for instance. Without them a routine's whole chain
+    looks orphaned and the real orphans get lost in the noise.
+    """
     seen: set[str] = set()
     stack = [start_state] if start_state in states else []
+    stack += [r for r in (extra_roots or []) if r in states]
     while stack:
         s = stack.pop()
         if s in seen:

@@ -86,6 +86,24 @@ class Runner:
         # the end of game 0 — idling there would just delay the first run.
         inter_game_state = self.cfg.inter_game_state or self.cfg.start_state
         pending_inter_game_delay = self.cfg.inter_game_delay_s is not None
+        # Side errands on a timer (sending lives, say). A bot that farms for
+        # twelve hours and never touches the social screens is as distinctive as
+        # one that never pauses. First run is a full interval out, so the farm
+        # gets going before detouring anywhere.
+        routine_due = {r["name"]: time.monotonic() + random.uniform(*r["interval_s"])
+                       for r in self.cfg.periodic_routines}
+        # Set when a restart re-enters start_state: that IS a fresh arrival even
+        # if it is the same state name, so the entry-only hooks must not skip it.
+        force_entry = False
+        # True for the single arrival a restart produced: the errand/idle hooks
+        # treat it as an entry (so after_reset routines fire) but the inter-game
+        # idle must not spend its skip on it — the lap AFTER a reset is the one
+        # that should run without idling.
+        entered_by_reset = False
+        for r in self.cfg.periodic_routines:
+            log.info("routine '%s' every %s s at state '%s'%s", r["name"],
+                     list(r["interval_s"]), r["at_state"] or inter_game_state,
+                     " (+after reset)" if r["after_reset"] else "")
         reset_enabled = (self.cfg.session_reset_s is not None
                          and self.restarter is not None and not dry_run)
         reset_at_state = self.cfg.reset_at_state or inter_game_state
@@ -213,6 +231,8 @@ class Runner:
                 else:
                     same_state_streak = 0
                     stuck_alerted = False
+                if state != prev_state or force_entry:
+                    force_entry = False
                     state_entered_at = time.monotonic()
                     # Restart before the idle: both hang off state ENTRY, and a
                     # reset makes the idle pointless (the app just went away and
@@ -233,12 +253,43 @@ class Runner:
                             no_act_states.clear()
                             entered_at = state_entered_at = time.monotonic()
                             pending_inter_game_delay = True  # first lap after a reset
+                            for r in self.cfg.periodic_routines:
+                                if r["after_reset"]:
+                                    # cookierun-bot sends lives right after every
+                                    # app restart (pending_send_friend_life) —
+                                    # bring the routine forward rather than
+                                    # waiting out a fresh interval.
+                                    routine_due[r["name"]] = time.monotonic()
+                            # The re-entry into start_state is a fresh arrival even
+                            # when it happens to be the state we reset from, so the
+                            # entry-only hooks below must still see it next cycle —
+                            # that is what lets an after_reset routine fire now
+                            # instead of waiting out a fresh interval.
+                            force_entry = entered_by_reset = True
                             continue
+
+                    # Detour into a side errand whose timer is up. Same entry-only
+                    # rule as the reset: never interrupt a run mid-flight.
+                    routine = self._due_routine(state, inter_game_state, routine_due)
+                    if routine is not None:
+                        log.info("routine '%s' due -> goto '%s'",
+                                 routine["name"], routine["goto"])
+                        routine_due[routine["name"]] = (
+                            time.monotonic() + random.uniform(*routine["interval_s"]))
+                        state = routine["goto"]
+                        state_entered_at = entered_at = time.monotonic()
+                        absent_streak = 0
+                        continue
+
                     # Idle between games, on ENTRY to the inter-game state only —
                     # checking every poll would re-fire the whole time we sat on
-                    # home waiting for its marker to settle.
+                    # home waiting for its marker to settle. `entered_by_reset`
+                    # is consumed here: it only ever suppresses one arrival.
+                    was_reset_arrival = entered_by_reset
+                    entered_by_reset = False
                     if (self.cfg.inter_game_delay_s is not None
-                            and state == inter_game_state):
+                            and state == inter_game_state
+                            and not was_reset_arrival):
                         if pending_inter_game_delay:
                             pending_inter_game_delay = False  # first arrival = game 1
                         else:
@@ -313,6 +364,17 @@ class Runner:
                 critical=True,
             )
             raise
+
+    def _due_routine(self, state: str, inter_game_state: str,
+                     due: dict[str, float]) -> dict | None:
+        """The first routine whose timer is up and whose safe state we just entered."""
+        now = time.monotonic()
+        for r in self.cfg.periodic_routines:
+            if state != (r["at_state"] or inter_game_state):
+                continue
+            if now >= due[r["name"]]:
+                return r
+        return None
 
     def _session_reset(self, elapsed_s: float) -> None:
         """Restart the app so no session runs for hours unbroken.

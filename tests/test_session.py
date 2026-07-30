@@ -124,22 +124,23 @@ def _cfg(states, start, **kw):
 
 def _patch_loop(monkeypatch, found: set[str], *, clock_step: float = 0.0):
     """Stub the loop's IO. `clock_step` advances a fake monotonic clock by that
-    many seconds per read — real wall time cannot be used because sleeping is
-    stubbed out, so nothing would ever elapse."""
+    many seconds per CYCLE (driven off grab, which runs once per cycle) — real
+    wall time cannot be used because sleeping is stubbed out, and a per-read
+    clock would make elapsed time depend on how often the loop reads it."""
     monkeypatch.setattr(fsm, "find_named", lambda f, s, name, t: Match(
         found=name in found, score=1.0 if name in found else 0.1, x=5, y=5, w=2, h=2))
-    monkeypatch.setattr(fsm, "grab",
-                        lambda device, retries=2: np.zeros((10, 10, 3), dtype=np.uint8))
     monkeypatch.setattr(fsm.time, "sleep", lambda s: None)
     monkeypatch.setattr(fsm, "send_alert", lambda *a, **k: None)
+
+    now = {"t": 0.0}
+
+    def fake_grab(device, retries=2):
+        now["t"] += clock_step
+        return np.zeros((10, 10, 3), dtype=np.uint8)
+
+    monkeypatch.setattr(fsm, "grab", fake_grab)
     if clock_step:
-        t = {"now": 0.0}
-
-        def clock():
-            t["now"] += clock_step
-            return t["now"]
-
-        monkeypatch.setattr(fsm.time, "monotonic", clock)
+        monkeypatch.setattr(fsm.time, "monotonic", lambda: now["t"])
 
 
 class _SpyRestarter:
@@ -221,13 +222,16 @@ class TestFsmSessionReset:
             real(self, elapsed)
 
         monkeypatch.setattr(fsm.Runner, "_session_reset", spy_reset)
-        cfg = _cfg(_lap_states(), "home", session_reset_s=(5.0, 6.0),
+        # reset on the very first arrival back at home (budget 1s, 1s per cycle)
+        # so the only long sleep that could appear would be the lap after it
+        cfg = _cfg(_lap_states(), "home", session_reset_s=(1.0, 1.5),
                    inter_game_delay_s=(30.0, 60.0))
         sleeps = []
         monkeypatch.setattr(fsm.time, "sleep", sleeps.append)
-        fsm.Runner(cfg, FakeDevice(), restarter=_SpyRestarter()).run(max_cycles=6)
+        fsm.Runner(cfg, FakeDevice(), restarter=_SpyRestarter()).run(max_cycles=4)
         assert seen
-        # the lap right after a reset must not also idle 30-60s
+        # the lap right after a reset must not also idle 30-60s: the app just
+        # went away and came back, a far longer gap than any inter-game pause
         assert not [s for s in sleeps if s >= 30]
 
 
