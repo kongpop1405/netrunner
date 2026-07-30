@@ -11,13 +11,11 @@
       "detect": "giftdraw_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1385,
-          "y": 915
-        },
-        {
-          "type": "wait",
-          "ms": 1800
+          "y": 915,
+          "verify": "giftdraw_marker.png",
+          "settle_ms": 1800
         },
         {
           "type": "goto",
@@ -35,13 +33,11 @@
       "detect": "pickbox_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1190,
-          "y": 830
-        },
-        {
-          "type": "wait",
-          "ms": 1000
+          "y": 830,
+          "verify": "pickbox_marker.png",
+          "settle_ms": 1000
         },
         {
           "type": "goto",
@@ -124,13 +120,11 @@
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 965,
-          "y": 985
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 985,
+          "verify": "dailycheckin_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -147,13 +141,11 @@
       "detect": "treasurereward_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 960,
-          "y": 850
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 850,
+          "verify": "treasurereward_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -170,13 +162,11 @@
       "detect": "congrats_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 954,
-          "y": 847
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 847,
+          "verify": "congrats_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -234,13 +224,11 @@
       "detect": "giftdraw_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1660,
-          "y": 175
-        },
-        {
-          "type": "wait",
-          "ms": 1000
+          "y": 175,
+          "verify": "giftdraw_marker.png",
+          "settle_ms": 1000
         },
         {
           "type": "stop"
@@ -258,13 +246,11 @@
       "detect": "inactive_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
+          "y": 690,
+          "verify": "inactive_marker.png",
+          "settle_ms": 4000
         },
         {
           "type": "goto",

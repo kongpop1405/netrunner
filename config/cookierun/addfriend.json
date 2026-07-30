@@ -11,13 +11,11 @@
       "detect": "home_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1203,
-          "y": 465
-        },
-        {
-          "type": "wait",
-          "ms": 2000
+          "y": 465,
+          "verify": "home_marker.png",
+          "settle_ms": 2000
         },
         {
           "type": "goto",
@@ -74,13 +72,11 @@
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 965,
-          "y": 985
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 985,
+          "verify": "dailycheckin_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -97,13 +93,11 @@
       "detect": "treasurereward_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 960,
-          "y": 850
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 850,
+          "verify": "treasurereward_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -120,13 +114,11 @@
       "detect": "congrats_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 954,
-          "y": 847
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 847,
+          "verify": "congrats_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -284,13 +276,11 @@
       "detect": "inactive_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
+          "y": 690,
+          "verify": "inactive_marker.png",
+          "settle_ms": 4000
         },
         {
           "type": "goto",

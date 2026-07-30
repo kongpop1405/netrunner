@@ -34,13 +34,11 @@
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 965,
-          "y": 985
-        },
-        {
-          "type": "wait",
-          "ms": 1000
+          "y": 985,
+          "verify": "dailycheckin_marker.png",
+          "settle_ms": 1000
         },
         {
           "type": "goto",
@@ -57,13 +55,11 @@
       "detect": "treasurereward_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 960,
-          "y": 850
-        },
-        {
-          "type": "wait",
-          "ms": 1000
+          "y": 850,
+          "verify": "treasurereward_marker.png",
+          "settle_ms": 1000
         },
         {
           "type": "goto",
@@ -80,13 +76,11 @@
       "detect": "congrats_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 954,
-          "y": 847
-        },
-        {
-          "type": "wait",
-          "ms": 1000
+          "y": 847,
+          "verify": "congrats_marker.png",
+          "settle_ms": 1000
         },
         {
           "type": "goto",
@@ -103,13 +97,11 @@
       "detect": "sendlife_confirm_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1189,
-          "y": 687
-        },
-        {
-          "type": "wait",
-          "ms": 800
+          "y": 687,
+          "verify": "sendlife_confirm_marker.png",
+          "settle_ms": 800
         },
         {
           "type": "goto",
@@ -126,13 +118,11 @@
       "detect": "sendlife_confirm_gp_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1189,
-          "y": 687
-        },
-        {
-          "type": "wait",
-          "ms": 800
+          "y": 687,
+          "verify": "sendlife_confirm_gp_marker.png",
+          "settle_ms": 800
         },
         {
           "type": "goto",
@@ -149,13 +139,11 @@
       "detect": "messagesent_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 957,
-          "y": 685
-        },
-        {
-          "type": "wait",
-          "ms": 700
+          "y": 685,
+          "verify": "messagesent_marker.png",
+          "settle_ms": 700
         },
         {
           "type": "goto",
@@ -333,13 +321,11 @@
       "detect": "inactive_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
+          "y": 690,
+          "verify": "inactive_marker.png",
+          "settle_ms": 4000
         },
         {
           "type": "goto",

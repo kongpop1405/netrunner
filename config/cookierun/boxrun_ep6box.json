@@ -25,13 +25,11 @@
       "detect": "sendlife_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 727,
-          "y": 688
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 688,
+          "verify": "sendlife_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -83,13 +81,11 @@
       "detect": "dailycheckin_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 965,
-          "y": 985
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 985,
+          "verify": "dailycheckin_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -106,13 +102,11 @@
       "detect": "treasurereward_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 960,
-          "y": 850
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 850,
+          "verify": "treasurereward_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -129,13 +123,11 @@
       "detect": "sendlife_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 727,
-          "y": 688
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 688,
+          "verify": "sendlife_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -246,13 +238,11 @@
       "detect": "sendlife_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 727,
-          "y": 688
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 688,
+          "verify": "sendlife_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -269,13 +259,11 @@
       "detect": "levelup_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 959,
-          "y": 969
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 969,
+          "verify": "levelup_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -320,13 +308,11 @@
       "detect": "congrats_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 956,
-          "y": 846
-        },
-        {
-          "type": "wait",
-          "ms": 2000
+          "y": 846,
+          "verify": "congrats_marker.png",
+          "settle_ms": 2000
         },
         {
           "type": "goto",
@@ -343,13 +329,11 @@
       "detect": "levelup_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 959,
-          "y": 969
-        },
-        {
-          "type": "wait",
-          "ms": 2000
+          "y": 969,
+          "verify": "levelup_marker.png",
+          "settle_ms": 2000
         },
         {
           "type": "goto",
@@ -366,13 +350,11 @@
       "detect": "rankingrewards_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1672,
-          "y": 135
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 135,
+          "verify": "rankingrewards_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -389,13 +371,11 @@
       "detect": "giftdraw_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1685,
-          "y": 170
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 170,
+          "verify": "giftdraw_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -547,13 +527,11 @@
       "detect": "inactive_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
+          "y": 690,
+          "verify": "inactive_marker.png",
+          "settle_ms": 4000
         },
         {
           "type": "goto",
@@ -570,13 +548,11 @@
       "detect": "prevresults_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 950,
-          "y": 680
-        },
-        {
-          "type": "wait",
-          "ms": 3000
+          "y": 680,
+          "verify": "prevresults_marker.png",
+          "settle_ms": 3000
         },
         {
           "type": "goto",
@@ -593,13 +569,11 @@
       "detect": "inactive_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
+          "y": 690,
+          "verify": "inactive_marker.png",
+          "settle_ms": 4000
         },
         {
           "type": "goto",
@@ -639,13 +613,11 @@
       "detect": "inactive_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
+          "y": 690,
+          "verify": "inactive_marker.png",
+          "settle_ms": 4000
         },
         {
           "type": "goto",
@@ -768,13 +740,11 @@
       "detect": "sendlife_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 727,
-          "y": 688
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 688,
+          "verify": "sendlife_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
@@ -794,13 +764,11 @@
       "detect": "gamesettings_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1671,
-          "y": 145
-        },
-        {
-          "type": "wait",
-          "ms": 1200
+          "y": 145,
+          "verify": "gamesettings_marker.png",
+          "settle_ms": 1200
         },
         {
           "type": "goto",
@@ -817,13 +785,11 @@
       "detect": "fortunebakery_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1633,
-          "y": 301
-        },
-        {
-          "type": "wait",
-          "ms": 1500
+          "y": 301,
+          "verify": "fortunebakery_marker.png",
+          "settle_ms": 1500
         },
         {
           "type": "goto",
