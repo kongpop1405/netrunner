@@ -127,7 +127,9 @@ config/
 templates/<game>/     curated template crops referenced by configs
 snaps/<game>/         raw captures from tools/snap.py (git-ignored)
 tests/                pytest suite (python -m pytest tests/)
-tools/snap.py  save current screen as PNG (build templates)
+tools/
+  snap.py             save current screen as PNG (build templates)
+  fetch_db_icons.py   download cookierundb.com icons + index.json (labeling reference)
 main.py        CLI entrypoint
 run_*.bat      double-click launchers, one per bot task
 ```
