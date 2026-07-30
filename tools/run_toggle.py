@@ -246,6 +246,35 @@ def _yn(v: str) -> bool:
     return v.strip().lower() in ("y", "yes", "1", "true")
 
 
+#: sentinel for --idle "keep whatever the config says" (the default)
+_IDLE_CONFIG = object()
+
+
+def _idle_arg(v: str):
+    """Parse --idle: y/'' = keep the config's range, n/0/off = no idle,
+    'MIN-MAX' (or 'MIN,MAX') = custom range, a single number = fixed delay."""
+    s = v.strip().lower()
+    if s in ("", "y", "yes", "config"):
+        return _IDLE_CONFIG
+    if s in ("n", "no", "0", "none", "off"):
+        return None
+    sep = "-" if "-" in s.lstrip("-") else ","
+    try:
+        if sep in s.lstrip("-"):
+            lo, hi = (float(p) for p in s.split(sep, 1))
+        else:
+            lo = hi = float(s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expected y, n, a number, or MIN-MAX (got '{v}')") from None
+    if lo < 0 or hi < lo:
+        raise argparse.ArgumentTypeError(
+            f"idle range must be 0 <= MIN <= MAX (got '{v}')")
+    if (lo, hi) == (0.0, 0.0):
+        return None
+    return (lo, hi)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="boxrun_toggle launcher")
     ap.add_argument("--faststart", type=_yn, required=True)
@@ -261,6 +290,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quit-after-boxes", type=int, default=0,
                     help="quit a run once this many total boxes have been banked "
                          "this session (0 = never quit early, default)")
+    ap.add_argument("--idle", type=_idle_arg, default=_IDLE_CONFIG,
+                    help="random idle between games: y = the config's range "
+                         "(default), n = none, MIN-MAX = custom seconds, or a "
+                         "single number for a fixed delay")
     ap.add_argument("--device", default=None)
     ap.add_argument("--adb", default=None)
     ap.add_argument("--launch", action="store_true")
@@ -297,6 +330,16 @@ def main(argv: list[str] | None = None) -> int:
         _strip_relay(states)
     cfg.states = states
 
+    if args.idle is None:
+        # inter_game_state without a delay fails config validation on load,
+        # so clear both when idling is switched off
+        cfg.inter_game_delay_s = None
+        cfg.inter_game_state = None
+    elif args.idle is not _IDLE_CONFIG:
+        cfg.inter_game_delay_s = args.idle
+        if cfg.inter_game_state is None:
+            cfg.inter_game_state = cfg.start_state
+
     if args.start_state:
         if args.start_state not in states:
             log.error("unknown --start-state '%s'", args.start_state)
@@ -329,8 +372,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {msg}", file=sys.stderr)
         return 2
     log.info("device: %s  adb: %s", address, adb)
-    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s quit_after_boxes=%d",
-              args.faststart, args.boost, args.jump, args.slide, args.relay, args.quit_after_boxes)
+    idle_desc = ("config" if args.idle is _IDLE_CONFIG
+                 else "off" if args.idle is None else f"{args.idle[0]:g}-{args.idle[1]:g}s")
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s quit_after_boxes=%d idle=%s",
+              args.faststart, args.boost, args.jump, args.slide, args.relay,
+              args.quit_after_boxes, idle_desc)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
 

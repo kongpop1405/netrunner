@@ -160,3 +160,29 @@ def test_pending_boosts_are_refused(states, choice):
     at guesses is worse than refusing, so it must fail loudly at launch."""
     with pytest.raises(cfgmod.ConfigError, match="crop the equipped pill"):
         rt._apply_boost(copy.deepcopy(states), choice)
+
+
+# --- --idle parsing -------------------------------------------------------------
+
+
+def test_idle_default_keeps_the_config():
+    assert rt._idle_arg("y") is rt._IDLE_CONFIG
+    assert rt._idle_arg("") is rt._IDLE_CONFIG
+
+
+def test_idle_off_forms_all_mean_none():
+    for v in ("n", "no", "0", "off", "none", "0-0"):
+        assert rt._idle_arg(v) is None
+
+
+def test_idle_range_and_fixed():
+    assert rt._idle_arg("5-15") == (5.0, 15.0)
+    assert rt._idle_arg("5,15") == (5.0, 15.0)
+    assert rt._idle_arg("8") == (8.0, 8.0)
+
+
+def test_idle_rejects_garbage_and_backwards_ranges():
+    import argparse
+    for v in ("abc", "15-5", "-3", "1-2-3"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            rt._idle_arg(v)

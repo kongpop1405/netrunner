@@ -43,8 +43,8 @@ if "%FASTSTART%"=="" set "FASTSTART=y"
 
 :askboost
 set "BOOST="
-set /p "BOOST=Which boost to buy? (magnet/speed/doublecoins/none) [magnet]: "
-if "%BOOST%"=="" set "BOOST=magnet"
+set /p "BOOST=Which boost to buy? (magnet/speed/doublecoins/none) [none]: "
+if "%BOOST%"=="" set "BOOST=none"
 if /i "%BOOST%"=="magnet" goto boostok
 if /i "%BOOST%"=="speed" goto boostok
 if /i "%BOOST%"=="doublecoins" goto boostok
@@ -59,20 +59,24 @@ if "%JUMP%"=="" set "JUMP=y"
 set /p "SLIDE=Slide under bars? (y/n) [y]: "
 if "%SLIDE%"=="" set "SLIDE=y"
 
-set /p "RELAY=Cookie Relay Boost tap? (y/n) [y]: "
-if "%RELAY%"=="" set "RELAY=y"
+set /p "RELAY=Cookie Relay Boost tap? (y/n) [n]: "
+if "%RELAY%"=="" set "RELAY=n"
 
 set "QUITBOXES="
 set /p "QUITBOXES=Quit a run after how many boxes banked? (0=never quit early) [0]: "
 if "%QUITBOXES%"=="" set "QUITBOXES=0"
 
+set "IDLE="
+set /p "IDLE=Idle between games? (y=config / n=off / MIN-MAX secs) [n]: "
+if "%IDLE%"=="" set "IDLE=n"
+
 echo.
-echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  QuitAfterBoxes=%QUITBOXES%
+echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  QuitAfterBoxes=%QUITBOXES%  Idle=%IDLE%
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --quit-after-boxes %QUITBOXES% --launch
+%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --quit-after-boxes %QUITBOXES% --idle %IDLE% --launch
 set "RC=%ERRORLEVEL%"
 
 echo.
