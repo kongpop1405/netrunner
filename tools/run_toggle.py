@@ -244,7 +244,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--boost", choices=boostmod.CHOICES, required=True,
                     help="which boost to Multi-Buy before each run "
                          "('none' skips the buy chain). "
-                         + boostmod.describe_choices())
+                         # argparse %-formats help text; boost labels carry literal
+                         # % ("+17% base speed") that would raise ValueError.
+                         + boostmod.describe_choices().replace("%", "%%"))
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
     ap.add_argument("--relay", type=_yn, required=True)

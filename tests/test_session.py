@@ -265,3 +265,85 @@ class TestSessionConfig:
     def test_reset_at_state_without_budget_rejected(self, tmp_path, tdir):
         with pytest.raises(cfgmod.ConfigError, match="without session_reset_s"):
             cfgmod.load(self._write(tmp_path, tdir, reset_at_state="a"))
+
+
+class TestWantsRestarter:
+    """A restart_app action needs a Restarter as much as a scheduled reset does —
+    Connection Lost hands off to it, and a warn-and-noop is the wrong recovery for
+    a dropped connection."""
+
+    def _cfg_with(self, state):
+        return Config(device=None, templates_dir=".", poll_ms=1, match_threshold=0.8,
+                      start_state="a", states={"a": state})
+
+    def test_session_reset_wants_one(self):
+        import main
+        cfg = Config(device=None, templates_dir=".", poll_ms=1, match_threshold=0.8,
+                     start_state="a", states={"a": {"detect": "a.png"}},
+                     session_reset_s=(60.0, 90.0))
+        assert main._wants_restarter(cfg)
+
+    def test_restart_app_in_on_match_wants_one(self):
+        import main
+        cfg = self._cfg_with({"detect": "a.png", "on_match": [{"type": "restart_app"}]})
+        assert main._wants_restarter(cfg)
+
+    def test_restart_app_in_on_absent_wants_one(self):
+        import main
+        cfg = self._cfg_with({"detect": "a.png",
+                              "on_absent": [{"type": "restart_app"},
+                                            {"type": "goto", "state": "a"}]})
+        assert main._wants_restarter(cfg)
+
+    def test_restart_app_in_branching_on_match_wants_one(self):
+        import main
+        cfg = Config(device=None, templates_dir=".", poll_ms=1, match_threshold=0.8,
+                     start_state="a", states={"a": {
+                         "detect": ["x.png", "y.png"],
+                         "on_match": {"x.png": [{"type": "goto", "state": "a"}],
+                                      "y.png": [{"type": "restart_app"}]}}})
+        assert main._wants_restarter(cfg)
+
+    def test_plain_config_wants_none(self):
+        import main
+        cfg = self._cfg_with({"detect": "a.png", "on_match": [{"type": "goto", "state": "a"}]})
+        assert not main._wants_restarter(cfg)
+
+    def test_build_restarter_none_for_plain_config(self):
+        import main
+        cfg = self._cfg_with({"detect": "a.png", "on_match": [{"type": "goto", "state": "a"}]})
+
+        class D:
+            serial = "x"
+        assert main.build_restarter(cfg, D(), "adb", None) is None
+
+    def test_build_restarter_present_for_restart_app_config(self):
+        import main
+        cfg = self._cfg_with({"detect": "a.png", "on_match": [{"type": "restart_app"}]})
+
+        class D:
+            serial = "127.0.0.1:5555"
+        r = main.build_restarter(cfg, D(), "adb", None)
+        assert r is not None and hasattr(r, "restart")
+
+    def test_shipped_connectionlost_configs_get_a_restarter(self):
+        """Every config with a probe_connectionlost state must actually build a
+        Restarter, or restart_app silently does nothing there."""
+        import glob
+        import main
+        from src import config as cfgmod
+
+        class D:
+            serial = "127.0.0.1:5555"
+
+        for path in sorted(glob.glob("config/cookierun/*.json")):
+            cfg = cfgmod.load(path)
+            uses_restart = any(
+                a.get("type") == "restart_app"
+                for st in cfg.states.values()
+                for block in ([st.get("on_match")] if isinstance(st.get("on_match"), list)
+                              else list(st["on_match"].values()) if isinstance(st.get("on_match"), dict)
+                              else []) + ([st["on_absent"]] if isinstance(st.get("on_absent"), list) else [])
+                for a in block)
+            if uses_restart:
+                assert main.build_restarter(cfg, D(), "adb", None) is not None, path
