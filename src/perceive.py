@@ -189,7 +189,9 @@ def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None
     if region is not None:
         x, y, w, h = region
         frame = frame[y : y + h, x : x + w]
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # read_counter hands us an already-thresholded single-channel image, so only
+    # convert when there are channels to convert.
+    gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return pytesseract.image_to_string(gray, config=config).strip()
 
 
