@@ -355,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
         BoxQuitRunner(
             cfg, device, webhook_url=webhook_url, quit_after=args.quit_after_boxes,
             warmup_burst=(not args.jump and not args.slide),
+            restarter=netrunner_main.build_restarter(cfg, device, adb, None),
         ).run(dry_run=args.dry_run, max_cycles=args.max_cycles)
     except AdbError as e:
         log.error("adb error: %s", e)

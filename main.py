@@ -114,6 +114,33 @@ def _resolve_device(address: str, adb: str) -> Device:
     return Device(address, adb=adb)
 
 
+def build_restarter(cfg, device: Device, adb: str, instance: int | None):
+    """A Restarter for the config's session resets, or None if it wants none.
+
+    Prefers ldconsole runapp (same path --launch uses) when the LDPlayer install
+    can be found, because `am start` needs a resolvable launcher activity and
+    some builds don't expose one. Falls back to plain adb otherwise, which is
+    all a bare `--device` connection can do.
+    """
+    if cfg.session_reset_s is None:
+        return None
+    from src.session import DEFAULT_PACKAGE, Restarter
+
+    package = cfg.package or DEFAULT_PACKAGE
+    start_app = None
+    try:
+        from src.launcher import _ldconsole_path, _start_app, resolve_index
+        ldconsole = _ldconsole_path(adb)
+        idx = resolve_index(adb, instance, device.serial)
+        start_app = lambda: _start_app(ldconsole, idx, device, package)  # noqa: E731
+        logging.getLogger("netrunner").info(
+            "session resets will relaunch via ldconsole (instance %d)", idx)
+    except Exception as e:  # noqa: BLE001 — any LDPlayer lookup failure is non-fatal
+        logging.getLogger("netrunner").info(
+            "session resets will relaunch via am start (%s)", e)
+    return Restarter(device=device, package=package, start_app=start_app)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="netrunner", description="LDPlayer auto-farm engine")
     ap.add_argument("--config", help="path to a farm FSM config JSON")
@@ -215,9 +242,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         device = _resolve_device(address, adb)
         _check_resolution(device)
-        Runner(cfg, device, webhook_url=webhook_url).run(
-            dry_run=args.dry_run, max_cycles=args.max_cycles
-        )
+        Runner(
+            cfg, device, webhook_url=webhook_url,
+            restarter=build_restarter(cfg, device, adb, args.instance),
+        ).run(dry_run=args.dry_run, max_cycles=args.max_cycles)
     except AdbError as e:
         logging.getLogger("netrunner").error("adb error: %s", e)
         print(f"adb error: {e}", file=sys.stderr)

@@ -14,6 +14,7 @@ from .capture import grab
 from .config import Config, detect_names
 from .device import AdbError, Device
 from .perceive import Match, PerceiveError, TemplateStore, find_named
+from .session import Restarter, SessionError
 
 log = logging.getLogger("netrunner.fsm")
 
@@ -50,13 +51,17 @@ class FsmError(RuntimeError):
 class Runner:
     def __init__(self, cfg: Config, device: Device, *,
                  webhook_url: str | None = None,
-                 unknown_dir: str | Path = "unknown_screens"):
+                 unknown_dir: str | Path = "unknown_screens",
+                 restarter: Restarter | None = None):
         self.cfg = cfg
         self.device = device
         self.store = TemplateStore(cfg.templates_dir)
         self.actor: Actor  # set in run()
         self.webhook_url = webhook_url
         self.unknown_dir = Path(unknown_dir)
+        # Injected so the FSM needs no LDPlayer knowledge; built by main.py when
+        # the config asks for session resets.
+        self.restarter = restarter
 
     def run(self, *, dry_run: bool = False, max_cycles: int | None = None) -> None:
         self.actor = Actor(
@@ -81,6 +86,18 @@ class Runner:
         # the end of game 0 — idling there would just delay the first run.
         inter_game_state = self.cfg.inter_game_state or self.cfg.start_state
         pending_inter_game_delay = self.cfg.inter_game_delay_s is not None
+        reset_enabled = (self.cfg.session_reset_s is not None
+                         and self.restarter is not None and not dry_run)
+        reset_at_state = self.cfg.reset_at_state or inter_game_state
+        session_started_at = time.monotonic()
+        session_budget_s = (random.uniform(*self.cfg.session_reset_s)
+                            if self.cfg.session_reset_s else 0.0)
+        if self.cfg.session_reset_s is not None and not reset_enabled:
+            log.info("session_reset_s set but resets are off (%s)",
+                     "dry_run" if dry_run else "no restarter wired")
+        elif reset_enabled:
+            log.info("session reset in %.2fh (range %s) at state '%s'",
+                     session_budget_s / 3600, list(self.cfg.session_reset_s), reset_at_state)
         log.info("start state=%s device=%s dry_run=%s", state, self.device.serial, dry_run)
 
         try:
@@ -197,6 +214,26 @@ class Runner:
                     same_state_streak = 0
                     stuck_alerted = False
                     state_entered_at = time.monotonic()
+                    # Restart before the idle: both hang off state ENTRY, and a
+                    # reset makes the idle pointless (the app just went away and
+                    # came back, which is a far longer gap than 30-60s).
+                    if reset_enabled and state == reset_at_state:
+                        elapsed = time.monotonic() - session_started_at
+                        if elapsed >= session_budget_s:
+                            self._session_reset(elapsed)
+                            session_started_at = time.monotonic()
+                            session_budget_s = random.uniform(*self.cfg.session_reset_s)
+                            log.info("next session reset in %.2fh", session_budget_s / 3600)
+                            # Everything the loop believed about the screen is
+                            # void — the app restarted behind it.
+                            state = self.cfg.start_state
+                            frame = None
+                            absent_streak = same_state_streak = no_act_streak = 0
+                            stuck_alerted = no_act_alerted = False
+                            no_act_states.clear()
+                            entered_at = state_entered_at = time.monotonic()
+                            pending_inter_game_delay = True  # first lap after a reset
+                            continue
                     # Idle between games, on ENTRY to the inter-game state only —
                     # checking every poll would re-fire the whole time we sat on
                     # home waiting for its marker to settle.
@@ -276,6 +313,30 @@ class Runner:
                 critical=True,
             )
             raise
+
+    def _session_reset(self, elapsed_s: float) -> None:
+        """Restart the app so no session runs for hours unbroken.
+
+        Failure is fatal-by-alert: if the game will not come back, farming a
+        dead screen is worse than stopping, so SessionError propagates.
+        """
+        log.info("session reset after %.2fh — restarting the app", elapsed_s / 3600)
+        send_alert(
+            self.webhook_url,
+            "NetRunner: session reset",
+            f"Restarting the app after {elapsed_s / 3600:.2f}h "
+            f"(device {self.device.serial}).",
+        )
+        try:
+            self.restarter.restart()
+        except SessionError as e:
+            send_alert(
+                self.webhook_url,
+                "NetRunner: app will not restart",
+                f"```{e}```\ndevice {self.device.serial}",
+                critical=True,
+            )
+            raise FsmError(f"session reset failed: {e}") from e
 
     def _archive_unknown(self, frame, state: str) -> None:
         """Save the screen the loop is stuck on + push it to Discord.

@@ -56,6 +56,13 @@ class Config:
     inter_game_delay_s: tuple[float, float] | None = None
     #: state whose entry counts as "one game finished" (default: start_state).
     inter_game_state: str | None = None
+    #: (min, max) seconds of farming before the app is restarted. None = never.
+    session_reset_s: tuple[float, float] | None = None
+    #: state the restart is allowed to happen in — restarting mid-run would
+    #: forfeit the run and its heart (default: inter_game_state, else start_state).
+    reset_at_state: str | None = None
+    #: android package to force-stop/relaunch on reset.
+    package: str | None = None
 
     def poll_delay_s(self) -> float:
         """Seconds to sleep for one poll — jittered when a range was configured."""
@@ -106,6 +113,10 @@ def load(path: str | Path) -> Config:
     if igd is not None:
         igd = parse_range(igd, "inter_game_delay_s", integer=False)
 
+    srs = raw.get("session_reset_s")
+    if srs is not None:
+        srs = parse_range(srs, "session_reset_s", integer=False)
+
     cfg = Config(
         device=raw.get("device"),
         templates_dir=raw.get("templates_dir", f"templates/{p.stem}"),
@@ -117,6 +128,9 @@ def load(path: str | Path) -> Config:
         poll_ms_range=poll_range,
         inter_game_delay_s=igd,
         inter_game_state=raw.get("inter_game_state"),
+        session_reset_s=srs,
+        reset_at_state=raw.get("reset_at_state"),
+        package=raw.get("package"),
     )
     _validate(cfg)
     return cfg
@@ -149,6 +163,10 @@ def _validate(cfg: Config) -> None:
         )
     if cfg.inter_game_state is not None and cfg.inter_game_delay_s is None:
         raise ConfigError("inter_game_state set without inter_game_delay_s")
+    if cfg.reset_at_state is not None and cfg.reset_at_state not in cfg.states:
+        raise ConfigError(f"reset_at_state '{cfg.reset_at_state}' is not a defined state")
+    if cfg.reset_at_state is not None and cfg.session_reset_s is None:
+        raise ConfigError("reset_at_state set without session_reset_s")
     names = set(cfg.states)
     for sname, state in cfg.states.items():
         _validate_state(sname, state, names, tdir)
