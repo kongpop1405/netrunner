@@ -653,7 +653,8 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     ไม่งั้น bail — และ crop ที่ล้นขอบ = config ผิด ต้องดังไม่ใช่เงียบ
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 5</span><h3>Lives routine — social behavior ทุก 25–35 นาที</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 5</span><h3>Lives routine — social behavior ทุก 25–35 นาที
+    <span class="pill ok" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>DONE — pytest 173 passed</span></h3></div>
   <p class="lead">
     Port พฤติกรรมจาก <code>cookierun-bot/bot.py:193-199</code>: ทุก <code>uniform(25, 35)</code> นาที
     แวะส่ง lives ให้เพื่อน แล้วกลับมา farm ต่อ — bot ที่ farm 12 ชม. โดยไม่แตะ social เลย = ลายเซ็นบอทอีกแบบ
@@ -674,6 +675,33 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <li><b>หลัง session reset (Phase 2):</b> <code>after_reset: true</code> → รัน routine หนึ่งรอบเมื่อกลับถึง home — ตรงกับ cookierun-bot ที่ส่ง lives หลัง restart app เสมอ</li>
     <li><b>Mailbox receive</b> (quick receive ของ cookierun-bot) = OUT — ต้อง template ใหม่ 4 ตัว (mailbox btn / lives tab / no-lives / all-received); ทำเป็น extension เมื่อ send-side นิ่งแล้ว</li>
   </ul>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ทำแล้ว</b> (commit <code>265d42b</code> + <code>7ca328c</code>) — <b>เจอเพิ่มระหว่าง implement:</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>State ชนชื่อ 3 ตัว</b> — <code>probe_inactive</code> · <code>recover_login</code> ·
+        <code>recover_pick</code> มีทั้งใน sendlife และ farm, <b>2 ตัวเนื้อต่างกัน</b> →
+        import ทับตรง ๆ จะ clobber recovery chain ของ farm. Fix: prefix <code>lives_</code> ทุก state</li>
+      <li><b><code>probe_inactive</code> ของ sendlife ไม่ใช่ทางออก — เป็น pass-through</b>:
+        <code>on_absent → peel_popups</code>. รอบแรก redirect ไปของ farm →
+        <b>ตัด 9 state ออกจากกราฟทันที</b> (peel_* + scroll_retry_* เข้าไม่ถึงเลย).
+        <b>linter ที่ทำใน Phase 0 จับได้เอง</b> — ถ้าไม่มีคงปล่อยผ่านแล้วเจอตอนรันจริงว่า errand ไม่ scroll</li>
+      <li><b>Reachability ต้องรู้จัก routine entry</b> — chain ของ routine ไม่มี goto ชี้เข้า →
+        <code>unreachable_states()</code> ต้องรับ <code>extra_roots</code> ไม่งั้น 14 state ใหม่ขึ้นเป็น orphan
+        กลบ orphan จริง (<code>check_boost_result</code>) มิด</li>
+      <li><b>Fake clock ต่อ read ใช้ไม่ได้</b> — เวลาที่ผ่านไปขึ้นกับว่าลูปเรียก <code>monotonic()</code> กี่ครั้ง
+        (routine fire 3 ครั้งแทน 1). เปลี่ยนเป็น <b>เดินต่อ cycle</b> (ผูกกับ <code>grab</code>) →
+        ยืนยัน reschedule ได้จริง <b>และเปิดเผย bug ข้าม phase:</b> arrival ที่ reset สร้าง
+        <b>กิน skip ของ inter-game idle</b> (Phase 1) → lap หลัง reset idle ซ้ำ. Fix: <code>entered_by_reset</code>
+        แยกจาก <code>force_entry</code></li>
+      <li><b><code>force_entry</code> flag จำเป็น</b> — reset re-enter <code>start_state</code> ซึ่งชื่อเดียวกับ
+        state ที่ reset จากมา → <code>state == prev_state</code> = entry hook ไม่ทำงาน → after_reset routine ไม่ fire</li>
+      <li><b>threshold ต่างกัน</b> — sendlife 0.85 vs farm 0.82 → ใส่ <code>threshold</code> ต่อ state ที่ import
+        (send icon กับ check-mark ที่ส่งแล้วหน้าตาใกล้กัน ต้องเข้มกว่า)</li>
+    </ul>
+    <b>ผล:</b> 14 <code>lives_*</code> states เข้า <code>boxrun_toggle.json</code> ·
+    <code>stop</code> → <code>goto home</code> (จบ list = กลับไป farm ไม่ใช่จบ run) ·
+    routine <code>[1500, 2100]</code> ที่ home + <code>after_reset: true</code>
+  </div>
 
   <div class="phase-hd"><span class="badge">PHASE 6</span><h3>Popup coverage — 10 ตัวที่ cookierun-bot ปิดได้แต่ netrunner ค้าง</h3></div>
   <p class="lead">
@@ -1108,9 +1136,9 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p1">PHASE 5</div>
       <div class="tl-body">
-        <b>Lives routine</b> — social ทุก 25–35 นาที + หลัง reset (reuse sendlife.json)
-        <div class="tl-meta">4 ขั้น · engine timer + append states · ต่อจาก Phase 2 hook</div>
-        <div class="bar"><i style="width:40%;background:var(--accent)"></i></div>
+        <b>Lives routine</b> ✅ <b>DONE</b> — periodic_routines + 14 lives_* states (graft จาก sendlife.json)
+        <div class="tl-meta">4 ขั้น · pytest 173 passed · linter จับ chain ขาด 9 state · เจอ bug ข้าม phase (idle skip)</div>
+        <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
       </div>
     </div>
     <div class="tl-row">
@@ -1313,7 +1341,11 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
       <b>ค้าง:</b> reset จริงบนเกม (รวมใน final dry-run gate)</li>
     <li><b>Phase 3</b> — <code>--boost double_coins</code> → log ยืนยัน detect เปลี่ยนเป็น <code>doublecoins_banner.png</code> · เลือกตัวที่ยังไม่มี template → error บอกชัดว่าต้อง crop ไฟล์อะไร</li>
     <li><b>Phase 4</b> — synthetic test: 4 เหมือน + 2 ต่าง → หา 2 ใบถูก · 6 เหมือนกันหมด → bail ไม่เดา · cell ล้นขอบ → raise ไม่เงียบ · <b>เจอ captcha จริงครั้งแรก: snap เก็บภาพก่อน อย่าให้ solve ทันที</b></li>
-    <li><b>Phase 5</b> — fake-clock test ผ่าน · dry-run: log แสดง redirect เข้า lives_scan เมื่อ due+home เท่านั้น · จบ chain กลับ home แล้ว farm ต่อ · after_reset fire ครั้งเดียว</li>
+    <li><b>Phase 5 ✅</b> — pytest <b>173 passed</b> (+16): fire เมื่อ due+at_state · ไม่ fire ก่อนกำหนด ·
+      ไม่ตัด run กลางคัน · reschedule แล้ว fire ครั้งเดียวต่อ window · at_state default = inter_game_state ·
+      after_reset ดึงมาก่อน · routine entry นับเป็น reachable · validation 6 เคส ·
+      <b>+ เทสกับ config จริง</b>: lives chain ครบไม่ orphan, ไม่มี <code>stop</code> ค้าง, routine ชี้ <code>lives_scan</code>.
+      <b>ค้าง:</b> errand จริงบนเกม (รวมใน final dry-run gate)</li>
     <li><b>Phase 6</b> — ต่อ popup: dry-run บนจอที่มี popup จริง → probe เจอ + <code>close_popup</code> verify ผ่าน · reachability scan = 0 orphan ใหม่ · CONNECTION_LOST → เข้า reset flow ไม่ใช่แค่ tap</li>
     <li><b>Phase 7 ✅</b> — pytest <b>114 passed</b> (+9 ใหม่): archive 1 ครั้ง/episode (ทั้ง same-state และ ping-pong) ·
       <code>cv2.imwrite</code> พังต้องไม่ฆ่า run · loop สุขภาพดีไม่สร้างโฟลเดอร์เลย ·
