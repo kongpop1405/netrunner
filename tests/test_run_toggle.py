@@ -9,6 +9,7 @@ import copy
 
 import pytest
 
+from src import boost as boostmod
 from src import config as cfgmod
 from tools import run_toggle as rt
 
@@ -51,7 +52,7 @@ def test_boost_points_both_guards_at_its_banner(states, choice):
     """probe_magnet and start_run must read the SAME banner — start_run is the
     enforcement point that decides whether the roll actually landed."""
     rt._apply_boost(states, choice)
-    banner = rt._BOOST_PROFILES[choice]["banner"]
+    banner = boostmod.PROFILES[choice]["banner"]
     assert states["probe_magnet"]["detect"] == banner
     assert states["start_run"]["detect"] == banner
 
@@ -59,7 +60,7 @@ def test_boost_points_both_guards_at_its_banner(states, choice):
 @pytest.mark.parametrize("choice", ["magnet", "speed", "doublecoins"])
 def test_boost_buy_taps_match_the_profile(states, choice):
     rt._apply_boost(states, choice)
-    profile = rt._BOOST_PROFILES[choice]
+    profile = boostmod.PROFILES[choice]
     assert _taps(states["buy_magnet"]["on_match"]) == profile["buy_taps"]
     assert _taps(states["picker"]["on_match"]) == [profile["multibuy"]]
 
@@ -86,11 +87,15 @@ def test_boost_none_leaves_the_buy_states_untouched(states, base_states):
     assert states["probe_magnet"]["detect"] == base_states["probe_magnet"]["detect"]
 
 
-def test_every_boost_choice_still_validates_as_a_config(states, choice="magnet"):
+def test_every_boost_choice_still_validates_as_a_config(states):
     """Patched states must keep every goto target defined — a typo in a profile
-    would otherwise only surface as an FsmError mid-run."""
+    would otherwise only surface as an FsmError mid-run.
+
+    Only the ready profiles: the eight still waiting on a banner crop are
+    rejected on purpose (see test_pending_boosts_are_refused).
+    """
     names = set(states)
-    for choice in rt.BOOST_CHOICES:
+    for choice in (*boostmod.ready(), "none"):
         patched = copy.deepcopy(states)
         rt._apply_boost(patched, choice)
         for state in patched.values():
@@ -146,3 +151,12 @@ def test_strip_jump_and_slide_leave_the_goto(states):
     assert "slide" not in _types(states["jump_3"]["on_absent"])
     assert "goto" in _types(states["jump_2"]["on_absent"])
     assert "goto" in _types(states["jump_3"]["on_absent"])
+
+
+@pytest.mark.parametrize("choice", [k for k, p in boostmod.PROFILES.items()
+                                    if not p.get("banner")])
+def test_pending_boosts_are_refused(states, choice):
+    """A profile with no banner has no measured coordinates either — sending taps
+    at guesses is worse than refusing, so it must fail loudly at launch."""
+    with pytest.raises(cfgmod.ConfigError, match="crop the equipped pill"):
+        rt._apply_boost(copy.deepcopy(states), choice)

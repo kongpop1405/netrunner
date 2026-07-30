@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 
 import main as netrunner_main
+from src import boost as boostmod
 from src import config as cfgmod
 from src.device import AdbError
 from src.fsm import Runner
@@ -143,91 +144,18 @@ def _strip_faststart(states: dict) -> None:
         state["on_absent"] = kept
 
 
-#: What each buyable boost needs, lifted from the config that proved it live.
-#: The buy chain's SHAPE is identical for all three (probe -> buy -> picker ->
-#: wait_roll -> start_run -> retry_buy); only these differ, so one skeleton plus
-#: a profile covers every boost instead of a separate config file each.
-#:
-#:   banner    — the equipped-boost pill both probe_magnet and start_run read
-#:   buy_taps  — taps that get from the shop to the open Multi picker
-#:   multibuy  — the picker's Multi-Buy button
-#:
-#: Magnet/Double Coins open on the HP-Upgrade view and need the Random Boost
-#: cell tapped first; the +17% Speed chain (boxrun_ep3) reaches Multi directly.
-_BOOST_PROFILES: dict[str, dict] = {
-    "magnet": {
-        "banner": "magneticaura_banner.png",
-        "buy_taps": [(810, 875), (1645, 340)],
-        "multibuy": (950, 880),
-        "label": "Magnetic Aura",
-    },
-    "speed": {
-        "banner": "speedbase17_banner.png",
-        "buy_taps": [(1649, 337)],
-        "multibuy": (953, 899),
-        "label": "+17% base speed",
-    },
-    "doublecoins": {
-        "banner": "doublecoins_banner.png",
-        "buy_taps": [(755, 875), (1678, 305)],
-        "multibuy": (953, 899),
-        "label": "Double Coins",
-    },
-}
-
-BOOST_CHOICES = (*_BOOST_PROFILES, "none")
-
-
-def _retarget_goto(actions: list[dict], target: str) -> None:
-    for action in actions:
-        if action.get("type") == "goto":
-            action["state"] = target
-
-
 def _apply_boost(states: dict, choice: str) -> None:
-    """Point the buy chain at `choice`, or skip buying entirely for "none".
+    """Retarget the buy chain via src.boost, which owns the profiles now.
 
-    boxrun_toggle.json ships the Magnetic Aura coords as its baseline, so
-    choosing magnet is a no-op; the others swap the banner template the two
-    guard states read and the taps the buy states send. Waits and gotos are left
-    exactly as they are — those are timing, not boost identity.
+    Wraps a states dict in a throwaway Config because apply_boost works on one —
+    the profiles used to live here, which meant only this launcher could pick a
+    boost and only for this one config.
     """
-    if choice == "none":
-        # Same path the old `--magnet n` took: never enter the buy chain.
-        for name in ("await_shop", "boost_shop"):
-            _retarget_goto(states[name]["on_match"], "check_heart")
-        return
+    from src.config import Config
 
-    profile = _BOOST_PROFILES[choice]
-
-    for name in ("probe_magnet", "start_run"):
-        states[name]["detect"] = profile["banner"]
-
-    taps = iter(profile["buy_taps"])
-    rebuilt: list[dict] = []
-    drop_next_wait = False
-    for action in states["buy_magnet"]["on_match"]:
-        if drop_next_wait and action.get("type") == "wait":
-            # The wait existed to let the dropped tap's screen settle.
-            drop_next_wait = False
-            continue
-        drop_next_wait = False
-        if action.get("type") == "tap_xy":
-            nxt = next(taps, None)
-            if nxt is None:
-                # Fewer taps than the baseline — the +17% speed chain reaches
-                # Multi directly instead of opening the Random Boost cell first.
-                drop_next_wait = True
-                continue
-            action = {**action, "x": nxt[0], "y": nxt[1]}
-        rebuilt.append(action)
-    states["buy_magnet"]["on_match"] = rebuilt
-
-    mb_x, mb_y = profile["multibuy"]
-    for action in states["picker"]["on_match"]:
-        if action.get("type") == "tap_xy":
-            action["x"], action["y"] = mb_x, mb_y
-            break
+    shim = Config(device=None, templates_dir=".", poll_ms=1, match_threshold=0.85,
+                  start_state=next(iter(states)), states=states)
+    boostmod.apply_boost(shim, choice)
 
 
 def _strip_jump(states: dict) -> None:
@@ -267,9 +195,10 @@ def _yn(v: str) -> bool:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="boxrun_toggle launcher")
     ap.add_argument("--faststart", type=_yn, required=True)
-    ap.add_argument("--boost", choices=BOOST_CHOICES, required=True,
+    ap.add_argument("--boost", choices=boostmod.CHOICES, required=True,
                     help="which boost to Multi-Buy before each run "
-                         "('none' skips the buy chain, as --magnet n used to)")
+                         "('none' skips the buy chain). "
+                         + boostmod.describe_choices())
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
     ap.add_argument("--relay", type=_yn, required=True)

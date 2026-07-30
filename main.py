@@ -15,6 +15,7 @@ import sys
 
 from dotenv import load_dotenv
 
+from src import boost as boostmod
 from src import config as cfgmod
 from src.alert import setup_file_logging
 from src.device import AdbError, Device, connect, list_devices
@@ -146,6 +147,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", help="path to a farm FSM config JSON")
     ap.add_argument("--device", help="adb address (127.0.0.1:5555) or serial; "
                                      "overrides config's device")
+    ap.add_argument("--boost", default=None,
+                    help="which boost to Multi-Buy before each run, for configs "
+                         "with a labelled buy chain ('none' skips buying). "
+                         + boostmod.describe_choices())
     ap.add_argument("--dry-run", action="store_true",
                     help="run the FSM but send no taps (validate a config live)")
     ap.add_argument("--max-cycles", type=int, default=None,
@@ -229,6 +234,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {msg}", file=sys.stderr)
         return 2
     logging.getLogger("netrunner").info("device: %s  adb: %s", address, adb)
+
+    if args.boost:
+        try:
+            boostmod.apply_boost(cfg, args.boost)
+        except cfgmod.ConfigError as e:
+            logging.getLogger("netrunner").error("boost error: %s", e)
+            print(f"boost error: {e}", file=sys.stderr)
+            return 2
+        logging.getLogger("netrunner").info("boost: %s", args.boost)
 
     if args.start_state:
         if args.start_state not in cfg.states:
