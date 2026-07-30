@@ -152,7 +152,7 @@
       "timeout_ms": 10000
     },
     "wait_roll": {
-      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until +17% base speed lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (speed-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe.",
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until +17% base speed lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (speed-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
       "detect": "rollstop_marker.png",
       "on_match": [
         {
@@ -167,7 +167,8 @@
       "on_absent": {
         "goto": "start_run"
       },
-      "timeout_ms": 60000
+      "timeout_ms": 60000,
+      "match_timeout_ms": 90000
     },
     "check_boost_result": {
       "_note": "Auto-roll finished, picker closed back to the boost shop. Check 'Not enough Coins!' first (balance ran dry mid-roll) -> cancel. Otherwise read the pill in start_run. We do NOT re-roll here — the game rolled to completion.",
@@ -635,27 +636,13 @@
       "on_match": [
         {
           "type": "goto",
-          "state": "mb_gate"
+          "state": "mb_open"
         }
       ],
       "on_absent": {
         "goto": "home"
       },
       "timeout_ms": 20000
-    },
-    "mystery_box_reveal": {
-      "_note": "Reward reveal can show MULTIPLE ingredients — one Confirm tap only advances to the next item. Self-loop: keep tapping Confirm (959,960) while the 'Mystery Box' title is still up; fall through to mystery_box_recheck once it's gone.",
-      "detect": "mysterybox_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "mb_reveal_gate"
-        }
-      ],
-      "on_absent": {
-        "goto": "mystery_box_recheck"
-      },
-      "timeout_ms": 15000
     },
     "mystery_box_recheck": {
       "_note": "After collecting the box: Play! visible -> home is clear, continue the loop. Not visible -> something still covers it; go through probe_sendlife, never blind-tap.",
@@ -821,252 +808,6 @@
         "goto": "home"
       },
       "timeout_ms": 30000
-    },
-    "mb_gate": {
-      "_note": "Mystery Box screen has (at least) two layouts: a single 'Open all' button (960,965) that opens every box at once, and an older tap-the-box-directly layout (960,540) for a lone/first box. Tapping only one coord could miss the other layout and leave mysterybox_marker matching forever (timeout only fires on the ABSENT path, so a match that never changes has no built-in escape) -> observed live hanging on this screen. Tap BOTH every pass: Open-all first, then box-center, each with its own settle wait, before re-checking via mystery_box_reveal. Harmless if one coord hits nothing.",
-      "detect": "inactive_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
-        },
-        {
-          "type": "goto",
-          "state": "recover_login"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "relay_tap"
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "goto",
-          "state": "mystery_box_reveal"
-        }
-      ],
-      "timeout_ms": 6000
-    },
-    "mb_reveal_gate": {
-      "_note": "Reveal retry chain step 1/6 (escape hatch). Dual-tap Open-all(960,965) + Confirm(959,960), then hand to retry_2 rather than looping straight back to mystery_box_reveal forever — bounds the whole reveal loop to 6 passes max.",
-      "detect": "inactive_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 953,
-          "y": 690
-        },
-        {
-          "type": "wait",
-          "ms": 4000
-        },
-        {
-          "type": "goto",
-          "state": "recover_login"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "goto",
-          "state": "mb_reveal_retry_2"
-        }
-      ],
-      "timeout_ms": 6000
-    },
-    "mb_reveal_retry_2": {
-      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
-      "detect": "mysterybox_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "goto",
-          "state": "mystery_box_reveal"
-        }
-      ],
-      "on_absent": {
-        "goto": "mystery_box_recheck"
-      },
-      "timeout_ms": 6000
-    },
-    "mb_reveal_retry_3": {
-      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
-      "detect": "mysterybox_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "goto",
-          "state": "mystery_box_reveal"
-        }
-      ],
-      "on_absent": {
-        "goto": "mystery_box_recheck"
-      },
-      "timeout_ms": 6000
-    },
-    "mb_reveal_retry_4": {
-      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
-      "detect": "mysterybox_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "goto",
-          "state": "mystery_box_reveal"
-        }
-      ],
-      "on_absent": {
-        "goto": "mystery_box_recheck"
-      },
-      "timeout_ms": 6000
-    },
-    "mb_reveal_retry_5": {
-      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_reveal rather than looping forever.",
-      "detect": "mysterybox_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "goto",
-          "state": "mystery_box_reveal"
-        }
-      ],
-      "on_absent": {
-        "goto": "mystery_box_recheck"
-      },
-      "timeout_ms": 6000
-    },
-    "mb_reveal_retry_6": {
-      "_note": "Reveal retry chain (escape hatch): mysterybox_marker can theoretically stay matched forever if neither tap coord (Open-all 960,965 / per-item Confirm 959,960) hits the right spot for an unseen 3rd layout — timeout only fires on the ABSENT path, so a stuck MATCH has no built-in exit. This bounded chain caps it at 6 total dual-taps before giving up and moving on to mystery_box_recheck rather than looping forever.",
-      "detect": "mysterybox_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 965
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "tap_xy",
-          "x": 959,
-          "y": 960
-        },
-        {
-          "type": "wait",
-          "ms": 900
-        },
-        {
-          "type": "goto",
-          "state": "mystery_box_recheck"
-        }
-      ],
-      "on_absent": {
-        "goto": "mystery_box_recheck"
-      },
-      "timeout_ms": 6000
     },
     "verify_no_sendlife": {
       "_note": "Second Play-tap gate. A 'Send <name> a free Life?' dialog can sit ON TOP of home (or the boost shop) while Play! still scores 1.00 through it, same class of bug as the inactive-popup gate. Present -> Cancel (727,688 — gray/left, NEVER Confirm 1189,687) -> back to home to re-check. Absent -> no popup at all -> run the real Play tap (original verify_no_popup.on_absent body, unchanged).",
@@ -1254,6 +995,48 @@
         }
       ],
       "timeout_ms": 15000
+    },
+    "mb_open": {
+      "_note": "Mystery Box screen — one self-looping dismiss state (replaces the mb_gate/mystery_box_reveal/mb_reveal_gate/mb_reveal_retry_2..6 chain, which claimed to cap at 6 dual-taps but retry_2 looped straight back to mystery_box_reveal so _3.._6 were dead and the loop was unbounded; mb_gate/mb_reveal_gate also detected inactive_marker while their notes described the Mystery Box screen). Each pass taps Open-all (960,965), box-center (960,540) and per-item Confirm (959,960) — covers both known layouts, a tap that hits nothing is harmless. Marker gone -> mystery_box_recheck. match_timeout_ms is the REAL bound on a stuck MATCH (timeout_ms only fires on the absent path). An inactive popup here covers the marker -> absent path -> recheck -> home's probe chain reaches recover_login, so the per-pass inactive check the old gates did is redundant.",
+      "detect": "mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 965
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "tap_xy",
+          "x": 959,
+          "y": 960
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "mb_open"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box_recheck"
+      },
+      "match_timeout_ms": 25000,
+      "timeout_ms": 8000
     }
   }
 }
