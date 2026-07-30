@@ -20,4 +20,4 @@ were archived to trim the active set, not because anything is wrong with them.
 back up to `config/cookierun/` to reactivate it — nothing else needs changing,
 the engine finds it by path.
 
-The full per-config flow diagrams are in `docs/flow/FLOW_boxfarm-per-config.html`.
+The full per-config flow diagrams are in `docs/flow/FLOW_bots.html`.
