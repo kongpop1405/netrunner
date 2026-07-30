@@ -9,4 +9,6 @@ install-log.txt
 captures/
 snaps/
 snap_*.png
+unknown_screens/
+docs/reports/runs.html
 .env

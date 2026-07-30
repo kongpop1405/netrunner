@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
+
+import cv2
 
 from .act import ActError, Actor
-from .alert import send_alert
+from .alert import send_alert, send_alert_with_image
 from .capture import grab
 from .config import Config, detect_names
 from .device import AdbError, Device
@@ -44,12 +47,15 @@ class FsmError(RuntimeError):
 
 
 class Runner:
-    def __init__(self, cfg: Config, device: Device, *, webhook_url: str | None = None):
+    def __init__(self, cfg: Config, device: Device, *,
+                 webhook_url: str | None = None,
+                 unknown_dir: str | Path = "unknown_screens"):
         self.cfg = cfg
         self.device = device
         self.store = TemplateStore(cfg.templates_dir)
         self.actor: Actor  # set in run()
         self.webhook_url = webhook_url
+        self.unknown_dir = Path(unknown_dir)
 
     def run(self, *, dry_run: bool = False, max_cycles: int | None = None) -> None:
         self.actor = Actor(
@@ -167,6 +173,10 @@ class Runner:
 
                 if did_transition:
                     absent_streak = 0
+                    # INFO (not debug) so an unattended run's rotated log carries
+                    # the full state trace — tools/report_runs.py counts runs,
+                    # boxes and stalls from these lines alone.
+                    log.info("transition %s -> %s", prev_state, state)
                 if acted:
                     frame = None  # taps/waits changed the screen -> stale
                     no_act_streak = 0
@@ -191,6 +201,7 @@ class Runner:
                         f"State `{state}` unchanged for {same_state_streak} consecutive polls "
                         f"(device {self.device.serial}).",
                     )
+                    self._archive_unknown(frame, state)
                     stuck_alerted = True
                 # ping-pong livelock: states keep changing (so the same-state counter
                 # never trips) but nothing on screen is ever acted on — e.g. a goto
@@ -206,6 +217,7 @@ class Runner:
                         f"No screen action for {no_act_streak} consecutive polls while "
                         f"cycling through `{cycle}` (device {self.device.serial}).",
                     )
+                    self._archive_unknown(frame, state)
                     no_act_alerted = True
 
                 if did_transition:
@@ -244,6 +256,31 @@ class Runner:
                 critical=True,
             )
             raise
+
+    def _archive_unknown(self, frame, state: str) -> None:
+        """Save the screen the loop is stuck on + push it to Discord.
+
+        Piggybacks the livelock alerts' one-shot flags, so it fires once per
+        stuck episode. The saved PNG is the raw material for the next popup
+        template (crop it, add a probe state) — and for the first real captcha
+        frame. Best-effort: archiving must never crash the run.
+        """
+        try:
+            if frame is None:
+                frame = grab(self.device)
+            self.unknown_dir.mkdir(parents=True, exist_ok=True)
+            path = self.unknown_dir / f"{time.strftime('%Y%m%d_%H%M%S')}_{state}.png"
+            cv2.imwrite(str(path), frame)
+            log.info("archived unrecognized screen -> %s", path)
+            send_alert_with_image(
+                self.webhook_url,
+                "NetRunner: unrecognized screen",
+                f"Loop stuck around `{state}` (device {self.device.serial}) — "
+                f"frame archived to `{path.name}` for template cropping.",
+                path,
+            )
+        except Exception as e:  # noqa: BLE001 — observability must not kill the farm
+            log.warning("could not archive unknown screen: %s", e)
 
     @staticmethod
     def _match_timeout_target(spec: dict) -> str | None:
