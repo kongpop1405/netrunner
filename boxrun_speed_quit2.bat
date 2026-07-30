@@ -35,7 +35,7 @@ echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_boxrun_speed_quit2.py --launch
+%PY% tools\boxrun_speed_quit2.py --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

@@ -98,34 +98,34 @@
 <table>
   <thead><tr><th>Launcher (.bat)</th><th>Config</th><th style="width:70px">States</th><th>กลุ่ม</th><th>งาน</th></tr></thead>
   <tbody>
-    <tr><td><span class="fname">run_boxrun.bat</span></td><td><code>boxrun_toggle.json</code></td><td>62</td>
+    <tr><td><span class="fname">boxrun_toggle.bat</span></td><td><code>boxrun_toggle.json</code></td><td>62</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
       <td>Mystery Box farm — <b>ถาม flag ตอนรัน</b> (boost/jump/slide/relay/quit) + pacing/reset/lives เปิดครบ</td></tr>
-    <tr><td><span class="fname">run_boxrun_speed.bat</span></td><td><code>boxrun_speed.json</code></td><td>48</td>
+    <tr><td><span class="fname">boxrun_speed.bat</span></td><td><code>boxrun_speed.json</code></td><td>48</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
-      <td>Episode 3 · boost = <code>speed</code> · relay ✓ · quit เมื่อได้กล่อง</td></tr>
-    <tr><td><span class="fname">run_boxrun_speed_quit2.bat</span></td><td><code>boxrun_speed_quit2.json</code></td><td>47</td>
+      <td>boost = <code>speed</code> · relay ✓ · quit เมื่อได้กล่อง</td></tr>
+    <tr><td><span class="fname">boxrun_speed_quit2.bat</span></td><td><code>boxrun_speed_quit2.json</code></td><td>47</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
-      <td>Episode 4 · boost = <code>speed</code> (variant ของ ep6, quit-after-2)</td></tr>
-    <tr><td><span class="fname">run_boxrun_passive.bat</span></td><td><code>boxrun_passive.json</code></td><td>36</td>
+      <td>boost = <code>speed</code> · quit-after-2</td></tr>
+    <tr><td><span class="fname">boxrun_passive.bat</span></td><td><code>boxrun_passive.json</code></td><td>36</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
-      <td>Episode 5 · เล่นจนตาย (no early quit) · ไม่มี buy chain (await_shop → check_heart ตรง)</td></tr>
-    <tr><td><span class="fname">run_boxrun_magnet.bat</span></td><td><code>boxrun_magnet.json</code></td><td>45</td>
+      <td>passive guard-loop · ไม่มี buy chain · quit ที่ box target</td></tr>
+    <tr><td><span class="fname">boxrun_magnet.bat</span></td><td><code>boxrun_magnet.json</code></td><td>45</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
-      <td>Episode 6 (Plum Blossom) · boost = <code>magnet</code> (Magnetic Aura) · เล่นจนตาย</td></tr>
-    <tr><td><span class="fname">run_boxrun_speed_noquit.bat</span></td><td><code>boxrun_speed_noquit.json</code></td><td>47</td>
+      <td>boost = <code>magnet</code> (Magnetic Aura) · jump-hop · เล่นจนตาย</td></tr>
+    <tr><td><span class="fname">boxrun_speed_noquit.bat</span></td><td><code>boxrun_speed_noquit.json</code></td><td>47</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
       <td>Clone ของ ep3 · <b>ไม่ relay, ไม่ quit</b> — เล่นยาวไม่มี early bail</td></tr>
-    <tr><td><span class="fname">run_coinrun.bat</span></td><td><code>coinrun.json</code></td><td>47</td>
+    <tr><td><span class="fname">coinrun.bat</span></td><td><code>coinrun.json</code></td><td>47</td>
       <td><span class="pill v"><span class="d"></span>box-farm</span></td>
       <td>เหมือน box-farm แต่ boost = <code>doublecoins</code> — เก็บเหรียญ ไม่ใช่กล่อง</td></tr>
-    <tr><td><span class="fname">run_giftdraw.bat</span></td><td><code>giftdraw.json</code></td><td>13</td>
+    <tr><td><span class="fname">giftdraw.bat</span></td><td><code>giftdraw.json</code></td><td>13</td>
       <td><span class="pill u"><span class="d"></span>utility</span></td>
       <td>เปิด Gift Draw box รัว ๆ จนหมด แล้ว stop</td></tr>
-    <tr><td><span class="fname">run_sendlife.bat</span></td><td><code>sendlife.json</code></td><td>16</td>
+    <tr><td><span class="fname">sendlife.bat</span></td><td><code>sendlife.json</code></td><td>16</td>
       <td><span class="pill u"><span class="d"></span>utility</span></td>
       <td>ส่ง life ให้เพื่อนทั้ง friends list แล้ว stop</td></tr>
-    <tr><td><span class="fname">run_addfriend.bat</span></td><td><code>addfriend.json</code></td><td>15</td>
+    <tr><td><span class="fname">addfriend.bat</span></td><td><code>addfriend.json</code></td><td>15</td>
       <td><span class="pill u"><span class="d"></span>utility</span></td>
       <td>Find tab → refresh → ส่ง request ทีละแถว วนจนครบ</td></tr>
   </tbody>
@@ -133,7 +133,7 @@
 </div>
 <div class="note">
   <b>6 box-farm ใช้ spine เดียวกัน</b> — โครง state เหมือน 90% ต่างแค่ episode ที่เลือก, boost ที่ซื้อ,
-  และ quit/relay ที่เปิด. ดูโฟลวรวมใน section 02. <code>run_boxrun.bat</code> พิเศษ: ถาม flag ตอนรัน
+  และ quit/relay ที่เปิด. ดูโฟลวรวมใน section 02. <code>boxrun_toggle.bat</code> พิเศษ: ถาม flag ตอนรัน
   (ผ่าน <code>tools/run_toggle.py</code>) แทน hardcode ใน config.
 </div>
 </section>
@@ -277,21 +277,25 @@
 <h3>ต่าง variant ตรงไหน</h3>
 <div class="tw">
 <table>
-  <thead><tr><th>Variant</th><th>Episode</th><th>Boost (probe/buy)</th><th>Relay</th><th>Quit เร็ว</th><th>buy chain?</th></tr></thead>
+  <thead><tr><th>Config</th><th>Boost</th><th>In-run</th><th>Relay</th><th>Quit เร็ว</th><th>buy chain?</th></tr></thead>
   <tbody>
-    <tr><td><code>ep3</code></td><td>3</td><td>speed (+17%)</td><td>✓</td><td>ได้กล่อง</td><td>✓</td></tr>
-    <tr><td><code>ep4</code></td><td>4</td><td>speed</td><td>✓</td><td>quit-after-2</td><td>✓</td></tr>
-    <tr><td><code>ep5</code></td><td>5</td><td>—</td><td>✓</td><td>เล่นจนตาย</td><td>✗ (ตรง check_heart)</td></tr>
-    <tr><td><code>ep6</code></td><td>6</td><td>magnet</td><td>✓</td><td>เล่นจนตาย</td><td>✓</td></tr>
-    <tr><td><code>norelay_noquit</code></td><td>3</td><td>speed</td><td>✗</td><td>ไม่ quit</td><td>✓</td></tr>
-    <tr><td><code>coinrun</code></td><td>—</td><td>doublecoins</td><td>✓</td><td>—</td><td>✓</td></tr>
-    <tr><td><code>toggle</code></td><td>ตั้ง home ก่อน</td><td>ถามตอนรัน</td><td>ถาม</td><td>ถาม</td><td>✓</td></tr>
+    <tr><td><code>boxrun_magnet</code></td><td>magnet</td><td>jump-hop</td><td>✓</td><td>เล่นจนตาย</td><td>✓</td></tr>
+    <tr><td><code>boxrun_speed</code></td><td>speed (+17%)</td><td>jump-hop</td><td>✓</td><td>ได้กล่อง</td><td>✓</td></tr>
+    <tr><td><code>boxrun_speed_quit2</code></td><td>speed</td><td>jump-hop</td><td>✓</td><td>quit-after-2</td><td>✓</td></tr>
+    <tr><td><code>boxrun_speed_noquit</code></td><td>speed</td><td>jump-hop</td><td>✗</td><td>ไม่ quit</td><td>✓</td></tr>
+    <tr><td><code>boxrun_passive</code></td><td>—</td><td>guard loop</td><td>✗</td><td>box target</td><td>✗ (ตรง check_heart)</td></tr>
+    <tr><td><code>boxrun_passive_3boost</code></td><td>3 tiles</td><td>guard loop</td><td>✗</td><td>box target</td><td>✓</td></tr>
+    <tr><td><code>boxrun_magnet_quit3</code></td><td>magnet</td><td>guard loop</td><td>✗</td><td>3 boxes</td><td>✓</td></tr>
+    <tr><td><code>coinrun</code></td><td>doublecoins</td><td>jump-hop</td><td>✓</td><td>—</td><td>✓</td></tr>
+    <tr><td><code>boxrun_toggle</code></td><td>ถามตอนรัน</td><td>jump-hop</td><td>ถาม</td><td>ถาม</td><td>✓</td></tr>
   </tbody>
 </table>
 </div>
 <div class="note warn">
-  <b>ทุก box-farm ต้องเลือก episode บน home ก่อนรัน</b> (config แค่ tap Play!). ใช้
-  <code>tools/switch_episode.py --episode N</code> สลับได้จาก CLI (ทีม emulator เพิ่ง add).
+  <b>ทุก box-farm เล่น episode ไหนก็ได้</b> — config แค่ tap Play! เลยเล่น ep ที่ค้างบน home.
+  ชื่อ config ตั้งตาม<b>การทำงาน</b> (boost + behavior) ไม่ผูก ep. สลับ ep ด้วย
+  <code>tools/switch_episode.py --episode N</code>. <b>ข้อยกเว้น:</b> <code>boxrun_magnet_quit3</code>
+  ผูก ep6 box-counter template — episode อื่น counter อาจไม่ match.
 </div>
 </section>
 
@@ -302,7 +306,7 @@
   ต่างจาก box-farm: <b>ทำงานจนหมดแล้วหยุด</b> (ไม่วน farm ต่อ). ไม่มี boost/heart/run.
 </p>
 
-<h3>Gift Draw <span class="fname">(run_giftdraw.bat)</span></h3>
+<h3>Gift Draw <span class="fname">(giftdraw.bat)</span></h3>
 <div class="fig">
   <svg viewBox="0 0 720 130" xmlns="http://www.w3.org/2000/svg" role="img"
        aria-label="Gift draw: draw, pick box, reward, loop until done then stop">
@@ -321,7 +325,7 @@
   </svg>
 </div>
 
-<h3>Send Life <span class="fname">(run_sendlife.bat)</span></h3>
+<h3>Send Life <span class="fname">(sendlife.bat)</span></h3>
 <div class="fig">
   <svg viewBox="0 0 720 150" xmlns="http://www.w3.org/2000/svg" role="img"
        aria-label="Send life: scan for icon, confirm, message sent, loop; when none scroll; bottom of list stops">
@@ -346,10 +350,10 @@
 <div class="note">
   <b>Send Life ถูก graft เข้า box-farm แล้ว</b> (Phase 5) เป็น <code>lives_*</code> states ใน
   <code>boxrun_toggle.json</code> — เรียกทุก 25–35 นาทีระหว่าง farm ผ่าน <code>periodic_routines</code>.
-  <code>run_sendlife.bat</code> = รันแยกครั้งเดียวจบ.
+  <code>sendlife.bat</code> = รันแยกครั้งเดียวจบ.
 </div>
 
-<h3>Add Friend <span class="fname">(run_addfriend.bat)</span></h3>
+<h3>Add Friend <span class="fname">(addfriend.bat)</span></h3>
 <div class="fig">
   <svg viewBox="0 0 720 120" xmlns="http://www.w3.org/2000/svg" role="img"
        aria-label="Add friend: open Find tab, refresh, request each row, loop refresh">

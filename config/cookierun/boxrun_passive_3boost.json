@@ -1,5 +1,5 @@
 {
-  "_comment": "boxrun_magnet_v2 — Mystery Box farm, buys 3 boosts (HP potion + clock + x2) each run, passive run, quits at box target. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. PRECONDITION: Episode 6 selected on home. Loop: home->Play->await_shop->buy_boosts(340/570/800,655)->check_heart(Play+FastStart spam)->run(no control)->check_box(x3?->quit_run | else die)->result->box->home.",
+  "_comment": "boxrun_passive_3boost — Mystery Box farm, buys 3 top-row shop boosts (HP potion + clock + x2, 800 coins each) every run, passive guard-loop run (no jump/slide/relay, auto-play only), quits at the box target. Like boxrun_passive (passive run, no early jump) but WITH boost purchase; unrelated to boxrun_magnet (that one rolls Magnetic Aura + jump-hops). Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. Loop: home->Play->await_shop->buy_boosts(340/570/800,655)->check_heart(Play+FastStart spam)->run(no control)->check_box(target?->quit_run | else die)->result->box->home.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,

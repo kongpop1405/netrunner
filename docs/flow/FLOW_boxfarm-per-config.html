@@ -76,16 +76,17 @@
   <div class="toprow">
     <div>
       <h1>NetRunner — Box-Farm โฟลวรายตัว</h1>
-      <div class="sub">7 config · แยกโครง state ต่อตัว · จุดต่างจริงจาก config ณ 2026-07-30</div>
+      <div class="sub">8 config · แยกโครง state ต่อตัว · ตั้งชื่อตามการทำงาน (ไม่ผูก episode) · ณ 2026-07-31</div>
     </div>
     <button class="toggle" onclick="var r=document.documentElement;
       r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';
       this.textContent=r.dataset.theme==='dark'?'☾ Dark':'☀ Light';">☀ Light</button>
   </div>
   <nav class="toc">
-    <a href="#cmp">เทียบ 7 ตัว</a>
-    <a href="#ep6">ep6</a><a href="#ep3">ep3</a><a href="#ep4">ep4</a>
-    <a href="#ep5">ep5</a><a href="#nq">norelay_noquit</a>
+    <a href="#cmp">เทียบ 8 ตัว</a>
+    <a href="#magnet">magnet</a><a href="#speed">speed</a><a href="#speed_quit2">speed_quit2</a>
+    <a href="#speed_noquit">speed_noquit</a><a href="#passive">passive</a>
+    <a href="#passive_3boost">passive_3boost</a><a href="#magnet_quit3">magnet_quit3</a>
     <a href="#coin">coinrun</a><a href="#tog">toggle</a>
   </nav>
 </header>
@@ -98,34 +99,38 @@
 
 <!-- ═══════════ COMPARISON ═══════════ -->
 <section id="cmp">
-<h2>เทียบ 7 ตัว</h2>
+<h2>เทียบ 8 ตัว</h2>
 <div class="tw">
 <table>
-  <thead><tr><th>Config</th><th>Ep</th><th>Boost</th><th>In-run</th><th>Relay</th><th>Quit</th><th>States</th></tr></thead>
+  <thead><tr><th>Config</th><th>Boost</th><th>In-run</th><th>Relay</th><th>Quit</th><th>Launcher</th><th>States</th></tr></thead>
   <tbody>
-    <tr><td><code>boxrun_magnet</code></td><td>6</td><td><b>magnet</b></td><td>jump hops</td><td>✓</td><td>เล่นจนตาย</td><td>45</td></tr>
-    <tr><td><code>boxrun_speed</code></td><td>3</td><td><b>speed</b></td><td>jump hops</td><td>✓</td><td><b>early</b> (ได้กล่อง)</td><td>48</td></tr>
-    <tr><td><code>boxrun_speed_quit2</code></td><td>4</td><td><b>speed</b></td><td>jump hops</td><td>✓</td><td><b>early</b> (after-2)</td><td>47</td></tr>
-    <tr><td><code>boxrun_passive</code></td><td>5</td><td>none</td><td><b>guard loop</b></td><td>✗</td><td><b>early</b> (check_box2)</td><td>36</td></tr>
-    <tr><td><code>boxrun_speed_noquit</code></td><td>3</td><td><b>speed</b></td><td>jump hops</td><td><b>✗</b></td><td><b>ไม่ quit</b></td><td>47</td></tr>
-    <tr><td><code>coinrun</code></td><td>—</td><td><b>doublecoins</b></td><td>jump hops</td><td>✓</td><td>เล่นจนตาย</td><td>47</td></tr>
-    <tr><td><code>boxrun_toggle</code></td><td>ตั้งเอง</td><td><b>ถามตอนรัน</b></td><td>jump hops</td><td>ถาม</td><td>ถาม</td><td>62</td></tr>
+    <tr><td><code>boxrun_magnet</code></td><td><b>magnet</b></td><td>jump hops</td><td>✓</td><td>เล่นจนตาย</td><td>boxrun_magnet</td><td>45</td></tr>
+    <tr><td><code>boxrun_speed</code></td><td><b>speed</b></td><td>jump hops</td><td>✓</td><td><b>early</b> (ได้กล่อง)</td><td>boxrun_speed</td><td>48</td></tr>
+    <tr><td><code>boxrun_speed_quit2</code></td><td><b>speed</b></td><td>jump hops</td><td>✓</td><td><b>early</b> (after-2)</td><td>boxrun_speed_quit2</td><td>47</td></tr>
+    <tr><td><code>boxrun_speed_noquit</code></td><td><b>speed</b></td><td>jump hops</td><td><b>✗</b></td><td><b>ไม่ quit</b></td><td>boxrun_speed_noquit</td><td>47</td></tr>
+    <tr><td><code>boxrun_passive</code></td><td>none</td><td><b>guard loop</b></td><td>✗</td><td><b>early</b> (check_box2)</td><td>boxrun_passive</td><td>36</td></tr>
+    <tr><td><code>boxrun_passive_3boost</code></td><td><b>3 boosts</b> (HP+clock+x2)</td><td>guard loop</td><td>✗</td><td>early (box target)</td><td><span style="color:var(--faint)">— (main.py)</span></td><td>35</td></tr>
+    <tr><td><code>boxrun_magnet_quit3</code></td><td><b>magnet</b></td><td>guard loop</td><td>✗</td><td>early (3 boxes)</td><td><span style="color:var(--faint)">— (main.py)</span></td><td>37</td></tr>
+    <tr><td><code>coinrun</code></td><td><b>doublecoins</b></td><td>jump hops</td><td>✓</td><td>เล่นจนตาย</td><td>coinrun</td><td>47</td></tr>
+    <tr><td><code>boxrun_toggle</code></td><td><b>ถามตอนรัน</b></td><td>jump hops</td><td>ถาม</td><td>ถาม</td><td>boxrun_toggle (toggle)</td><td>62</td></tr>
   </tbody>
 </table>
 </div>
 <div class="note">
-  <b>2 โครง in-run:</b> <span style="color:var(--gn)">jump hops</span> (6 ตัว) = <code>jump_2→jump_3→jump_4</code>
-  วน J→S→J แต่ละ hop tap relay + เช็ค result · <span style="color:var(--cy)">guard loop</span> (ep5 ตัวเดียว) =
-  <code>running↔guard_not_*↔check_box</code> ไม่มี jump เลย (พึ่ง auto-play + guard เช็ค popup ระหว่างรัน).
+  <b>2 โครง in-run:</b> <span style="color:var(--gn)">jump hops</span> (5 ตัว: magnet/speed*/coinrun/toggle) =
+  <code>jump_2→jump_3→jump_4</code> วน J→S→J แต่ละ hop tap relay + เช็ค result ·
+  <span style="color:var(--cy)">guard loop</span> (3 ตัว: passive/passive_3boost/magnet_quit3) =
+  <code>running↔guard_not_*↔check_box</code> ไม่มี jump เลย (พึ่ง auto-play + guard เช็ค popup ระหว่างรัน).<br>
+  <b>2 ตัวไม่มี .bat launcher</b> (passive_3boost / magnet_quit3) — รันตรง <code>python main.py --config config/cookierun/&lt;name&gt;.json --launch</code>.
 </div>
 </section>
 
-<!-- ═══════════ ep6 (baseline) ═══════════ -->
-<section id="ep6">
-<h2><span class="fname">run_boxrun_magnet.bat</span></h2>
-<div class="tags"><span class="tag ep">Episode 6</span><span class="tag bo">boost: magnet</span>
+<!-- ═══════════ magnet (baseline) ═══════════ -->
+<section id="magnet">
+<h2><span class="fname">boxrun_magnet.bat</span></h2>
+<div class="tags"><span class="tag bo">boost: magnet</span>
   <span class="tag rl">relay ✓</span><span class="tag q0">เล่นจนตาย</span><span class="tag st">45 states</span></div>
-<p class="lead">Baseline ของกลุ่ม jump-hops. Plum Blossom Palace · ซื้อ Magnetic Aura ทุก run · เล่นจนตายเก็บกล่อง.</p>
+<p class="lead">Baseline ของกลุ่ม jump-hops · ซื้อ Magnetic Aura ทุก run · เล่นจนตายเก็บกล่อง · ep ไหนก็ได้.</p>
 <div class="fig">
   <svg viewBox="0 0 900 340" role="img" aria-label="ep6 flow: home to play, buy magnet, heart, jump hop cycle, mystery box">
     <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
@@ -183,12 +188,12 @@
 <div class="diff"><b>vs baseline:</b> ตัวนี้คือ baseline — ตัวอื่นเทียบกับมัน</div>
 </section>
 
-<!-- ═══════════ ep3 ═══════════ -->
-<section id="ep3">
-<h2><span class="fname">run_boxrun_speed.bat</span></h2>
-<div class="tags"><span class="tag ep">Episode 3</span><span class="tag bo">boost: speed</span>
+<!-- ═══════════ speed ═══════════ -->
+<section id="speed">
+<h2><span class="fname">boxrun_speed.bat</span></h2>
+<div class="tags"><span class="tag bo">boost: speed</span>
   <span class="tag rl">relay ✓</span><span class="tag q1">early quit</span><span class="tag st">48 states</span></div>
-<p class="lead">โครงเหมือน ep6 เป๊ะ — เปลี่ยน 2 จุด: boost = <b>+17% speed</b> และ <b>quit เร็ว</b> พอได้กล่อง.</p>
+<p class="lead">โครงเหมือน boxrun_magnet เป๊ะ — เปลี่ยน 2 จุด: boost = <b>+17% speed</b> และ <b>quit เร็ว</b> พอได้กล่อง.</p>
 <div class="fig">
   <svg viewBox="0 0 720 110" role="img" aria-label="ep3 diff: speed boost and early quit via check_box">
     <defs><marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
@@ -209,16 +214,16 @@
   <p class="lead"><code>buy_speed</code> แตะ Multi-Buy โดยตรง (ไม่ต้องเปิด Random Boost cell ก่อน = ประหยัด 1 tap+wait เทียบ magnet) ·
     <code>check_box</code> absent → running (ยังไม่ได้กล่อง เล่นต่อ), เจอ box → <code>quit_run</code> บีบออกทาง pause menu บันทึกกล่อง</p>
 </div>
-<div class="diff"><b>vs ep6:</b> boost <code>magnet→speed</code> (buy_speed แตะ Multi ตรง 1 tap แทน 2) · เพิ่ม <code>check_box → quit_run</code> = เจอกล่องแล้ว<b>ควิทเลย</b> ไม่เล่นจนตาย</div>
+<div class="diff"><b>vs boxrun_magnet:</b> boost <code>magnet→speed</code> (buy_speed แตะ Multi ตรง 1 tap แทน 2) · เพิ่ม <code>check_box → quit_run</code> = เจอกล่องแล้ว<b>ควิทเลย</b> ไม่เล่นจนตาย</div>
 </section>
 
-<!-- ═══════════ ep4 ═══════════ -->
-<section id="ep4">
-<h2><span class="fname">run_boxrun_speed_quit2.bat</span></h2>
-<div class="tags"><span class="tag ep">Episode 4</span><span class="tag bo">boost: speed</span>
+<!-- ═══════════ speed_quit2 ═══════════ -->
+<section id="speed_quit2">
+<h2><span class="fname">boxrun_speed_quit2.bat</span></h2>
+<div class="tags"><span class="tag bo">boost: speed</span>
   <span class="tag rl">relay ✓</span><span class="tag q1">quit-after-2</span><span class="tag st">47 states</span></div>
-<p class="lead">Variant ของ ep6 (โครง jump-hops + speed boost) แต่ควิทหลังได้ <b>2 กล่อง</b> ต่อ session.</p>
-<div class="diff"><b>vs ep3:</b> เหมือนกันเกือบหมด (speed + quit + jump hops) — ต่างที่ episode 4 และ threshold ของ quit
+<p class="lead">variant ของ boxrun_magnet (โครง jump-hops + speed boost) แต่ควิทหลังได้ <b>2 กล่อง</b> ต่อ session.</p>
+<div class="diff"><b>vs boxrun_speed:</b> เหมือนกันเกือบหมด (speed + quit + jump hops) — ต่างที่ episode 4 และ threshold ของ quit
   (<code>--quit-after-boxes 2</code> ผ่าน <code>BoxQuitRunner</code>: นับกล่องข้าม run จน 2 ใบค่อยควิท ไม่ใช่ควิททันทีที่เจอใบแรก).
   โครง state เหมือน ep3.</div>
 <div class="note">
@@ -227,10 +232,10 @@
 </div>
 </section>
 
-<!-- ═══════════ ep5 ═══════════ -->
-<section id="ep5">
-<h2><span class="fname">run_boxrun_passive.bat</span></h2>
-<div class="tags"><span class="tag ep">Episode 5</span><span class="tag bo">boost: none</span>
+<!-- ═══════════ passive ═══════════ -->
+<section id="passive">
+<h2><span class="fname">boxrun_passive.bat</span></h2>
+<div class="tags"><span class="tag bo">boost: none</span>
   <span class="tag st" style="border-color:var(--cy);color:var(--cy)">guard loop</span>
   <span class="tag q1">early quit</span><span class="tag st">36 states</span></div>
 <p class="lead"><b>โครง in-run ต่างจากตัวอื่นทั้งหมด</b> — ไม่มี jump_* เลย. auto-play ล้วน + guard chain เช็ค popup ระหว่างรัน. ไม่ซื้อ boost.</p>
@@ -269,28 +274,69 @@
     <span><svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="#fb7185" stroke-width="1.3" stroke-dasharray="4 3"/></svg> absent (ยังรัน)</span>
   </div>
 </div>
-<div class="diff"><b>vs ep6:</b> <b>ไม่มี jump_2/3/4</b> — in-run เป็น <code>running</code> ที่ absent (result ยังไม่ขึ้น) → ไล่ guard chain
+<div class="diff"><b>vs boxrun_magnet:</b> <b>ไม่มี jump_2/3/4</b> — in-run เป็น <code>running</code> ที่ absent (result ยังไม่ขึ้น) → ไล่ guard chain
   (home? shop? sendlife? inactive?) → <code>check_box</code>. ไม่ซื้อ boost (<code>await_shop → check_heart</code> ตรง).
   ไม่ relay. 36 state (น้อยสุด)</div>
 </section>
 
-<!-- ═══════════ norelay_noquit ═══════════ -->
-<section id="nq">
-<h2><span class="fname">run_boxrun_speed_noquit.bat</span></h2>
-<div class="tags"><span class="tag ep">Episode 3</span><span class="tag bo">boost: speed</span>
+<!-- ═══════════ speed_noquit ═══════════ -->
+<section id="speed_noquit">
+<h2><span class="fname">boxrun_speed_noquit.bat</span></h2>
+<div class="tags"><span class="tag bo">boost: speed</span>
   <span class="tag st" style="border-color:var(--rd);color:var(--rd)">relay ✗</span>
   <span class="tag q0">ไม่ quit</span><span class="tag st">47 states</span></div>
 <p class="lead">Clone ของ ep3 (speed + jump hops) แต่ถอด 2 อย่าง: <b>ไม่ tap relay</b> ระหว่างรัน และ <b>ไม่ควิทเร็ว</b> — เล่นยาว.</p>
-<div class="diff"><b>vs ep3:</b> jump hops <b>ไม่มี <code>relay_tap</code></b> (jump_2/3/4 ถอด relay ออก) · <code>quit_run</code> มีอยู่แต่ <b>ไม่มีใครชี้เข้า</b>
+<div class="diff"><b>vs boxrun_speed:</b> jump hops <b>ไม่มี <code>relay_tap</code></b> (jump_2/3/4 ถอด relay ออก) · <code>quit_run</code> มีอยู่แต่ <b>ไม่มีใครชี้เข้า</b>
   (check_box → check_shop_after_run แทน quit_run) = ไม่ควิท. เหมาะเก็บกล่องรัวยาว ๆ ไม่ bail</div>
 <div class="note warn">
   <b>ระวัง:</b> ชื่อ variant บอกเจตนาชัด — ห้ามต่อ <code>quit_run</code> กลับ (จะขัดชื่อ). relay ถอดจงใจ (relay เคยเป็นแหล่ง stray leaderboard tap)
 </div>
 </section>
 
+<!-- ═══════════ passive_3boost ═══════════ -->
+<section id="passive_3boost">
+<h2><span class="fname">boxrun_passive_3boost.json</span> <span style="font-size:13px;color:var(--dim)">(no .bat — main.py)</span></h2>
+<div class="tags"><span class="tag bo">3 boosts: HP+clock+x2</span>
+  <span class="tag st" style="border-color:var(--cy);color:var(--cy)">guard loop</span>
+  <span class="tag st" style="border-color:var(--rd);color:var(--rd)">relay ✗</span>
+  <span class="tag q1">quit at box target</span><span class="tag st">35 states</span></div>
+<p class="lead">โครง <b>passive</b> เหมือน <code>boxrun_passive</code> (ไม่มี jump, guard loop) — แต่ <b>ซื้อ boost 3 ตัว</b>แทนไม่ซื้อเลย.
+  <b>ไม่ใช่ magnet</b> (แม้ชื่อเก่าคือ magnet_v2) — boost เป็น shop tile ธรรมดา ไม่ใช่ Magnetic Aura roll.</p>
+<div class="fig">
+  <svg viewBox="0 0 640 110" role="img" aria-label="passive_3boost buys 3 shop tiles then guard-loop run">
+    <defs><marker id="mp3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
+    <style>.n{fill:var(--elev2);stroke:var(--bd2)}.nb{fill:var(--vis);stroke:var(--vi)}
+      .nc{fill:var(--cys);stroke:var(--cy)}.t{fill:var(--tx);font:600 10px}.s{fill:var(--dim);font:8px}
+      .e{stroke:#94a3b8;stroke-width:1.3;fill:none}.l{fill:var(--faint);font:8px}</style>
+    <rect class="n" x="20" y="30" width="110" height="42" rx="7"/><text class="t" x="75" y="48" text-anchor="middle">await_shop</text>
+    <rect class="nb" x="170" y="30" width="150" height="42" rx="7"/><text class="t" x="245" y="48" text-anchor="middle">buy_boosts</text><text class="s" x="245" y="61" text-anchor="middle">tap 3 tiles 800c each</text>
+    <rect class="n" x="360" y="30" width="110" height="42" rx="7"/><text class="t" x="415" y="55" text-anchor="middle">check_heart</text>
+    <rect class="nc" x="510" y="30" width="110" height="42" rx="7"/><text class="t" x="565" y="48" text-anchor="middle">running</text><text class="s" x="565" y="61" text-anchor="middle">guard loop</text>
+    <line class="e" x1="130" y1="51" x2="168" y2="51" marker-end="url(#mp3)"/>
+    <line class="e" x1="320" y1="51" x2="358" y2="51" marker-end="url(#mp3)"/>
+    <line class="e" x1="470" y1="51" x2="508" y2="51" marker-end="url(#mp3)"/>
+  </svg>
+</div>
+<div class="diff"><b>vs boxrun_passive:</b> เพิ่ม <code>buy_boosts</code> (แตะ 3 shop tile: HP potion + clock + x2, 800 เหรียญ/ตัว, tile ที่ซื้อแล้ว no-op) · in-run เหมือนกันเป๊ะ (guard loop). <b>vs boxrun_magnet:</b> คนละเรื่อง — passive ไม่ใช่ jump-hops, boost เป็น tile ไม่ใช่ Magnetic Aura roll</div>
+</section>
+
+<!-- ═══════════ magnet_quit3 ═══════════ -->
+<section id="magnet_quit3">
+<h2><span class="fname">boxrun_magnet_quit3.json</span> <span style="font-size:13px;color:var(--dim)">(no .bat — main.py)</span></h2>
+<div class="tags"><span class="tag bo">magnet</span>
+  <span class="tag st" style="border-color:var(--cy);color:var(--cy)">guard loop</span>
+  <span class="tag st" style="border-color:var(--rd);color:var(--rd)">relay ✗</span>
+  <span class="tag q1">quit at 3 boxes</span><span class="tag st">37 states</span></div>
+<p class="lead">Magnetic Aura boost แต่ in-run เป็น <b>passive</b> (ต่างจาก <code>boxrun_magnet</code> ที่เป็น jump-hops) · ควิทที่กล่องที่ 3 (ใช้ ep6 box counter template).</p>
+<div class="diff"><b>vs boxrun_magnet:</b> in-run <b>passive แทน jump-hops</b> (magnet เป็น jump J→S→J, ตัวนี้ auto-play + guard loop) · เพิ่ม quit-at-3 (ตัว magnet เล่นจนตาย). <b>vs boxrun_passive:</b> ซื้อ magnet (passive ไม่ซื้อ boost)</div>
+<div class="note warn">
+  <b>quit-at-3 อ่านจาก <code>ep6_boxcounter_marker</code>/<code>ep6_boxcount2</code></b> — เป็น config เดียวที่ผูก template ชื่อ ep6 (box counter art ต่างต่อ episode). ถ้าเล่น episode อื่น box counter อาจ match ไม่ตรง — ตัวเดียวที่<b>ไม่ episode-agnostic เต็มตัว</b>
+</div>
+</section>
+
 <!-- ═══════════ coinrun ═══════════ -->
 <section id="coin">
-<h2><span class="fname">run_coinrun.bat</span></h2>
+<h2><span class="fname">coinrun.bat</span></h2>
 <div class="tags"><span class="tag bo">boost: doublecoins</span>
   <span class="tag rl">relay ✓</span><span class="tag q0">เล่นจนตาย</span><span class="tag st">47 states</span></div>
 <p class="lead">โครง jump-hops เหมือน ep6 แต่เป้าหมายคือ <b>เหรียญไม่ใช่กล่อง</b> — ซื้อ Double Coins. มี boost-guard พิเศษ.</p>
@@ -310,13 +356,13 @@
   </svg>
   <p class="lead"><code>probe_dc_owned</code>: Multi-Buy ยิงเฉพาะตอน Double Coins ยังไม่ equipped (กันซื้อซ้ำเปลืองเหรียญ)</p>
 </div>
-<div class="diff"><b>vs ep6:</b> boost <code>magnet→doublecoins</code> ผ่าน guard <code>probe_dc_owned</code> (เช็คว่ามี Double Coins แล้วหรือยังก่อนซื้อ = กันซื้อซ้ำ) · ไม่มี early quit · ใช้กับ episode ไหนก็ได้ (ไม่ผูก episode)</div>
+<div class="diff"><b>vs boxrun_magnet:</b> boost <code>magnet→doublecoins</code> ผ่าน guard <code>probe_dc_owned</code> (เช็คว่ามี Double Coins แล้วหรือยังก่อนซื้อ = กันซื้อซ้ำ) · ไม่มี early quit · ใช้กับ episode ไหนก็ได้ (ไม่ผูก episode)</div>
 </section>
 
 <!-- ═══════════ toggle ═══════════ -->
 <section id="tog">
-<h2><span class="fname">run_boxrun.bat</span> <span style="font-size:13px;color:var(--dim)">(toggle)</span></h2>
-<div class="tags"><span class="tag ep">ตั้ง episode เอง</span><span class="tag bo">boost: ถามตอนรัน</span>
+<h2><span class="fname">boxrun_toggle.bat</span> <span style="font-size:13px;color:var(--dim)">(toggle)</span></h2>
+<div class="tags"><span class="tag st">ep ไหนก็ได้</span><span class="tag bo">boost: ถามตอนรัน</span>
   <span class="tag rl">relay: ถาม</span><span class="tag q0">quit: ถาม</span><span class="tag st">62 states (มากสุด)</span></div>
 <p class="lead"><b>ตัวเดียวที่ถาม flag ตอนรัน</b> — ผ่าน <code>tools/run_toggle.py</code> patch config ใน memory ก่อนส่งเข้า engine. + เปิด anti-detection ครบ (pacing/reset/lives).</p>
 <div class="fig">

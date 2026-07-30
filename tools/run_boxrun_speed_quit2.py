@@ -1,7 +1,7 @@
 """Launch boxrun_speed_quit2.json — box farm on any episode, +17% base speed boost,
 quits a run early once 2 total boxes have been banked this session.
 
-    python tools/run_boxrun_speed_quit2.py --launch
+    python tools/boxrun_speed_quit2.py --launch
 
 check_box/quit_run (ported into boxrun_speed_quit2.json from boxrun_speed.json) bail a
 run via the pause menu the instant a Mystery Box is collected — the config
