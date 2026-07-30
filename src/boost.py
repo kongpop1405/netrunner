@@ -28,6 +28,24 @@ from .config import Config, ConfigError
 #:   gate    on_match goto is redirected past the chain when boost is "none"
 ROLES = ("probe", "buy", "picker", "gate")
 
+#: "Pick desired Boosts!" rows, measured at 1920x1080: two columns at x=425 and
+#: x=998, rows every ~74px from y=262. Tapping a row toggles its tick, and
+#: Multi-Buy re-rolls until ANY ticked boost lands — so exactly one must be
+#: ticked, and it must be the one we want.
+PICK = {
+    "doublecoins":   (425, 262),
+    "score15":       (998, 262),
+    "hpdrain15":     (425, 336),
+    "revive80":      (998, 336),
+    "crush70":       (425, 411),
+    "speed":         (998, 411),
+    "goldcoinmagic": (425, 485),
+    "collision30":   (998, 485),
+    "potions20":     (425, 559),
+    "magnet":        (998, 559),
+    "pitlifts2":     (425, 633),
+}
+
 PROFILES: dict[str, dict] = {
     "magnet": {
         "label": "Magnetic Aura",
