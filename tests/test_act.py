@@ -88,3 +88,122 @@ def test_rand_in_zone_always_inside_ellipse(actor):
     for _ in range(200):
         x, y = actor._rand_in_zone(0, 0, 100, 40)
         assert (x / 100) ** 2 + (y / 40) ** 2 <= 1.0 + 1e-9
+
+
+# --- shared game actions ------------------------------------------------------
+
+
+@pytest.fixture
+def fast_actor(actor):
+    """Actor with humanization delays zeroed so tap counts are what's measured."""
+    actor.delay_range = (0, 0)
+    actor.hesitate_chance = 0
+    actor.relay_gap_s = 0
+    actor.faststart_gap_ms = 0
+    actor.popup_settle_ms = 0
+    return actor
+
+
+def test_relay_tap_defaults_to_verified_centre(fast_actor):
+    fast_actor.run({"type": "relay_tap"}, FRAME)
+    (call,) = fast_actor.device.calls
+    assert call[:2] == ("input", "tap")
+    assert abs(int(call[2]) - 960) <= fast_actor.spatial_clip
+    assert abs(int(call[3]) - 540) <= fast_actor.spatial_clip
+
+
+def test_relay_taps_knob_repeats_the_tap(fast_actor):
+    """The single knob that fixes 'the relay sometimes doesn't fire' everywhere."""
+    fast_actor.relay_taps = 3
+    fast_actor.run({"type": "relay_tap"}, FRAME)
+    assert len(fast_actor.device.calls) == 3
+
+
+def test_relay_tap_accepts_coord_override(fast_actor):
+    fast_actor.run({"type": "relay_tap", "x": 100, "y": 200}, FRAME)
+    (call,) = fast_actor.device.calls
+    assert abs(int(call[2]) - 100) <= fast_actor.spatial_clip
+    assert abs(int(call[3]) - 200) <= fast_actor.spatial_clip
+
+
+def test_faststart_tap_replaces_the_inline_ladder(fast_actor):
+    """One action must produce the same taps the 24-entry JSON ladder did."""
+    fast_actor.run({"type": "faststart_tap", "taps": 12}, FRAME)
+    assert len(fast_actor.device.calls) == 12
+    for call in fast_actor.device.calls:
+        assert call[:2] == ("input", "tap")
+        assert abs(int(call[2]) - 985) <= fast_actor.spatial_clip
+        assert abs(int(call[3]) - 515) <= fast_actor.spatial_clip
+
+
+def test_faststart_taps_default_is_tunable_in_one_place(fast_actor):
+    fast_actor.faststart_taps = 5
+    fast_actor.run({"type": "faststart_tap"}, FRAME)
+    assert len(fast_actor.device.calls) == 5
+
+
+def test_close_popup_without_verify_taps_once(fast_actor):
+    fast_actor.run({"type": "close_popup", "x": 727, "y": 688}, FRAME)
+    (call,) = fast_actor.device.calls
+    assert abs(int(call[2]) - 727) <= fast_actor.spatial_clip
+    assert abs(int(call[3]) - 688) <= fast_actor.spatial_clip
+
+
+def test_close_popup_retries_while_marker_still_on_screen(tdir, frame, monkeypatch):
+    """The 'close didn't take' fix: a tap that lands mid-fade is repeated."""
+    from src import act as act_mod
+
+    a = Actor(FakeDevice(), TemplateStore(tdir))
+    a.delay_range = (0, 0)
+    a.hesitate_chance = 0
+    a.popup_settle_ms = 0
+    monkeypatch.setattr(act_mod, "grab", lambda device: frame)  # marker still there
+
+    a.run({"type": "close_popup", "x": 10, "y": 20, "verify": "marker.png",
+           "retries": 2}, frame)
+    assert len(a.device.calls) == 3  # initial + 2 retries, marker never cleared
+
+
+def test_close_popup_stops_once_marker_is_gone(tdir, frame, monkeypatch):
+    from src import act as act_mod
+
+    a = Actor(FakeDevice(), TemplateStore(tdir))
+    a.delay_range = (0, 0)
+    a.hesitate_chance = 0
+    a.popup_settle_ms = 0
+    blank = np.zeros_like(frame)
+    monkeypatch.setattr(act_mod, "grab", lambda device: blank)  # marker cleared
+
+    a.run({"type": "close_popup", "x": 10, "y": 20, "verify": "marker.png",
+           "retries": 2}, frame)
+    assert len(a.device.calls) == 1
+
+
+def test_close_popup_survives_a_failed_verification(tdir, frame, monkeypatch):
+    """A broken re-read must not turn a working close into a crash."""
+    from src import act as act_mod
+
+    def boom(device):
+        raise act_mod.CaptureError("screencap died")
+
+    a = Actor(FakeDevice(), TemplateStore(tdir))
+    a.delay_range = (0, 0)
+    a.hesitate_chance = 0
+    a.popup_settle_ms = 0
+    monkeypatch.setattr(act_mod, "grab", boom)
+
+    a.run({"type": "close_popup", "x": 10, "y": 20, "verify": "marker.png"}, frame)
+    assert len(a.device.calls) == 1
+
+
+def test_shared_actions_send_nothing_in_dry_run(tmp_path):
+    a = Actor(FakeDevice(), TemplateStore(tmp_path), dry_run=True)
+    a.delay_range = (0, 0)
+    a.hesitate_chance = 0
+    a.relay_gap_s = 0
+    a.faststart_gap_ms = 0
+    a.popup_settle_ms = 0
+    a.run({"type": "relay_tap"}, FRAME)
+    a.run({"type": "faststart_tap", "taps": 3}, FRAME)
+    a.run({"type": "close_popup", "x": 1, "y": 2}, FRAME)
+    assert a.device.calls == []

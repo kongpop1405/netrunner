@@ -6,7 +6,13 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-_ACTION_TYPES = {"tap_template", "tap_xy", "swipe", "wait", "goto", "stop", "key", "jump", "slide", "text"}
+_ACTION_TYPES = {
+    "tap_template", "tap_xy", "swipe", "wait", "goto", "stop", "key", "jump",
+    "slide", "text",
+    # shared game actions — behaviour lives in Actor so a fix reaches every
+    # config naming the action (see src/act.py "shared game actions").
+    "relay_tap", "faststart_tap", "close_popup",
+}
 _REQUIRED_FIELDS = {
     "tap_template": {"template"},
     "tap_xy": {"x", "y"},
@@ -18,6 +24,10 @@ _REQUIRED_FIELDS = {
     "jump": {"cx", "cy"},
     "slide": {"cx", "cy"},
     "text": {"value"},
+    # coords/counts default to the Actor's live-verified values
+    "relay_tap": set(),
+    "faststart_tap": set(),
+    "close_popup": {"x", "y"},
 }
 
 
@@ -169,6 +179,8 @@ def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path
         )
     if kind == "tap_template":
         _require_template(state, tdir, action["template"])
+    if kind == "close_popup" and action.get("verify") is not None:
+        _require_template(state, tdir, action["verify"])
     if kind == "text":
         _validate_text_value(state, action["value"])
 

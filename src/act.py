@@ -9,7 +9,8 @@ import logging
 import random
 import time
 
-from .device import Device
+from .capture import CaptureError, grab
+from .device import AdbError, Device
 from .perceive import PerceiveError, TemplateStore, find_named
 
 log = logging.getLogger("netrunner.act")
@@ -137,6 +138,110 @@ class Actor:
         if not self.dry_run:
             self.device.shell("input", "keyevent", str(keycode))
 
+    # --- shared game actions --------------------------------------------------
+    # Behaviour every bot shares lives here, not copy-pasted into each config, so
+    # a tuning fix reaches every config that names the action without touching
+    # any JSON. Coordinates default to the live-verified values but stay
+    # overridable per action for a future screen whose button sits elsewhere.
+
+    #: Cookie Relay Boost button — screen centre, verified live.
+    relay_xy: tuple[int, int] = (960, 540)
+    #: taps per relay action. The button is a no-op when no partner is ready, so
+    #: a repeat costs nothing; >1 covers a tap lost to a mid-fade frame.
+    relay_taps: int = 1
+    #: gap (seconds) between repeated relay taps.
+    relay_gap_s: float = 0.12
+
+    def relay_tap(self, x: int | None = None, y: int | None = None,
+                  taps: int | None = None) -> None:
+        """Tap the Cookie Relay Boost button.
+
+        Blind by design: the relay icon has no template of its own and only
+        appears for part of a run, so there is nothing to verify against — but
+        tapping it when it is absent is harmless (the centre of an in-run screen
+        holds no other control). Raising `relay_taps` is the single knob that
+        fixes "the relay sometimes doesn't fire" for every bot at once.
+        """
+        cx = self.relay_xy[0] if x is None else x
+        cy = self.relay_xy[1] if y is None else y
+        n = self.relay_taps if taps is None else taps
+        for i in range(max(1, n)):
+            if i:
+                time.sleep(self.relay_gap_s)
+            self.tap(cx, cy)
+
+    #: Fast Start prompt button — the blue arrow on "Tap to activate Fast Start".
+    faststart_xy: tuple[int, int] = (985, 515)
+    #: how many times to tap across the prompt window. The prompt opens a second
+    #: or two after Play and auto-dismisses a few seconds later, so the spam
+    #: covers a window rather than a moment.
+    faststart_taps: int = 14
+    #: gap (ms) between spam taps — total window ≈ taps × gap.
+    faststart_gap_ms: int = 400
+
+    def faststart_tap(self, x: int | None = None, y: int | None = None,
+                      taps: int | None = None, gap_ms: int | None = None) -> None:
+        """Spam-tap the Fast Start prompt across its open window.
+
+        Replaces the hand-written tap_xy/wait ladder (24 actions per state) that
+        every boxrun config carried inline. Detect-then-tap was tried and lost
+        taps whenever the prompt window was shorter than one poll, so the blind
+        spam is deliberate; what matters is that its length is tunable in one
+        place instead of by editing pairs of JSON entries in every config.
+        """
+        cx = self.faststart_xy[0] if x is None else x
+        cy = self.faststart_xy[1] if y is None else y
+        n = self.faststart_taps if taps is None else taps
+        gap = self.faststart_gap_ms if gap_ms is None else gap_ms
+        log.info("faststart spam %d taps @ (%d,%d) every %dms", n, cx, cy, gap)
+        for i in range(max(1, n)):
+            if i:
+                time.sleep(gap / 1000)
+            self.tap(cx, cy)
+
+    #: settle wait (ms) after a popup-close tap, before anything re-reads the screen.
+    popup_settle_ms: int = 1500
+    #: extra close attempts when `verify` names a template that is still on screen.
+    popup_retries: int = 1
+
+    def close_popup(self, x: int, y: int, *, settle_ms: int | None = None,
+                    verify: str | None = None, retries: int | None = None,
+                    threshold: float | None = None) -> None:
+        """Tap a popup's close/confirm button and wait for it to go away.
+
+        With `verify` naming the popup's own marker template, the close is
+        confirmed rather than assumed: a fresh frame is captured after the settle
+        wait and the tap is repeated while the marker is still matching. That is
+        the fix for "the close sometimes doesn't take" — a tap that lands while
+        the dialog is still fading in does nothing, and the old blind tap+wait
+        pair had no way to notice.
+        """
+        settle = self.popup_settle_ms if settle_ms is None else settle_ms
+        attempts = (self.popup_retries if retries is None else retries) + 1
+        thr = self.default_threshold if threshold is None else threshold
+
+        for attempt in range(attempts):
+            self.tap(x, y)
+            time.sleep(settle / 1000)
+            if verify is None or self.dry_run:
+                return
+            try:
+                frame = grab(self.device)
+                m = find_named(frame, self.store, verify, thr)
+            except (CaptureError, PerceiveError, AdbError) as e:
+                # Verification is best-effort: a failed re-read must not turn a
+                # working close into a crash. The FSM re-reads the screen next
+                # poll anyway and will route from whatever is actually there.
+                log.warning("close_popup could not verify '%s': %s", verify, e)
+                return
+            if not m.found:
+                return
+            if attempt + 1 < attempts:
+                log.info("close_popup: '%s' still on screen (score %.2f) — retrying",
+                         verify, m.score)
+        log.warning("close_popup: '%s' still on screen after %d attempt(s)",
+                    verify, attempts)
+
     #: per-character delay (seconds) when typing — `input text` blasts the whole
     #: string instantly, which some IMEs drop characters from. Typing char by char
     #: at a human cadence is slower but lands every keystroke.
@@ -208,6 +313,27 @@ class Actor:
                 int(action["cx"]), int(action["cy"]),
                 int(action.get("rx", 150)), int(action.get("ry", 55)),
                 hold_ms=int(hold) if hold is not None else None,
+            )
+            return None
+        if kind == "relay_tap":
+            self.relay_tap(
+                action.get("x"), action.get("y"),
+                taps=action.get("taps"),
+            )
+            return None
+        if kind == "faststart_tap":
+            self.faststart_tap(
+                action.get("x"), action.get("y"),
+                taps=action.get("taps"), gap_ms=action.get("gap_ms"),
+            )
+            return None
+        if kind == "close_popup":
+            self.close_popup(
+                int(action["x"]), int(action["y"]),
+                settle_ms=action.get("settle_ms"),
+                verify=action.get("verify"),
+                retries=action.get("retries"),
+                threshold=action.get("threshold"),
             )
             return None
         if kind == "goto":
