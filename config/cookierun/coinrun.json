@@ -941,6 +941,27 @@
           "state": "home"
         }
       ],
+      "on_absent": {
+        "goto": "verify_no_enterleague"
+      },
+      "timeout_ms": 6000
+    },
+    "verify_no_enterleague": {
+      "_note": "Fourth Play-tap gate. The Enter League dialog is centred and leaves the Play button uncovered, so home matches at 1.00 through it and the loop would tap Play into the dialog — the same trap Previous Results fell into. probe_enterleague handles the popup but only runs when home is ABSENT. Present -> Confirm (960,700), verified, back to home. Absent -> the real Play tap.",
+      "detect": "enterleague_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 960,
+          "y": 700,
+          "verify": "enterleague_marker.png",
+          "settle_ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
       "on_absent": [
         {
           "type": "tap_xy",

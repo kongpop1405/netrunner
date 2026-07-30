@@ -1,8 +1,46 @@
 # Popup coverage
 
-What the farm loop can dismiss, and what still stalls it. Every popup that
-covers `home` blocks the Play button, so an unhandled one costs the whole
-session until the livelock warning fires and someone looks.
+What the farm loop can dismiss, and what still stalls it. An unhandled popup
+costs the whole session until the livelock warning fires and someone looks.
+
+## Two kinds of popup — a handler alone is not enough
+
+A popup that **covers** the Play button makes `home_play_marker` absent, so
+`home` falls through `on_absent` into the probe chain and whichever
+`probe_*` state owns that popup dismisses it. That is the easy case.
+
+A popup that **leaves Play visible** — most centred dialogs do; the button
+lives in the bottom-right corner — never reaches the probe chain at all.
+`home` still matches at 1.00 through the dialog, so the loop goes straight to
+the pre-Play gates and, finding none of *their* markers, taps Play into the
+dialog. Forever. The probe state that would have handled it is unreachable,
+because it hangs off the `home`-is-absent branch.
+
+**So every such popup needs a `verify_no_*` gate in the pre-Play chain, not
+just a `probe_*` state.** The gates run in order between `home` and the Play
+tap, each detecting one marker and handing the Play tap to the next:
+
+| Gate | Marker |
+| --- | --- |
+| `verify_no_popup` | `inactive_marker.png` |
+| `verify_no_sendlife` | `sendlife_marker.png` |
+| `verify_no_prevresults` | `prevresults_marker.png` |
+| `verify_no_enterleague` | `enterleague_marker.png` |
+
+Adding one: give it `detect`, dismiss via `close_popup` + `verify` on
+`on_match` then `goto: home`, and move the previous gate's `on_absent` action
+list (the real Play tap) onto the new gate's `on_absent`. `tools/lint_config.py`
+will not catch a missing gate — the states stay reachable either way — so check
+new popups against this rule by hand.
+
+To tell which kind a popup is, match `home_play_marker.png` against a capture
+of it. Measured so far:
+
+| Popup | Play visible behind it | Gate |
+| --- | --- | --- |
+| Previous Results | yes (1.00) | `verify_no_prevresults` |
+| Enter League | yes (1.00) | `verify_no_enterleague` |
+| Connection Lost | no (0.36) | none needed — the probe chain reaches it |
 
 ## Handled
 
