@@ -1565,8 +1565,8 @@
     }
   },
   "inter_game_delay_s": [
-    30,
-    60
+    5,
+    15
   ],
   "inter_game_state": "home",
   "session_reset_s": [
