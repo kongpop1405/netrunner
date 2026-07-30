@@ -16,7 +16,7 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_inactive"
+        "goto": "probe_connectionlost"
       },
       "timeout_ms": 20000
     },
@@ -740,6 +740,55 @@
           "state": "await_shop"
         }
       ]
+    },
+    "probe_connectionlost": {
+      "_note": "Connection Lost — server drop popup, can appear anywhere (head of the probe chain since nothing else works while offline). Text: 'Connection lost! Tap Confirm to restart the game and reload your data.' Not a dismiss: Confirm (960,700) actually restarts the client, so we hand off to restart_app (cycles the process the same way session_reset does) then the existing recover_login chain re-auths. Absent -> probe_inactive (rest of the popup chain).",
+      "detect": "connectionlost_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 700
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "restart_app"
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_enterleague"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_enterleague": {
+      "_note": "Enter League — 'You have been entered in a League. Check out your position in the League Ranking!' Random season-start popup, can appear anywhere. Plain dismiss: Confirm (960,700) just closes it, no restart needed. Absent -> probe_inactive (rest of the popup chain).",
+      "detect": "enterleague_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 700
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "probe_inactive"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_inactive"
+      },
+      "timeout_ms": 8000
     },
     "probe_inactive": {
       "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
