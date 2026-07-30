@@ -173,7 +173,7 @@
   <div class="stats">
     <div class="stat"><div class="label">Feature ที่ขาด</div><div class="value" style="color:var(--amber)">6</div></div>
     <div class="stat"><div class="label">Bug ที่เจอ</div><div class="value" style="color:var(--red)">10</div></div>
-    <div class="stat"><div class="label">Engine LOC เพิ่ม</div><div class="value">~320</div></div>
+    <div class="stat"><div class="label">LOC (P0+P7 จริง)</div><div class="value" style="color:var(--green)">+1,076</div></div>
     <div class="stat"><div class="label">JSON แตะ</div><div class="value" style="color:var(--green)">0*</div></div>
   </div>
   <div class="tbl-wrap">
@@ -657,7 +657,8 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     Coverage ครบ = ไม่มีจังหวะ "นิ่งผิดธรรมชาติ"
   </div>
 
-  <div class="phase-hd"><span class="badge">PHASE 7</span><h3>Observability — ปลุกของที่เขียนแล้วแต่ไม่มีใครเรียก</h3></div>
+  <div class="phase-hd"><span class="badge">PHASE 7</span><h3>Observability — ปลุกของที่เขียนแล้วแต่ไม่มีใครเรียก
+    <span class="pill ok" style="vertical-align:2px;margin-left:8px"><span class="dot"></span>DONE — pytest 114 passed</span></h3></div>
   <p class="lead">
     ตรวจ caller แล้ว 2 ฟังก์ชันเสร็จสมบูรณ์แต่ <b>0 usage</b> — ชะตาเดียวกับ <code>close_popup</code> ก่อน Phase 6:
     <code>send_alert_with_image()</code> (<span class="file">alert.py:67</span>) และ <code>read_text()</code>
@@ -679,6 +680,25 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <li><b>ทำไมต้องมีก่อน Phase 1–2 ลงจริง:</b> pacing + session reset ทำให้ yield <i>ลด</i> โดยตั้งใจ (แลกกับ detection risk) —
       ไม่มีตัวเลข baseline = ไม่รู้ว่าลดไปเท่าไหร่ / คุ้มมั้ย. Tuning ทุกอย่างตอนนี้ใช้ความรู้สึก</li>
   </ul>
+  <div class="note" style="background:var(--green-soft);border-color:var(--green-border)">
+    <b>✅ ทำแล้ว</b> (commit <code>91a0b5c</code> + <code>7e51660</code>) —
+    <b>เจอเพิ่มระหว่าง implement:</b>
+    <ul class="tight" style="margin-top:8px">
+      <li><b>ต้องเพิ่ม transition log ก่อน 7b จะทำงานได้</b> — เดิม transition log ที่ <code>DEBUG</code> เท่านั้น
+        (<code>log.debug("state=%s detect=...")</code>) = unattended run ที่รันระดับ INFO ไม่มี state trace ใน log เลย
+        → parser นับ run/box ไม่ได้. เพิ่ม <code>log.info("transition %s -> %s")</code> = 1 บรรทัด ปลดล็อกทั้ง 7b</li>
+      <li><b>Log ไม่มีวันที่</b> — formatter ใช้ <code>datefmt="%H:%M:%S"</code> (<span class="file">alert.py:65</span>)
+        → parser ต้อง reconstruct: rotated file เอาจาก suffix <code>.YYYY-MM-DD_HH</code>, active file เอาจาก mtime,
+        และ <b>นาฬิกาเดินถอยหลังในไฟล์เดียว = ข้ามเที่ยงคืน</b> (ไม่งั้น span ติดลบ). มีเทสครอบ</li>
+      <li><b><code>tools/</code> ไม่ใช่ package</b> (ไม่มี <code>__init__.py</code>) — <code>from tools import report_runs</code>
+        ผ่านเพราะ rootdir บังเอิญอยู่ใน <code>sys.path</code> = เปราะ. เทสโหลดผ่าน
+        <code>importlib.util.spec_from_file_location</code> แทน</li>
+      <li><b>Smoke test บน log สังเคราะห์ 18 บรรทัด</b> → นับถูกครบ (runs=2, boxes=1, adb_fail=1, livelock=1, unknown=1)
+        + HTML มี <code>&lt;meta charset&gt;</code> + dark-mode</li>
+    </ul>
+    <b>Deferred:</b> รันบน log จริงเพื่อเอา baseline — เครื่อง dev ไม่มี <code>logs/</code> (ไม่เคยรันบอทที่นี่);
+    ทำที่เครื่องที่มี LDPlayer <b>ก่อนเปิด Phase 1–2</b>
+  </div>
 
   <div class="phase-hd"><span class="badge">PHASE 8</span><h3>OCR box counter — quit logic ที่แม่นต่อ run</h3></div>
   <p class="lead">
@@ -1055,9 +1075,9 @@ python tools/run_toggle.py --boost speed --faststart y --jump y --slide y --rela
     <div class="tl-row">
       <div class="tl-badge p2">PHASE 7</div>
       <div class="tl-body">
-        <b>Observability</b> — unknown-screen collector + run analytics (ปลุก 0-caller functions)
-        <div class="tl-meta">3 ขั้น · เล็ก · ทำก่อน 1–2 เพื่อเก็บ baseline · ป้อนภาพให้ 4/6</div>
-        <div class="bar"><i style="width:22%;background:var(--green)"></i></div>
+        <b>Observability</b> ✅ <b>DONE</b> — collector + transition log + report_runs.py
+        <div class="tl-meta">3 ขั้น · +507 บรรทัด · pytest 114 passed · baseline รอ log จริง</div>
+        <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
       </div>
     </div>
     <div class="tl-row">
@@ -1238,7 +1258,11 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
     <li><b>Phase 4</b> — synthetic test: 4 เหมือน + 2 ต่าง → หา 2 ใบถูก · 6 เหมือนกันหมด → bail ไม่เดา · cell ล้นขอบ → raise ไม่เงียบ · <b>เจอ captcha จริงครั้งแรก: snap เก็บภาพก่อน อย่าให้ solve ทันที</b></li>
     <li><b>Phase 5</b> — fake-clock test ผ่าน · dry-run: log แสดง redirect เข้า lives_scan เมื่อ due+home เท่านั้น · จบ chain กลับ home แล้ว farm ต่อ · after_reset fire ครั้งเดียว</li>
     <li><b>Phase 6</b> — ต่อ popup: dry-run บนจอที่มี popup จริง → probe เจอ + <code>close_popup</code> verify ผ่าน · reachability scan = 0 orphan ใหม่ · CONNECTION_LOST → เข้า reset flow ไม่ใช่แค่ tap</li>
-    <li><b>Phase 7</b> — จำลอง livelock (config ping-pong) → ภาพโผล่ใน <code>unknown_screens/</code> + Discord ได้ embed พร้อมรูป · ยิงซ้ำใน 10 นาที → ไม่ส่งซ้ำ · <code>report_runs.py</code> บน log จริง 72 ชม. → ตัวเลข baseline ออกครบ</li>
+    <li><b>Phase 7 ✅</b> — pytest <b>114 passed</b> (+9 ใหม่): archive 1 ครั้ง/episode (ทั้ง same-state และ ping-pong) ·
+      <code>cv2.imwrite</code> พังต้องไม่ฆ่า run · loop สุขภาพดีไม่สร้างโฟลเดอร์เลย ·
+      parser: midnight wrap · traceback continuation ไม่นับ · empty log → placeholder ·
+      smoke บน log สังเคราะห์ → นับครบทุกตัว.
+      <b>ค้าง:</b> baseline จาก log จริง (เครื่องนี้ไม่มี <code>logs/</code>)</li>
     <li><b>Phase 8</b> — ภาพ counter จริง (จาก snap) → อ่านเลขตรง · เครื่องไม่มี tesseract → fallback ทำงาน ไม่ crash · <code>--quit-after-boxes 2</code> จบที่กล่องใบที่ 2 จริง ไม่ใช่ match ครั้งที่ 2</li>
   </ul>
   <div class="note danger">
