@@ -130,7 +130,7 @@
       "timeout_ms": 8000
     },
     "probe_sendlife": {
-      "_note": "Reached whenever Play! is not visible and no Daily Check-in popup was on screen. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next.",
+      "_note": "Reached whenever Play! is not visible and no Daily Check-in popup was on screen. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next. Absent now continues into probe_congrats — the congrats/levelup/ranking/giftdraw/friendinfo probes were orphaned, so those popups covered home with nothing able to dismiss them.",
       "detect": "sendlife_marker.png",
       "on_match": [
         {
@@ -146,7 +146,7 @@
         }
       ],
       "on_absent": {
-        "goto": "boost_shop"
+        "goto": "probe_congrats"
       },
       "timeout_ms": 8000
     },
@@ -288,34 +288,6 @@
       },
       "timeout_ms": 6000
     },
-    "check_shop_after_run": {
-      "_note": "Result popup not up yet — still running, home is back, or we're in the shop. Try home; absent -> walk the probe chain.",
-      "detect": "home_play_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "home"
-        }
-      ],
-      "on_absent": {
-        "goto": "probe_boostshop"
-      },
-      "timeout_ms": 15000
-    },
-    "probe_boostshop": {
-      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to probe_speed.",
-      "detect": "boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "boost_shop"
-        }
-      ],
-      "on_absent": {
-        "goto": "probe_congrats"
-      },
-      "timeout_ms": 15000
-    },
     "probe_congrats": {
       "_note": "Level-up 'Congratulations!' popup (free reward). Confirm (956,846) is safe/free.",
       "detect": "congrats_marker.png",
@@ -428,7 +400,7 @@
         }
       ],
       "on_absent": {
-        "goto": "running"
+        "goto": "boost_shop"
       },
       "timeout_ms": 15000
     },

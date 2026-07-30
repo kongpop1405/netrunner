@@ -37,6 +37,12 @@ from src.config import detect_names, goto_targets, unreachable_states  # noqa: E
 _PNG = re.compile(r"[A-Za-z0-9_]+\.png")
 
 
+#: A note that says the detect is deliberately not the template it discusses —
+#: ep6v2 detects boxcount2 while waiting on a boxcount3 crop, for instance — is
+#: describing intent, not drifting from it. Suppress the hint when it says so.
+_DELIBERATE = ("TEMPORARILY", "DEFERRED", "not captured yet", "NOT captured yet")
+
+
 def note_detect_mismatches(states: dict[str, dict]) -> list[tuple[str, str, list[str]]]:
     """(state, detect_shown, pngs_in_note) where the note names marker PNGs but
     never the state's own detect file. Heuristic — report as hints, not errors."""
@@ -45,6 +51,8 @@ def note_detect_mismatches(states: dict[str, dict]) -> list[tuple[str, str, list
         note = state.get("_note", "")
         mentioned = set(_PNG.findall(note))
         if not mentioned:
+            continue
+        if any(k in note for k in _DELIBERATE):
             continue
         dnames = set(detect_names(state))
         if dnames and not (mentioned & dnames):

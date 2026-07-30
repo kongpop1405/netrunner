@@ -153,3 +153,34 @@ class TestShippedConfigs:
     def test_role_markers_do_not_break_validation(self):
         for path in sorted(glob.glob(str(CONFIG_DIR / "*.json"))):
             cfgmod.load(path)  # unknown top-level state keys must be tolerated
+
+
+class TestNoOrphansShipped:
+    """Every config's graph must be whole. This is a regression guard: the boost
+    chains in ep3/norelay were unreachable for weeks, so the bot silently played
+    with whatever boost happened to be equipped."""
+
+    def test_all_configs_fully_reachable(self):
+        from src.config import unreachable_states
+
+        for path in sorted(glob.glob(str(CONFIG_DIR / "*.json"))):
+            cfg = cfgmod.load(path)
+            roots = [r["goto"] for r in cfg.periodic_routines]
+            orphans = unreachable_states(cfg.states, cfg.start_state, extra_roots=roots)
+            assert orphans == [], f"{Path(path).name}: {orphans}"
+
+    def test_boost_gates_enter_the_chain_when_one_exists(self):
+        """A config carrying a buy chain must actually route into it — gates
+        pointing straight at the play state is what orphaned ep3's chain."""
+        for path in sorted(glob.glob(str(CONFIG_DIR / "*.json"))):
+            cfg = cfgmod.load(path)
+            probes = [n for n, st in cfg.states.items()
+                      if st.get("boost_role") == "probe" and n.startswith("probe_")]
+            gates = [n for n, st in cfg.states.items() if st.get("boost_role") == "gate"]
+            if not (probes and gates):
+                continue
+            for gate in gates:
+                targets = [a["state"] for a in cfg.states[gate].get("on_match", [])
+                           if a.get("type") == "goto"]
+                assert any(t in probes for t in targets), \
+                    f"{Path(path).name}:{gate} skips the buy chain ({targets})"

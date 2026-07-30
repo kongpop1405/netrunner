@@ -169,20 +169,6 @@
       "timeout_ms": 60000,
       "match_timeout_ms": 90000
     },
-    "check_boost_result": {
-      "_note": "Auto-roll finished, picker closed back to the boost shop. Check 'Not enough Coins!' first (balance ran dry mid-roll) -> cancel. Otherwise read the pill in start_run. We do NOT re-roll here — the game rolled to completion.",
-      "detect": "nocoins_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "insufficient_coins"
-        }
-      ],
-      "on_absent": {
-        "goto": "start_run"
-      },
-      "timeout_ms": 6000
-    },
     "insufficient_coins": {
       "_note": "SAFETY: 'Not enough Coins!' popup. Tap Cancel (770,685) — NEVER Confirm (1150,685), which spends gems. Then Play! with whatever boost we have (or none).",
       "detect": "nocoins_marker.png",
