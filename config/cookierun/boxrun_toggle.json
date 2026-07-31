@@ -1136,7 +1136,7 @@
       "timeout_ms": 6000
     },
     "relic_claim": {
-      "_note": "Relic screen with the relic complete: a green Claim button under the artefact. Tap Claim (960,872) — the chains break and the artefact unlocks over ~4s, then a Congratulations reward popup appears (16,000 Coins on the run this was recorded from). Absent -> the screen never opened (or a claim already closed it) -> back to home rather than blind-tapping. Verified live on Episode 6: screen marker self=1.000, home=0.260, mystery-box=0.345.",
+      "_note": "Relic screen with the relic complete: a green Claim button under the artefact. Tap Claim (960,872) — the chains break and the artefact unlocks, then a Congratulations reward popup appears (16,000 Coins on the run this was recorded from). Absent -> the screen never opened (or a claim already closed it) -> back to home rather than blind-tapping, but only after absent_retries: live-caught the screen taking longer than probe_relic's 2.5s post-tap wait to render, which bounced 3 of 4 attempts straight back to home before one stuck. The artefact art differs per episode (as does the fragment count), so the marker is the 'Relic' title ribbon, not the artefact. Verified live on Episode 6: screen marker self=1.000, home=0.260, mystery-box=0.345.",
       "detect": "relic_screen_marker.png",
       "on_match": [
         {
@@ -1156,10 +1156,12 @@
       "on_absent": {
         "goto": "home"
       },
+      "absent_retries": 4,
+      "absent_wait_ms": 900,
       "timeout_ms": 8000
     },
     "relic_reward": {
-      "_note": "\"Congratulations!\" reward popup from the relic claim. NOT the same as congrats_marker (that one scores only 0.570 here — different banner art), hence its own relic_reward_marker. Confirm (960,858) banks it and drops back to the Relic screen, now showing 0/N with no Claim button. Absent -> the popup already closed -> relic_close tidies up the Relic screen either way.",
+      "_note": "\"Congratulations!\" reward popup from the relic claim. NOT the same as congrats_marker (that one scores only 0.570 here — different banner art), hence its own relic_reward_marker. Confirm (960,858) banks it and drops back to the Relic screen, now showing 0/N with no Claim button. Absent -> keep re-checking for up to ~6s before giving up to relic_close: the unlock animation runs longer than relic_claim's 4.5s post-tap wait, and live-caught the popup landing AFTER a single absent poll had already routed past it (marker read 0.13 on that poll, 0.994 a moment later), leaving the reward stuck on screen over home.",
       "detect": "relic_reward_marker.png",
       "on_match": [
         {
@@ -1177,7 +1179,9 @@
       "on_absent": {
         "goto": "relic_close"
       },
-      "timeout_ms": 10000
+      "absent_retries": 6,
+      "absent_wait_ms": 1000,
+      "timeout_ms": 12000
     },
     "relic_close": {
       "_note": "Back on the Relic screen after claiming (counter reset to 0/N, Claim gone). Close via the X (1613,232) to return to home, which re-runs the whole guard chain — with the badge now gone, probe_relic falls through to the Play tap. Absent -> already off the screen -> home.",
