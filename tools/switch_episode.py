@@ -9,15 +9,17 @@ dance each time; this scripts the same steps end to end:
 
   1. From home, tap the Episode button (top-right) to open the map.
   2. Verify the map actually opened (episodemap_marker) — never blind-swipe.
-  3. Swipe hard left repeatedly to reach the map's leftmost edge (Episode 1),
-     a deterministic landmark, since swipe distance in the live game is not
-     pixel-exact and cumulative drift would otherwise strand us between nodes.
+  3. Swipe left until the map's leftmost episode is on screen, checking after
+     each swipe rather than counting a fixed number: swipe distance in the live
+     game is not pixel-exact, so a counted reset can stop short and leave the
+     rightward search starting past its target.
   4. Swipe right one step at a time, checking for the target episode's banner
      after each step, up to a generous cap.
   5. Tap the found banner, then Enter on the confirm dialog.
 
-Only episodes 3-6 have banner templates cropped so far (the box-farm configs
-that need switching). Add ep<N>_banner.png the same way to extend this.
+Episodes 1-7 all have banner templates. Note the map is NOT ordered 1..7 left
+to right — measured live, left to right: ep7, ep5, ep4, ep3, ep2, ep1, with ep6
+sharing a screen with ep5 and Special/Event episodes interleaved.
 """
 from __future__ import annotations
 
@@ -38,9 +40,18 @@ MAP_SWIPE_LEFT = ((1500, 540), (400, 540))   # drags map content rightward
 MAP_SWIPE_RIGHT = ((400, 540), (1700, 540))  # drags map content leftward
 
 OPEN_MAP_ATTEMPTS = 3  # home may still be fading in when the first tap lands
-RESET_SWIPES = 6       # generous: more than enough to hit the leftmost edge
+RESET_SWIPES = 10      # upper bound only — the reset stops on LEFT_EDGE_MARKER
 MAX_STEP_SWIPES = 6    # generous: more than the farthest episode is steps away
 MATCH_THRESHOLD = 0.82
+
+#: The leftmost episode on the map, used as the reset landmark. Counting a fixed
+#: number of left-swipes was not enough: swipe distance is not pixel-exact, so a
+#: reset starting from the right edge sometimes stopped short, and the rightward
+#: search then began PAST the target and could never reach it — Episode 5 sits at
+#: step 1, yet switch_episode(5) failed with "not found after 6 swipes" while
+#: parked at Episode 4. Swiping until this marker is on screen makes the reset
+#: deterministic regardless of how far each swipe happens to travel.
+LEFT_EDGE_MARKER = "ep7_banner.png"
 
 
 class SwitchEpisodeError(Exception):
@@ -70,10 +81,19 @@ def switch_episode(device, store: TemplateStore, episode: int,
     else:
         raise SwitchEpisodeError("Episode Map did not open (episodemap_marker not found)")
 
+    # Reset to the map's left edge, verified rather than counted (see
+    # LEFT_EDGE_MARKER). Already-there is the common case when the previous
+    # switch left us near the start, so check before the first swipe.
     for _ in range(RESET_SWIPES):
+        if find_named(grab(device), store, LEFT_EDGE_MARKER, threshold=threshold).found:
+            break
         (x1, y1), (x2, y2) = MAP_SWIPE_LEFT
         actor.swipe(x1, y1, x2, y2, ms=400)
         time.sleep(0.6)
+    else:
+        raise SwitchEpisodeError(
+            f"map did not reach its left edge ({LEFT_EDGE_MARKER} never matched) "
+            f"after {RESET_SWIPES} swipes")
 
     found = False
     for step in range(MAX_STEP_SWIPES + 1):
