@@ -33,10 +33,12 @@ CONFIG_PATH = "config/cookierun/boxrun_toggle.json"
 # boxrun_toggle.json exactly, since we strip these actions out by (x, y) match.
 _FASTSTART_XY = (985, 515)
 
-# (x, y) of the real Play tap in verify_no_enterleague.on_absent — must match
-# boxrun_toggle.json exactly; BoxQuitRunner uses it to recognize "the screen
-# is genuinely clear, about to tap Play" and stop stop_after_boxes there
-# instead of one popup guard earlier (see _run_actions).
+# (x, y) of the real Play tap at the end of home's guard chain — must match
+# boxrun_toggle.json exactly. BoxQuitRunner recognizes it to mean "every guard
+# fell through, the screen is genuinely clear" and stops stop_after_boxes
+# there. Deliberately matched by action shape, not by owning state: the tap
+# has already migrated once (verify_no_enterleague -> probe_relic) and a
+# state-keyed check broke silently when it did (see _run_actions).
 _PLAY_TAP_XY = (1431, 963)
 
 
@@ -250,30 +252,27 @@ class BoxQuitRunner(Runner):
         # home_play_marker matches at 1.00 through several popups (inactive,
         # send-life, previous-results, enter-league — see each verify_no_*
         # state's own note), so stopping the instant state == "home" isn't
-        # enough: a second earlier version did exactly that and still handed
+        # enough: an earlier version did exactly that and still handed
         # switch_episode() a screen with a stuck "Send X a free Life?" dialog
-        # over it, which mis-tapped into the dialog the same way the Result
-        # popup did. verify_no_enterleague is the LAST of the four guards in
-        # home's own on_match chain (verify_no_popup -> verify_no_sendlife ->
-        # verify_no_prevresults -> verify_no_enterleague). _run_actions is
-        # called for BOTH its on_match (enterleague still up) and on_absent
-        # (all four guards found nothing — screen is genuinely clear) since
-        # on_absent is a list here; is_absent_play_tap distinguishes them by
-        # shape rather than by which call site fired, since the base Runner
-        # doesn't pass that through. On the clear-screen path, stop BEFORE the
-        # actual Play tap runs — a switch_episode() caller wants a level home
-        # back, not a run freshly kicked off.
-        if self._stop_at_home and state == "verify_no_enterleague":
-            is_absent_play_tap = any(
-                a.get("type") == "tap_xy" and (a.get("x"), a.get("y")) == _PLAY_TAP_XY
-                for a in actions
-            )
-            if is_absent_play_tap:
-                logging.getLogger("netrunner").info(
-                    "home confirmed clear (verify_no_enterleague absent) — "
-                    "ending run() (stop_after_boxes)")
-                self._stop_at_home = False
-                return _STOP, False
+        # over it, which mis-tapped into the dialog the same way an unclosed
+        # Result popup did.
+        #
+        # The one moment the screen is provably clear is when the guard chain
+        # has fallen all the way through and is about to tap Play. Match on
+        # THAT action rather than on whichever state currently owns it: the
+        # version keyed to state == "verify_no_enterleague" silently stopped
+        # working the moment probe_relic was spliced in after it and inherited
+        # the Play tap, and the loop farmed 13 boxes against a limit of 3
+        # before anyone noticed. Whoever holds the tap holds the stop point.
+        if self._stop_at_home and any(
+            a.get("type") == "tap_xy" and (a.get("x"), a.get("y")) == _PLAY_TAP_XY
+            for a in actions
+        ):
+            logging.getLogger("netrunner").info(
+                "home confirmed clear (guard chain reached the Play tap in '%s') — "
+                "ending run() (stop_after_boxes)", state)
+            self._stop_at_home = False
+            return _STOP, False
 
         if (self.warmup_burst and not self._warmup_done
                 and state == "guard_not_inactive"

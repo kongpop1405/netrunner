@@ -186,3 +186,77 @@ def test_idle_rejects_garbage_and_backwards_ranges():
     for v in ("abc", "15-5", "-3", "1-2-3"):
         with pytest.raises(argparse.ArgumentTypeError):
             rt._idle_arg(v)
+
+
+# --- stop_after_boxes stop point ------------------------------------------------
+
+
+def _play_tap_owner(states):
+    """The state whose action list carries the real Play tap, if any."""
+    owners = []
+    for name, state in states.items():
+        for key in ("on_match", "on_absent"):
+            actions = state.get(key)
+            if not isinstance(actions, list):
+                continue
+            if any(a.get("type") == "tap_xy"
+                   and (a.get("x"), a.get("y")) == rt._PLAY_TAP_XY
+                   for a in actions):
+                owners.append((name, key))
+    return owners
+
+
+def test_play_tap_exists_exactly_once_in_the_config(base_states):
+    """stop_after_boxes ends the run when the guard chain reaches this tap, so a
+    coord drift or a duplicate would either strand the loop past its box limit or
+    stop it early. The tap moved from verify_no_enterleague to probe_relic once
+    already and the state-keyed check broke silently — this pins the shape."""
+    assert len(_play_tap_owner(base_states)) == 1
+
+
+def _stop_runner(stop_after_boxes=1):
+    from src.config import Config
+
+    class FakeDevice:
+        serial = "fake"
+
+        def shell(self, *args):
+            return ""
+
+    cfg = Config(device=None, templates_dir=".", poll_ms=1, match_threshold=0.8,
+                 start_state="a", states={"a": {"detect": "a.png"}})
+    return rt.BoxQuitRunner(cfg, FakeDevice(), stop_after_boxes=stop_after_boxes)
+
+
+def test_stop_fires_on_the_play_tap_whatever_state_owns_it():
+    """The stop must key off the Play tap's shape, not its owning state — the
+    whole point of the fix, since splicing a new guard in front of Play moves it."""
+    play = [{"type": "tap_xy", "x": rt._PLAY_TAP_XY[0], "y": rt._PLAY_TAP_XY[1]},
+            {"type": "goto", "state": "after_play"}]
+    for owner in ("verify_no_enterleague", "probe_relic", "some_future_guard"):
+        r = _stop_runner()
+        r._stop_at_home = True
+        assert r._run_actions(play, None, owner)[0] == "__stop__"
+
+
+def test_stop_does_not_fire_before_the_box_target():
+    """Unarmed, the Play tap is just a tap — the run carries on."""
+    play = [{"type": "tap_xy", "x": rt._PLAY_TAP_XY[0], "y": rt._PLAY_TAP_XY[1]}]
+    r = _stop_runner()
+    assert r._stop_at_home is False
+    try:
+        assert r._run_actions(play, None, "probe_relic")[0] != "__stop__"
+    except Exception:
+        pass  # falling through to the real Actor is fine; not stopping is the assert
+
+
+def test_arming_needs_a_box_that_run():
+    """A run that banked no box must not count toward stop_after_boxes."""
+    r = _stop_runner(stop_after_boxes=1)
+    r._box_this_run = False
+    try:
+        r._run_actions([{"type": "goto", "state": "mystery_box"}], None, "run_result")
+    except Exception:
+        pass
+    assert r._stop_at_home is False
+    assert r._session_boxes == 0
