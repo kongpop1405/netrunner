@@ -177,6 +177,7 @@ tools/
   lint_config.py      orphan states, note drift, --svg transition graphs
   report_runs.py      summarize the rotated logs into an HTML run report
   run_toggle.py       boxrun_toggle launcher with per-run feature flags
+  fetch_db_icons.py   download cookierundb.com icons + index.json (labeling reference)
 main.py        CLI entrypoint (--boost, --launch, --dry-run, ...)
 run_*.bat      double-click launchers, one per bot task
 HANDOFF.md     current state + everything blocked on a real emulator
