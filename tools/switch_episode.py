@@ -43,27 +43,20 @@ MAX_STEP_SWIPES = 6    # generous: more than the farthest episode is steps away
 MATCH_THRESHOLD = 0.82
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="switch Cookie Run's selected Episode")
-    ap.add_argument("--device", required=True, help="adb address or serial")
-    ap.add_argument("--episode", required=True, type=int, help="target episode number, e.g. 5")
-    ap.add_argument("--templates-dir", default="templates/cookierun")
-    ap.add_argument("--adb", default="adb", help="path to adb binary (default: on PATH)")
-    args = ap.parse_args()
+class SwitchEpisodeError(Exception):
+    """Raised by switch_episode() on any step failure — message is user-facing."""
 
-    banner_name = f"ep{args.episode}_banner.png"
-    store = TemplateStore(args.templates_dir)
-    if not (Path(args.templates_dir) / banner_name).exists():
-        print(f"error: no {banner_name} — crop one first (see module docstring)", file=sys.stderr)
-        return 2
 
-    try:
-        device = connect(args.device, adb=args.adb) if ":" in args.device else Device(args.device, adb=args.adb)
-    except AdbError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
+def switch_episode(device, store: TemplateStore, episode: int,
+                    threshold: float = MATCH_THRESHOLD) -> None:
+    """Navigate Cookie Run's home screen to the given Episode. Raises
+    SwitchEpisodeError on any step failure (map didn't open, banner not found,
+    confirm dialog didn't appear). Caller must already be on/near home."""
+    banner_name = f"ep{episode}_banner.png"
+    if not (store.dir / banner_name).exists():
+        raise SwitchEpisodeError(f"no {banner_name} — crop one first (see module docstring)")
 
-    actor = Actor(device, store, default_threshold=MATCH_THRESHOLD)
+    actor = Actor(device, store, default_threshold=threshold)
 
     # A tap landing while home is still fading in (right after a previous switch,
     # say) is swallowed, so re-tap rather than failing on the first miss.
@@ -71,12 +64,11 @@ def main() -> int:
         actor.tap(*EPISODE_BUTTON)
         time.sleep(1.5)
         frame = grab(device)
-        m = find_named(frame, store, "episodemap_marker.png", threshold=MATCH_THRESHOLD)
+        m = find_named(frame, store, "episodemap_marker.png", threshold=threshold)
         if m.found:
             break
     else:
-        print("error: Episode Map did not open (episodemap_marker not found)", file=sys.stderr)
-        return 1
+        raise SwitchEpisodeError("Episode Map did not open (episodemap_marker not found)")
 
     for _ in range(RESET_SWIPES):
         (x1, y1), (x2, y2) = MAP_SWIPE_LEFT
@@ -86,7 +78,7 @@ def main() -> int:
     found = False
     for step in range(MAX_STEP_SWIPES + 1):
         frame = grab(device)
-        m = find_named(frame, store, banner_name, threshold=MATCH_THRESHOLD)
+        m = find_named(frame, store, banner_name, threshold=threshold)
         if m.found:
             found = True
             break
@@ -97,26 +89,45 @@ def main() -> int:
         time.sleep(0.6)
 
     if not found:
-        print(f"error: {banner_name} not found after {MAX_STEP_SWIPES} swipes", file=sys.stderr)
-        return 1
+        raise SwitchEpisodeError(f"{banner_name} not found after {MAX_STEP_SWIPES} swipes")
 
     actor.tap(m.x, m.y)
     time.sleep(1.5)
     # The confirm dialog re-draws the episode name on its own ribbon, so the map
     # banner no longer matches — the Enter button is what's unique to the dialog.
     frame = grab(device)
-    enter = find_named(frame, store, "episodeenter_marker.png", threshold=MATCH_THRESHOLD)
+    enter = find_named(frame, store, "episodeenter_marker.png", threshold=threshold)
     if not enter.found:
-        print(f"error: confirm dialog for {banner_name} did not open as expected", file=sys.stderr)
-        return 1
+        raise SwitchEpisodeError(f"confirm dialog for {banner_name} did not open as expected")
 
     actor.tap(enter.x, enter.y)
     time.sleep(2.0)
 
     frame = grab(device)
-    m3 = find_named(frame, store, "home_play_marker.png", threshold=MATCH_THRESHOLD)
+    m3 = find_named(frame, store, "home_play_marker.png", threshold=threshold)
     if not m3.found:
-        print("warning: home_play_marker not visible after Enter — check manually", file=sys.stderr)
+        raise SwitchEpisodeError("home_play_marker not visible after Enter — check manually")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="switch Cookie Run's selected Episode")
+    ap.add_argument("--device", required=True, help="adb address or serial")
+    ap.add_argument("--episode", required=True, type=int, help="target episode number, e.g. 5")
+    ap.add_argument("--templates-dir", default="templates/cookierun")
+    ap.add_argument("--adb", default="adb", help="path to adb binary (default: on PATH)")
+    args = ap.parse_args()
+
+    store = TemplateStore(args.templates_dir)
+    try:
+        device = connect(args.device, adb=args.adb) if ":" in args.device else Device(args.device, adb=args.adb)
+    except AdbError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    try:
+        switch_episode(device, store, args.episode)
+    except SwitchEpisodeError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1
 
     print(f"switched to Episode {args.episode}")

@@ -23,7 +23,7 @@ import main as netrunner_main
 from src import boost as boostmod
 from src import config as cfgmod
 from src.device import AdbError
-from src.fsm import Runner
+from src.fsm import _STOP, Runner
 from src.perceive import PerceiveError, find_named, read_counter
 
 CONFIG_PATH = "config/cookierun/boxrun_toggle.json"
@@ -82,7 +82,8 @@ class BoxQuitRunner(Runner):
     COUNTER_OFFSET = (176, -4, 60, 64)
 
     def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False,
-                 counter_template: str = "boxcounter_marker.png", **kwargs):
+                 counter_template: str = "boxcounter_marker.png",
+                 stop_after_boxes: int = 0, **kwargs):
         super().__init__(*args, **kwargs)
         self.quit_after = quit_after
         self.boxes_seen = 0
@@ -91,6 +92,24 @@ class BoxQuitRunner(Runner):
         self._warmup_done = False
         self._box_counted_this_run = False
         self._ocr_available = True  # flipped off after the first failure
+        #: session-wide (not per-run) box total that ends run() outright — for
+        #: tools/run_episode_loop.py, which needs control back after N boxes to
+        #: switch Episode, not just a quit-this-run signal. 0 = never (default),
+        #: matching quit_after's own "0 = off" convention.
+        self.stop_after_boxes = stop_after_boxes
+        #: runs-that-ended-with-a-box, counted the same way regardless of OCR
+        #: availability or quit_after (unlike boxes_seen, which only increments
+        #: on the no-OCR fallback path AND only for runs that actually quit
+        #: early — with quit_after=0, the common case, no run ever quits early,
+        #: so boxes_seen would never move).
+        self._session_boxes = 0
+        #: whether check_box has seen boxcounter_marker at all THIS run — set in
+        #: check_box, consumed and reset at run_result (see _run_actions).
+        self._box_this_run = False
+        #: armed at run_result once stop_after_boxes is reached; consumed at the
+        #: next arrival on home, once the post-run popup chain has actually
+        #: cleared the screen (see _run_actions).
+        self._stop_at_home = False
 
     def _read_box_count(self, frame) -> int | None:
         """The run's box count from the counter pill, or None if unreadable.
@@ -125,6 +144,10 @@ class BoxQuitRunner(Runner):
             )
             if is_quit_goto:
                 log = logging.getLogger("netrunner")
+                # A box was seen this run regardless of whether quit_after lets
+                # the run end early — stop_after_boxes counts runs-with-a-box,
+                # tallied once at run_result below, not gated by quit_after.
+                self._box_this_run = True
                 in_run = self._read_box_count(frame)
                 if in_run is not None:
                     if self.quit_after <= 0 or in_run < self.quit_after:
@@ -153,9 +176,39 @@ class BoxQuitRunner(Runner):
         # run_result marks the run as over -> the NEXT time we reach
         # guard_not_inactive is a new run and needs its own burst, and the
         # next box seen (if any) belongs to a new run and should count again.
+        # Also where stop_after_boxes is tallied: a run can end with a box via
+        # quit_run OR by playing to a natural result screen (quit_after=0, the
+        # common case) — run_result is the one point both paths funnel through.
+        if state == "run_result" and self._box_this_run:
+            self._session_boxes += 1
+            log = logging.getLogger("netrunner")
+            log.info("run_result: %d/%d session boxes",
+                     self._session_boxes, self.stop_after_boxes)
+            if (self.stop_after_boxes > 0
+                    and self._session_boxes >= self.stop_after_boxes):
+                # Don't _STOP here — run_result.on_match still has to tap OK and
+                # hand off to the mystery_box chain (mystery_box -> mb_open ->
+                # mystery_box_recheck -> home), which can take several more
+                # states to actually clear the screen back to home. An earlier
+                # version returned _STOP immediately, before any of those
+                # actions ran, so the Result dialog's OK was never tapped and
+                # the screen sat on Result forever while switch_episode() (which
+                # assumes home) kept mis-tapping into the stuck dialog. Instead,
+                # arm a flag and let the FSM run normally; _stop_at_home below
+                # cuts it at the next arrival on home, once the screen is
+                # actually clear.
+                log.info("run_result: stop_after_boxes reached — will stop at next home")
+                self._stop_at_home = True
+
         if state == "run_result":
             self._warmup_done = False
             self._box_counted_this_run = False
+            self._box_this_run = False
+
+        if self._stop_at_home and state == "home":
+            logging.getLogger("netrunner").info("home reached — ending run() (stop_after_boxes)")
+            self._stop_at_home = False
+            return _STOP, False
 
         if (self.warmup_burst and not self._warmup_done
                 and state == "guard_not_inactive"
