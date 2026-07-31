@@ -1101,13 +1101,12 @@
       "timeout_ms": 6000
     },
     "probe_relic": {
-      "_note": "Fifth (last) Play-tap gate, and the relic-claim entry. The \"Get!\" badge sits on the episode banner (relic_get_marker, cropped to the badge ALONE — the x/y fragment counter beside it differs per episode, so including it would only match one episode). Present -> tap the badge (792,125) to open the Relic screen -> relic_claim. Absent -> the real Play tap (the original verify_no_enterleague.on_absent body, moved here unchanged). tools/run_toggle.py's --relic flag rewrites on_match to skip straight to the Play tap when the user wants to hoard relics instead of claiming them. Marker scores: badge present=1.000, home without it=0.463, in-run=0.357.",
+      "_note": "Fifth (last) Play-tap gate, and the relic-claim entry. The \"Get!\" badge sits on the episode banner (relic_get_marker, cropped to the badge ALONE — the x/y fragment counter beside it differs per episode, so including it would only match one episode). Present -> tap it via tap_template, NOT a fixed coord: the badge rides the episode banner, whose width follows the episode NAME, so it sits at (792,125) on Episode 6 (\"Plum Blossom Palace\") but (1346,106) on Episode 7 (\"Land of Enlightenment\") — 554px apart. The hardcoded tap opened the Relic screen on ep6 and silently missed on ep7, leaving relic_claim to time out against a screen that never opened (score pinned at 0.23, not drifting, which is what gave the miss away). Absent -> the real Play tap (the original verify_no_enterleague.on_absent body, moved here unchanged). tools/run_toggle.py's --relic flag rewrites on_match to skip straight to the Play tap when the user wants to hoard relics instead of claiming them. Marker scores: badge present=1.000, home without it=0.463, in-run=0.357.",
       "detect": "relic_get_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
-          "x": 792,
-          "y": 125
+          "type": "tap_template",
+          "template": "relic_get_marker.png"
         },
         {
           "type": "wait",
@@ -1158,7 +1157,7 @@
       },
       "absent_retries": 4,
       "absent_wait_ms": 900,
-      "timeout_ms": 8000
+      "timeout_ms": 15000
     },
     "relic_reward": {
       "_note": "\"Congratulations!\" reward popup from the relic claim. NOT the same as congrats_marker (that one scores only 0.570 here — different banner art), hence its own relic_reward_marker. Confirm (960,858) banks it and drops back to the Relic screen, now showing 0/N with no Claim button. Absent -> keep re-checking for up to ~6s before giving up to relic_close: the unlock animation runs longer than relic_claim's 4.5s post-tap wait, and live-caught the popup landing AFTER a single absent poll had already routed past it (marker read 0.13 on that poll, 0.994 a moment later), leaving the reward stuck on screen over home.",
