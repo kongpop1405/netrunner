@@ -1218,7 +1218,7 @@
       "timeout_ms": 8000
     },
     "lives_scan": {
-      "_note": "[lives routine] Look for ANY visible Send-Life icon (green pill, heart+mail glyph) among the currently rendered rows — matchTemplate finds whichever instance scores highest, so it doesn't matter which row. Already-sent rows show a green CHECK instead (different glyph, won't match). Tap it via tap_template so we hit the icon wherever it sits on screen.",
+      "_note": "[lives routine] Look for ANY visible Send-Life icon (green pill, heart+mail glyph) among the currently rendered rows — matchTemplate finds whichever instance scores highest, so it doesn't matter which row. Already-sent rows show a green CHECK instead (different glyph, won't match). Tap it via tap_template so we hit the icon wherever it sits on screen. ANTI-LIVELOCK: reached repeatedly from lives_message_sent via lives_cycle_gate_1/2/3, which force a scroll after 2 send-taps fail to advance the row, regardless of whether the icon still matches (observed live 2026-07-31: 543 consecutive lives_scan->confirm_dialog_gp->message_sent cycles, tap coord pinned at 990-999,750-769 the whole time, list never advanced — the send-tap was landing but not durably flipping the row to sent, or the marker kept re-matching the same row after a scroll-less loop).",
       "detect": "sendlife_icon.png",
       "on_match": [
         {
@@ -1352,7 +1352,7 @@
       "threshold": 0.85
     },
     "lives_message_sent": {
-      "_note": "[lives routine] 'Message sent!' confirmation popup. Tap its Confirm (957,685) to close, returning to the friends list with that row now showing a green check instead of the send icon. Then back to scan for the next one.",
+      "_note": "[lives routine] 'Message sent!' confirmation popup. Tap its Confirm (957,685) to close, returning to the friends list with that row now showing a green check instead of the send icon. Then hand to lives_scan_gate_1 (NOT lives_scan directly) — gate 1/4 of an anti-livelock counter that forces a scroll every 4th cycle even if sendlife_icon still matches, so a send-tap that isn't durably flipping the row (dialog close race, marker re-matching the same unmoved row) can't loop forever.",
       "detect": "messagesent_marker.png",
       "on_match": [
         {
@@ -1364,7 +1364,61 @@
         },
         {
           "type": "goto",
-          "state": "lives_scan"
+          "state": "lives_cycle_gate_1"
+        }
+      ],
+      "on_absent": {
+        "goto": "lives_cycle_gate_1"
+      },
+      "timeout_ms": 6000,
+      "threshold": 0.85
+    },
+    "lives_cycle_gate_1": {
+      "_note": "[lives routine] Anti-livelock counter, hop 1/3. Reached ONLY from lives_message_sent (one full send-tap->confirm->sent cycle already happened). Detects the SAME sendlife_icon the next cycle would scan for: absent -> the row genuinely advanced, safe to resume normal scanning via lives_scan. Present -> the icon is still sitting there after a full cycle, count it (gate_2), rather than looping straight back into lives_scan and repeating the same tap forever (this exact loop ran 543x live on 2026-07-31 before being killed by hand).",
+      "detect": "sendlife_icon.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "lives_cycle_gate_2"
+        }
+      ],
+      "on_absent": {
+        "goto": "lives_scan"
+      },
+      "timeout_ms": 6000,
+      "threshold": 0.85
+    },
+    "lives_cycle_gate_2": {
+      "_note": "[lives routine] Anti-livelock counter, hop 2/3. Re-tap once more via the normal lives_scan action (still might just be a slow-closing dialog) but if the icon is STILL present one more full cycle later, gate_3 gives up on this row and forces a scroll instead of a third tap.",
+      "detect": "sendlife_icon.png",
+      "on_match": [
+        {
+          "type": "tap_template",
+          "template": "sendlife_icon.png",
+          "threshold": 0.85
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "lives_cycle_gate_3"
+        }
+      ],
+      "on_absent": {
+        "goto": "lives_scan"
+      },
+      "timeout_ms": 8000,
+      "threshold": 0.85
+    },
+    "lives_cycle_gate_3": {
+      "_note": "[lives routine] Anti-livelock counter, hop 3/3 (final). If sendlife_icon still matches here, 2 consecutive send-taps on this row failed to advance it — force lives_scroll_list unconditionally so the list moves regardless of match state, breaking any livelock class (dialog not opening, marker pinned on an already-handled row, tap landing off-target). Absent -> the row finally advanced, resume lives_scan normally.",
+      "detect": "sendlife_icon.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "lives_scroll_list"
         }
       ],
       "on_absent": {
