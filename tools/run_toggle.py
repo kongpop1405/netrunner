@@ -13,6 +13,7 @@ import copy
 import logging
 import os
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -89,7 +90,9 @@ class BoxQuitRunner(Runner):
 
     def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False,
                  counter_template: str = "boxcounter_marker.png",
-                 stop_after_boxes: int = 0, **kwargs):
+                 stop_after_boxes: int = 0,
+                 reveal_snap_dir: str | Path | None = None,
+                 episode_label: str = "", **kwargs):
         super().__init__(*args, **kwargs)
         self.quit_after = quit_after
         self.boxes_seen = 0
@@ -116,6 +119,15 @@ class BoxQuitRunner(Runner):
         #: next arrival on home, once the post-run popup chain has actually
         #: cleared the screen (see _run_actions).
         self._stop_at_home = False
+        #: where to save mb_open reveal screenshots, or None to skip entirely
+        #: (tools/run_toggle.py's own CLI never sets this — only
+        #: tools/run_episode_loop.py, which needs a per-episode record of what
+        #: box rewards were pulled).
+        self.reveal_snap_dir = Path(reveal_snap_dir) if reveal_snap_dir else None
+        #: prefix for reveal snapshot filenames, e.g. "ep7" — set by the caller
+        #: since BoxQuitRunner has no notion of which Episode is selected.
+        self.episode_label = episode_label
+        self._reveal_seq = 0
 
     def _read_box_count(self, frame) -> int | None:
         """The run's box count from the counter pill, or None if unreadable.
@@ -143,7 +155,32 @@ class BoxQuitRunner(Runner):
             self._ocr_available = False
             return None
 
+    def _save_reveal_snap(self, frame) -> None:
+        """Save the current frame as a reveal screenshot, best-effort.
+
+        Called every time mb_open's marker matches, i.e. once per self-loop
+        pass — a box that shows multiple ingredient cards in sequence gets one
+        frame per pass, not deduped, since a card can flip between passes and
+        under-collecting was judged worse than a few near-duplicate frames.
+        """
+        if self.reveal_snap_dir is None or frame is None:
+            return
+        import cv2
+        self._reveal_seq += 1
+        self.reveal_snap_dir.mkdir(parents=True, exist_ok=True)
+        label = self.episode_label or "ep"
+        path = self.reveal_snap_dir / (
+            f"{label}_{time.strftime('%Y%m%d_%H%M%S')}_{self._reveal_seq:03d}.png"
+        )
+        try:
+            cv2.imwrite(str(path), frame)
+            logging.getLogger("netrunner").info("reveal snap saved -> %s", path)
+        except Exception as e:  # noqa: BLE001 — a failed screenshot must never crash the farm
+            logging.getLogger("netrunner").warning("could not save reveal snap: %s", e)
+
     def _run_actions(self, actions, frame, state):
+        if state == "mb_open":
+            self._save_reveal_snap(frame)
         if state == "check_box":
             is_quit_goto = any(
                 a.get("type") == "goto" and a.get("state") == "quit_run" for a in actions

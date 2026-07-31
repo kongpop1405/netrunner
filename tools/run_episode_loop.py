@@ -72,6 +72,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--adb", default=None)
     ap.add_argument("--launch", action="store_true")
     ap.add_argument("--templates-dir", default="templates/cookierun")
+    ap.add_argument("--reveal-snaps", default="snaps/box_reveals",
+                     help="directory for Mystery Box reveal screenshots, one per "
+                          "mb_open pass, named ep<N>_<timestamp>_<seq>.png "
+                          "(default: snaps/box_reveals; 'none' disables)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-cycles", type=int, default=None,
                      help="cap FSM cycles per episode run (debug/test only — "
@@ -82,6 +86,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.boxes_per_episode <= 0:
         print("error: --boxes-per-episode must be >= 1", file=sys.stderr)
         return 2
+
+    reveal_dir = None if args.reveal_snaps.strip().lower() in ("none", "off", "")\
+        else Path(args.reveal_snaps)
 
     load_dotenv()
     netrunner_main._setup_logging(args.verbose)
@@ -134,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
 
     log.info("device: %s  adb: %s", address, adb)
     log.info("episode order: %s  boxes_per_episode: %d", args.order, args.boxes_per_episode)
+    log.info("reveal snaps: %s", reveal_dir or "disabled")
     log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s",
               args.faststart, args.boost, args.jump, args.slide, args.relay)
 
@@ -167,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
                 run_cfg, device, webhook_url=webhook_url,
                 warmup_burst=(not args.jump and not args.slide),
                 stop_after_boxes=args.boxes_per_episode,
+                reveal_snap_dir=reveal_dir,
+                episode_label=f"ep{episode}",
                 restarter=netrunner_main.build_restarter(run_cfg, device, adb, None),
             )
             runner.run(dry_run=args.dry_run, max_cycles=args.max_cycles)
