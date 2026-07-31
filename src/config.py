@@ -355,6 +355,30 @@ def _require_template(state: str, tdir: Path, name: str) -> None:
         raise ConfigError(f"state '{state}': template not found: {tdir / name}")
 
 
+def _validate_roi(state: str, roi) -> None:
+    """A tap_template roi must be four non-negative ints (x, y, w, h).
+
+    Caught here rather than at runtime: a malformed roi slices the frame to
+    something empty or wrong, and perceive would either raise mid-run or,
+    worse, match inside a region nobody intended.
+    """
+    if roi is None:
+        return
+    if not isinstance(roi, (list, tuple)) or len(roi) != 4:
+        raise ConfigError(
+            f"state '{state}': tap_template roi must be [x, y, w, h], got {roi!r}"
+        )
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in roi):
+        raise ConfigError(
+            f"state '{state}': tap_template roi values must be integers, got {roi!r}"
+        )
+    x, y, w, h = roi
+    if x < 0 or y < 0 or w <= 0 or h <= 0:
+        raise ConfigError(
+            f"state '{state}': tap_template roi needs x,y >= 0 and w,h > 0, got {roi!r}"
+        )
+
+
 def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path) -> None:
     kind = action.get("type")
     if kind not in _ACTION_TYPES:
@@ -370,6 +394,7 @@ def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path
         )
     if kind == "tap_template":
         _require_template(state, tdir, action["template"])
+        _validate_roi(state, action.get("roi"))
     if kind == "close_popup" and action.get("verify") is not None:
         _require_template(state, tdir, action["verify"])
     if kind == "solve_cards":

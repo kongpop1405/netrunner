@@ -28,6 +28,24 @@ from .config import Config, ConfigError
 #:   gate    on_match goto is redirected past the chain when boost is "none"
 ROLES = ("probe", "buy", "picker", "gate")
 
+#: "Pick desired Boosts!" rows, measured at 1920x1080: two columns at x=425 and
+#: x=998, rows every ~74px from y=262. Tapping a row toggles its tick, and
+#: Multi-Buy re-rolls until ANY ticked boost lands — so exactly one must be
+#: ticked, and it must be the one we want.
+PICK = {
+    "doublecoins":   (425, 262),
+    "score15":       (998, 262),
+    "hpdrain15":     (425, 336),
+    "revive80":      (998, 336),
+    "crush70":       (425, 411),
+    "speed":         (998, 411),
+    "goldcoinmagic": (425, 485),
+    "collision30":   (998, 485),
+    "potions20":     (425, 559),
+    "magnet":        (998, 559),
+    "pitlifts2":     (425, 633),
+}
+
 PROFILES: dict[str, dict] = {
     "magnet": {
         "label": "Magnetic Aura",
@@ -78,6 +96,37 @@ def describe_choices() -> str:
         lines.append("needs a banner crop @1920x1080 + buy-tap coords: "
                      + ", ".join(pending))
     return " | ".join(lines)
+
+
+#: half-width of the roi drawn around a picker row's radio disc. Wide enough to
+#: absorb the row's own anti-aliasing, tight enough that the neighbouring rows
+#: (74px apart) can never fall inside it.
+_PICK_ROI_PAD = 30
+
+#: The radio disc in each state, cropped from a live picker. Matching one inside
+#: a single row's roi is how a row's tick state is read.
+UNTICKED_TEMPLATE = "pick_unticked.png"
+TICKED_TEMPLATE = "pick_ticked.png"
+
+
+def _roi(x: int, y: int) -> list[int]:
+    return [x - _PICK_ROI_PAD, y - _PICK_ROI_PAD,
+            _PICK_ROI_PAD * 2, _PICK_ROI_PAD * 2]
+
+
+def _toggle_action(x: int, y: int, *, want_ticked: bool) -> dict:
+    """Tap a picker row only when it is not already in the state we want.
+
+    Each row is a toggle, so an unconditional tap flips a row that was already
+    right. `optional` makes "template absent" mean "already in the wanted
+    state, nothing to do" instead of an error.
+    """
+    return {
+        "type": "tap_template",
+        "template": UNTICKED_TEMPLATE if want_ticked else TICKED_TEMPLATE,
+        "roi": _roi(x, y),
+        "optional": True,
+    }
 
 
 def _roles(states: dict[str, dict]) -> dict[str, list[str]]:
@@ -166,8 +215,24 @@ def apply_boost(cfg: Config, choice: str) -> None:
         cfg.states[name]["on_match"] = rebuilt
 
     mb_x, mb_y = profile["multibuy"]
+    pick_xy = PICK.get(choice)
     for name in roles["picker"]:
-        for action in cfg.states[name].get("on_match", []):
+        actions = cfg.states[name].get("on_match", [])
+        for action in actions:
             if action.get("type") == "tap_xy":
                 action["x"], action["y"] = mb_x, mb_y
                 break
+        if pick_xy is not None:
+            # Multi-Buy re-rolls until ANY ticked boost lands, so the picker has
+            # to be left with exactly one tick — ours. Clear every other row
+            # first (the game remembers ticks between visits), then set ours.
+            prelude: list[dict] = []
+            for key, xy in PICK.items():
+                if key == choice:
+                    continue
+                prelude.append(_toggle_action(*xy, want_ticked=False))
+            prelude.append(_toggle_action(*pick_xy, want_ticked=True))
+            prelude.append({"type": "wait", "ms": [510, 720]})
+            cfg.states[name]["on_match"] = prelude + actions
+        else:
+            cfg.states[name]["on_match"] = actions
