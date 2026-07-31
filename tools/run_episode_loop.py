@@ -39,6 +39,7 @@ from tools.run_toggle import (
     _strip_faststart,
     _strip_jump,
     _strip_relay,
+    _strip_relic,
     _strip_slide,
     _yn,
 )
@@ -68,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
     ap.add_argument("--relay", type=_yn, required=True)
+    ap.add_argument("--relic", type=_yn, default=True,
+                     help="y (default) = claim each episode's relic when its "
+                          "'Get!' badge appears; n = hoard them for later")
     ap.add_argument("--device", default=None)
     ap.add_argument("--adb", default=None)
     ap.add_argument("--launch", action="store_true")
@@ -113,6 +117,8 @@ def main(argv: list[str] | None = None) -> int:
         _strip_slide(base_states)
     if not args.relay:
         _strip_relay(base_states)
+    if not args.relic:
+        _strip_relic(base_states)
 
     address = args.device or os.environ.get("NETRUNNER_DEVICE")
     if args.launch:
@@ -142,8 +148,9 @@ def main(argv: list[str] | None = None) -> int:
     log.info("device: %s  adb: %s", address, adb)
     log.info("episode order: %s  boxes_per_episode: %d", args.order, args.boxes_per_episode)
     log.info("reveal snaps: %s", reveal_dir or "disabled")
-    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s",
-              args.faststart, args.boost, args.jump, args.slide, args.relay)
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic=%s",
+              args.faststart, args.boost, args.jump, args.slide, args.relay,
+              args.relic)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
     store = TemplateStore(args.templates_dir)

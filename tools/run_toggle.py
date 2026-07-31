@@ -330,6 +330,18 @@ def _apply_boost(states: dict, choice: str) -> None:
     boostmod.apply_boost(shim, choice)
 
 
+def _strip_relic(states: dict) -> None:
+    """Hoard relics instead of claiming them: make probe_relic ignore the badge.
+
+    probe_relic's on_absent already IS the real Play tap, so pointing on_match
+    at the same action list means a completed relic is simply played past —
+    the badge stays up and the fragments keep accumulating for a later manual
+    claim. Leaves the relic_claim/relic_reward/relic_close states in place but
+    unreachable, which config validation only warns about.
+    """
+    states["probe_relic"]["on_match"] = copy.deepcopy(states["probe_relic"]["on_absent"])
+
+
 def _strip_jump(states: dict) -> None:
     for name in ("jump_2", "jump_4", "guard_not_inactive"):
         state = states[name]
@@ -405,6 +417,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
     ap.add_argument("--relay", type=_yn, required=True)
+    ap.add_argument("--relic", type=_yn, default=True,
+                    help="y (default) = claim an episode's relic as soon as its "
+                         "'Get!' badge appears; n = hoard, play past the badge "
+                         "and leave the claim for later")
     ap.add_argument("--quit-after-boxes", type=int, default=0,
                     help="quit a run once this many total boxes have been banked "
                          "this session (0 = never quit early, default)")
@@ -446,6 +462,8 @@ def main(argv: list[str] | None = None) -> int:
         _strip_slide(states)
     if not args.relay:
         _strip_relay(states)
+    if not args.relic:
+        _strip_relic(states)
     cfg.states = states
 
     if args.idle is None:
@@ -492,9 +510,10 @@ def main(argv: list[str] | None = None) -> int:
     log.info("device: %s  adb: %s", address, adb)
     idle_desc = ("config" if args.idle is _IDLE_CONFIG
                  else "off" if args.idle is None else f"{args.idle[0]:g}-{args.idle[1]:g}s")
-    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s quit_after_boxes=%d idle=%s",
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic=%s "
+             "quit_after_boxes=%d idle=%s",
               args.faststart, args.boost, args.jump, args.slide, args.relay,
-              args.quit_after_boxes, idle_desc)
+              args.relic, args.quit_after_boxes, idle_desc)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
 

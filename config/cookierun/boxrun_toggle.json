@@ -1095,6 +1095,29 @@
           "state": "home"
         }
       ],
+      "on_absent": {
+        "goto": "probe_relic"
+      },
+      "timeout_ms": 6000
+    },
+    "probe_relic": {
+      "_note": "Fifth (last) Play-tap gate, and the relic-claim entry. The \"Get!\" badge sits on the episode banner (relic_get_marker, cropped to the badge ALONE — the x/y fragment counter beside it differs per episode, so including it would only match one episode). Present -> tap the badge (792,125) to open the Relic screen -> relic_claim. Absent -> the real Play tap (the original verify_no_enterleague.on_absent body, moved here unchanged). tools/run_toggle.py's --relic flag rewrites on_match to skip straight to the Play tap when the user wants to hoard relics instead of claiming them. Marker scores: badge present=1.000, home without it=0.463, in-run=0.357.",
+      "detect": "relic_get_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 792,
+          "y": 125
+        },
+        {
+          "type": "wait",
+          "ms": 2500
+        },
+        {
+          "type": "goto",
+          "state": "relic_claim"
+        }
+      ],
       "on_absent": [
         {
           "type": "tap_xy",
@@ -1111,6 +1134,71 @@
         }
       ],
       "timeout_ms": 6000
+    },
+    "relic_claim": {
+      "_note": "Relic screen with the relic complete: a green Claim button under the artefact. Tap Claim (960,872) — the chains break and the artefact unlocks over ~4s, then a Congratulations reward popup appears (16,000 Coins on the run this was recorded from). Absent -> the screen never opened (or a claim already closed it) -> back to home rather than blind-tapping. Verified live on Episode 6: screen marker self=1.000, home=0.260, mystery-box=0.345.",
+      "detect": "relic_screen_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 872
+        },
+        {
+          "type": "wait",
+          "ms": 4500
+        },
+        {
+          "type": "goto",
+          "state": "relic_reward"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 8000
+    },
+    "relic_reward": {
+      "_note": "\"Congratulations!\" reward popup from the relic claim. NOT the same as congrats_marker (that one scores only 0.570 here — different banner art), hence its own relic_reward_marker. Confirm (960,858) banks it and drops back to the Relic screen, now showing 0/N with no Claim button. Absent -> the popup already closed -> relic_close tidies up the Relic screen either way.",
+      "detect": "relic_reward_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 960,
+          "y": 858,
+          "verify": "relic_reward_marker.png",
+          "settle_ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "relic_close"
+        }
+      ],
+      "on_absent": {
+        "goto": "relic_close"
+      },
+      "timeout_ms": 10000
+    },
+    "relic_close": {
+      "_note": "Back on the Relic screen after claiming (counter reset to 0/N, Claim gone). Close via the X (1613,232) to return to home, which re-runs the whole guard chain — with the badge now gone, probe_relic falls through to the Play tap. Absent -> already off the screen -> home.",
+      "detect": "relic_screen_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1613,
+          "y": 232,
+          "verify": "relic_screen_marker.png",
+          "settle_ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 8000
     },
     "probe_settings": {
       "_note": "User can manually open Game Settings (gear icon, top-right of home) at any time, on any tab (Options/Notifications/Performance/Game Info) -- no marker recognized this screen before, so the bot sat frozen matching nothing. Detect the teal 'Game Settings' title ribbon (shared by all 4 tabs); close via X (1671,145) -> home re-checks. Absent -> continue the normal chain.",
