@@ -65,6 +65,13 @@
   .file{font:600 12px ui-monospace,monospace;color:var(--vi)}
   .phase{display:flex;align-items:center;gap:10px;margin:26px 0 10px}
   .phase .b{font:700 11px ui-monospace,monospace;padding:3px 9px;border-radius:6px;background:var(--vis);color:var(--vi);border:1px solid var(--vi)}
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0}
+  figure.shot{margin:0;background:var(--elev);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  figure.shot img{display:block;width:100%;height:auto}
+  figure.shot figcaption{padding:8px 12px;font-size:12px;color:var(--dim);border-top:1px solid var(--bd)}
+  figure.shot figcaption b{color:var(--tx);font-family:ui-monospace,monospace}
+  figure.shot.empty{display:flex;align-items:center;justify-content:center;min-height:140px;
+    color:var(--faint);font-size:12.5px;text-align:center;padding:16px;border-style:dashed}
   @media(max-width:780px){.wrap{padding:24px 16px 64px}h1{font-size:22px}}
 </style>
 
@@ -179,6 +186,12 @@
 <!-- ══════════ FEATURE ② RELIC CLAIM ══════════ -->
 <section>
   <h2><span class="n">03</span>② Relic Claim — เมื่อ Relic Complete โผล่</h2>
+  <div class="note ok">
+    <b>Implement ไปแล้วด้วยแนวทางที่ต่างจาก design เดิมด้านล่าง</b> — session ถัดมามีโอกาส observe relic
+    จริงบน Episode 6 (ของหายาก ไม่ได้ trigger เอง) จึง crop template + เขียน state ตามจอจริงแทนที่จะ port
+    จาก cookierun-bot ตรง ๆ. รายละเอียด flow จริงอยู่ท้าย section นี้ — <b>เนื้อหา design เดิมด้านล่างเก็บไว้
+    เป็น record ว่าคิดไว้ยังไงตอนแรก ไม่ตรงกับโค้ดปัจจุบัน 100%</b> (ชื่อ state, จำนวน popup, action ที่ใช้ต่างกัน).
+  </div>
   <p class="lead">
     Relic เป็น 2 popup ต่อเนื่อง: <b>RELIC_COMPLETE</b> (relic สะสมครบ → กดเปิด) → <b>RELIC_CLAIM</b>
     (กด claim → close → รอ cutscene ~10–15s). netrunner ยังไม่มี template/state ทั้งคู่ → โผล่มาตอนนี้ = bot ค้าง.
@@ -225,6 +238,49 @@ probe_relic_claim:
     <b>ใช้ <code>close_popup</code> action ได้:</b> action มีอยู่แล้ว (tap + verify + retry). relic_complete/claim เข้าข่าย popup dismiss →
     <code>{"type":"close_popup","x":..,"y":..,"verify":"relic_claim_marker.png"}</code> จะ verify ว่าปิดจริงแล้วค่อยไปต่อ.
     <b>แต่ relic_claim ต้องมี wait 10–15s หลัง close</b> (cutscene) — ต่อ <code>wait</code> action แยก.
+  </div>
+
+  <h3>Flow จริงที่ observe ได้ (ต่างจาก design ด้านบน)</h3>
+  <p class="lead">
+    ไม่ใช่ 2 popup (COMPLETE→CLAIM) แต่เป็น <b>4 state ต่อเนื่อง</b>: badge บน home → Relic screen (มี
+    fragment counter ในตัว ไม่แยก "complete" popup ต่างหาก) → reward popup → screen รีเซ็ต. ไม่มี cutscene
+    10-15s จริง — ใช้ <code>close_popup</code> + <code>wait</code> สั้น ๆ ต่อ state พอ.
+  </p>
+  <div class="tw"><table>
+    <thead><tr><th>Design เดิม</th><th>โค้ดจริง</th></tr></thead>
+    <tbody>
+      <tr><td><code>relic_complete_marker.png</code></td><td><code>relic_get_marker.png</code> (badge "Get!" บน home banner)</td></tr>
+      <tr><td><code>relic_claim_marker.png</code></td><td><code>relic_screen_marker.png</code> (ribbon "Relic" — ไม่ผูกกับ artefact art ที่ต่างกันแต่ละ episode)</td></tr>
+      <tr><td>ไม่มีในแผนเดิม</td><td><code>relic_reward_marker.png</code> ("Congratulations!" popup — <code>congrats_marker</code> เดิม match แค่ 0.570 ไม่พอ ต้อง crop แยก)</td></tr>
+      <tr><td><code>probe_relic_complete</code> → <code>probe_relic_claim</code></td><td><code>probe_relic</code> → <code>relic_claim</code> → <code>relic_reward</code> → <code>relic_close</code></td></tr>
+      <tr><td>wait 10-15s cutscene หลัง close</td><td>ไม่มี cutscene ยาว — แต่ต้อง <code>absent_retries</code> เพราะทั้ง Relic screen และ reward popup render ช้ากว่า wait แรกที่ใส่ไว้</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="shots">
+    <figure class="shot">
+      <img src="assets/desired-boost-and-relic/01-badge-on-home.jpg" alt="home banner แสดง Get! badge เมื่อ relic พร้อม claim">
+      <figcaption><b>badge บน home</b> — จุดที่ <code>probe_relic</code> detect (แทนที่ RELIC_COMPLETE popup)</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="assets/desired-boost-and-relic/02-relic-screen.jpg" alt="Relic screen พร้อมปุ่ม Claim">
+      <figcaption><b>Relic screen</b> — เปิดจาก tap badge, มี fragment counter + ปุ่ม Claim ในจอเดียว</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="assets/desired-boost-and-relic/04-reward-popup.jpg" alt="Congratulations popup แสดงรางวัลที่ได้">
+      <figcaption><b>Reward popup</b> — ยืนยันว่า claim สำเร็จจริง (ไม่มีในแผน RELIC_COMPLETE/RELIC_CLAIM เดิม)</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="assets/desired-boost-and-relic/06-back-home-clean.jpg" alt="กลับมาที่ home จอสะอาดไม่มี popup ค้าง">
+      <figcaption><b>home สะอาด</b> — badge หาย, จบ flow — ไม่มี 10-15s cutscene จริงตามที่ design เดิมกันไว้</figcaption>
+    </figure>
+  </div>
+
+  <div class="note danger">
+    Boost section (02) ด้านบนยังเป็น <b>3/11</b> ตามเดิม — session ที่ทำ relic ไม่ได้แตะ boost profiles เพิ่ม,
+    ยังไม่มีภาพให้ 8 boost ที่เหลือ (<code>goldcoinmagic</code>, <code>crush70</code>, <code>hpdrain15</code>,
+    <code>revive80</code>, <code>score15</code>, <code>potions20</code>, <code>collision30</code>,
+    <code>pitlifts2</code>) — รอ crop banner จริงจากเกมก่อนถึงเพิ่มรูปได้.
   </div>
 </section>
 
