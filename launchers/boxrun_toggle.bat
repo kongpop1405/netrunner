@@ -62,6 +62,17 @@ if "%SLIDE%"=="" set "SLIDE=y"
 set /p "RELAY=Cookie Relay Boost tap? (y/n) [n]: "
 if "%RELAY%"=="" set "RELAY=n"
 
+:askrelic
+set "RELICMODE="
+set /p "RELICMODE=Relic mode? (claim/hoard/stop) [hoard]: "
+if "%RELICMODE%"=="" set "RELICMODE=hoard"
+if /i "%RELICMODE%"=="claim" goto relicok
+if /i "%RELICMODE%"=="hoard" goto relicok
+if /i "%RELICMODE%"=="stop" goto relicok
+echo   [!] pick one of: claim, hoard, stop
+goto askrelic
+:relicok
+
 set "QUITBOXES="
 set /p "QUITBOXES=Quit a run after how many boxes banked? (0=never quit early) [0]: "
 if "%QUITBOXES%"=="" set "QUITBOXES=0"
@@ -71,12 +82,12 @@ set /p "IDLE=Idle between games? (y=config / n=off / MIN-MAX secs) [n]: "
 if "%IDLE%"=="" set "IDLE=n"
 
 echo.
-echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  QuitAfterBoxes=%QUITBOXES%  Idle=%IDLE%
+echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  RelicMode=%RELICMODE%  QuitAfterBoxes=%QUITBOXES%  Idle=%IDLE%
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --quit-after-boxes %QUITBOXES% --idle %IDLE% --launch
+%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --relic-mode %RELICMODE% --quit-after-boxes %QUITBOXES% --idle %IDLE% --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

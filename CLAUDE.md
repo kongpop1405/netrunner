@@ -6,6 +6,15 @@
 - Commit เป็นระยะตามงานที่เสร็จจริง (ไม่รวบทุกอย่างเป็น 1 commit ท้าย session) — 1 commit = 1 fix/feature ที่ verify แล้ว
 - **Stage เฉพาะไฟล์ของ scope งานตัวเองเท่านั้น** — ถ้า repo มี unrelated changes ค้างอยู่ (จาก branch/session อื่นที่ปนเข้ามาในดัชนี) ห้าม `git add -A`/`git add .` เหมารวม ใช้ `git add <path เฉพาะไฟล์ของงานนี้>` เสมอ ปล่อยไฟล์อื่นไว้ตามเดิมให้ session ที่เป็นเจ้าของจัดการเอง
 
+## แก้/เพิ่ม CLI flag ใน tools/*.py — ต้องเช็ค caller ทุกตัวด้วยเสมอ
+
+เมื่อเพิ่ม/แก้ argparse flag ใน `tools/run_toggle.py`, `tools/run_episode_loop.py` หรือ script อื่นที่มี `.bat` launcher เรียกใช้ — **ห้ามถือว่างานจบแค่แก้ `.py`**:
+
+- `grep -rl "<script name>" launchers/` หา `.bat` ทุกตัวที่เรียก script นั้นก่อนปิดงาน
+- เช็คแต่ละ `.bat` ว่า flag ใหม่ต้อง (a) เพิ่ม prompt ให้ user เลือก หรือ (b) ปล่อยเป็น default เงียบๆ ตาม CLI default ก็พอ — ถามถ้าไม่ชัด
+- พลาดมาแล้ว: เพิ่ม `--relic-mode` เข้า `run_toggle.py` แล้วไม่ได้แก้ `launchers/boxrun_toggle.bat` — user รัน `.bat` ไม่เห็น prompt relic เลยเพราะ `.bat` เขียนก่อน flag นี้มีอยู่ และไม่ได้ pass flag นี้ไปให้ python เลย
+- Launcher คนละตัวที่ไม่ได้เรียก script ที่แก้ (เช่น `boxrun_magnet.bat`/`boxrun_default.bat` ไม่เรียก `run_toggle.py`) — ไม่ต้องแตะ
+
 ## Branching
 
 เมื่อเริ่มงานใหม่หรือ session ใหม่ และสรุปปัญหา/scope ได้แล้ว **ถ้าต้องแก้โค้ด ให้สร้าง branch ใหม่ก่อนแก้เสมอ**:
@@ -119,6 +128,12 @@ Marker ที่ crop จาก text บรรทัดเดียว **อา�
 - **`tap_template` แทน `tap_xy`** ทุกที่ที่มี template ให้ match ได้ — ตำแหน่ง tap ตาม element จริงที่ match เจอ ไม่ใช่ pixel ตายตัว ผลรวมกับ engine jitter (`Actor._jitter`: Gaussian spatial jitter + randomized delay + occasional "hesitate" — อัตโนมัติทุก tap อยู่แล้ว ไม่ต้องเขียนเพิ่ม)
 - `tap_xy` ใช้ได้เฉพาะจุดที่ไม่มี template ให้ match จริง ๆ (เช่น blind rescue tap, relay tap ที่ไม่มี UI element ให้จับ)
 - **Verify ด้วย `-v` log หลังเขียน** — coord ต้องขยับทุก cycle (ไม่ซ้ำ pixel เป๊ะ), wait duration ต้องกระจายในช่วงที่กำหนด ไม่ใช่ค่าเดิมทุกรอบ
+
+## CookieRun game quirks (manual live-test)
+
+- **Quit ไม่กลับ home ทันที** — หลัง pause→Quit→confirm, เกมมักโยนไป Result popup ใหม่ แล้ว auto-continue เข้า run ถัดไปเองทันที (ไม่รอ user) แม้เพิ่ง quit ไป. ต้องวน pause→Quit→confirm→OK **หลายรอบ** (เจอมาแล้ว 5+ รอบใน session เดียว) กว่าจะถึง home ที่นิ่งจริง — snap ยืนยันเห็น "Play!" + ไม่มี popup ค้างทุกครั้งก่อนสรุปว่าถึง home แล้ว
+- **Relic fragment ผูกกับจำนวน box ที่ farm สะสมจริง ไม่ใช่ episode หรือเวลา** — เคย verify live: ep1 ใช้ไป 21+ box (~93 นาทีต่อเนื่อง) กว่า relic badge จะโผล่ครั้งแรก. อย่าคาดเวลาที่ relic จะมาโดยดูจาก episode หรือนาฬิกา ต้องดูจากจำนวน box banked แทน (`run_result: N/M session boxes` ใน log)
+- **Blind adb tap บนเกมจริงต้อง snap+verify ทุก step ก่อน tap ต่อไป** — ห้ามไล่ tap รัวๆ ตาม assumption ว่าตำแหน่งเดิมจะยังตรง. พลาดมาแล้ว: tap ปุ่ม "Episode" บน home แต่ไปโดน "Play" แทน เพราะมี panel อื่น (Friends list) เปิดค้างอยู่ทำให้ layout เลื่อน — coordinate ที่เคยถูกอาจผิดทันทีถ้าจอมี state ต่างจากตอน measure
 
 ## Plan lifecycle — แยกโฟลเดอร์เมื่อเสร็จ
 
