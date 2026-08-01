@@ -316,7 +316,7 @@ them via flags (relay/jump/slide off, `--quit-after-boxes N`).
 
 ## Box Farm — Toggle (`launchers/boxrun_toggle.bat`)
 
-Double-click **`launchers/boxrun_toggle.bat`** — asks 6 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+Double-click **`launchers/boxrun_toggle.bat`** — asks 7 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Relic mode? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
 
 **Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
 
@@ -350,14 +350,19 @@ The patching happens in `tools/run_toggle.py` (`_strip_faststart`, `_disable_mag
 
 **Quit after N runs-with-a-box (`--quit-after-boxes`, default 0 = never quit early):** `check_box` detects `boxcounter_marker.png` — the `[?] xN` counter that appears once a box is collected — but there's no OCR reading the actual number N off the counter, so the config alone can't tell "1 box this run" from "3 boxes this run", and `boxcounter_marker` **stays on screen for the rest of that run** once it appears. `check_box` gets revisited every ~4 hops for the rest of the run (housekeeping sweep), so counting every match would count one run's box 4+ times in ~10s instead of once — that was a real bug (`_box_counted_this_run` fixes it). `BoxQuitRunner` (a `Runner` subclass in `run_toggle.py`) now counts **how many runs have had at least one box** — one increment per run, on the first `check_box` match after `run_result` resets the flag — and only lets the `quit_run` goto through once that count reaches `quit_after`; earlier matches are redirected to `check_shop_after_run` so the run keeps going. At the default `0` the counter is never consulted — `check_box`'s own goto to `quit_run` always fires, i.e. runs play to natural death/end instead of quitting early. Note this counts *runs*, not total boxes — a run that nets 3 boxes still only advances the counter by 1.
 
+**Relic mode (`--relic-mode`, default `hoard`):** claims the episode's relic once its "Get!" badge appears (`claim`), leaves it un-claimed to keep farming past the badge (`hoard`), or claims it once and then exits the process entirely once home is confirmed clear (`stop` — for a rest/park session). Mutually exclusive with the older `--relic y/n` (`y`=`claim`, `n`=`hoard`); both flags now default to hoarding instead of auto-claiming. See `docs/plans/done/PLAN_relic-stop-mode.html` for the arm/consume design and live-verify log.
+
 Manual equivalent:
 
 ```powershell
-python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --relay y --quit-after-boxes 2 --launch
+python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --relay y --relic-mode claim --quit-after-boxes 2 --launch
 ```
 
+## Box Farm — No-boost/claim preset (`launchers/run_boxrun_noboost_claim.bat`)
 
-```
+Double-click **`launchers/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, Relay=n, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-typing the same 7 answers each launch.
+
+**Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
 
 ## Preconditions (cookierun run-grind)
 
