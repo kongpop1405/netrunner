@@ -8,13 +8,13 @@
   "states": {
     "entry": {
       "_note": "If we're sitting on home (Episode banner marker), tap the Friends icon (1203,465 — right panel, orange people glyph) to open the social popup, then make sure the Find tab is selected. If home isn't visible, assume the popup is already open and just verify the tab.",
-      "detect": "home_marker.png",
+      "detect": "home/home_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1203,
           "y": 465,
-          "verify": "home_marker.png",
+          "verify": "home/home_marker.png",
           "settle_ms": 2000
         },
         {
@@ -29,7 +29,7 @@
     },
     "open_find": {
       "_note": "Refresh button (findtab_marker) is unique to the Find tab. Present -> go refresh FIRST (do_refresh) so every batch starts with 4 fresh all-green rows — this is what guarantees the fixed-coord walk never taps a dark already-sent button (a dark-button tap opens the row's 'Friend's Info' screen, seen live, NOT a no-op). Absent -> popup is on another tab -> tap the Find tab (851,117) and re-check; still absent after that -> maybe a Friend's Info screen is covering us -> close_info.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -55,7 +55,7 @@
     },
     "check_find": {
       "_note": "Second look after tapping the Find tab. Still no Refresh pill -> a 'Friend's Info' screen (opened by a stray tap on an already-requested row) is probably covering the popup -> tap its X (1640,107 — verified live) and loop back. The open_find <-> check_find ping-pong is bounded by --max-cycles.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -69,13 +69,13 @@
     },
     "peel_popups": {
       "_note": "Find tab still not visible after tapping it — before assuming a Friend's Info screen covers us, rule out a launch/reward modal. Cookie Run drops these at any time (Daily Check-in, Power+ Treasure Rewards, Congratulations/level-up), each hiding the social popup. Peel whichever is present, then re-enter via open_find (the popup was on top of the Friends UI, which is still open underneath). None present -> close_info, the original Friend's Info X-tap recovery. Shared templates/coords with boxrun_default.json.",
-      "detect": "dailycheckin_marker.png",
+      "detect": "home/dailycheckin_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 965,
           "y": 985,
-          "verify": "dailycheckin_marker.png",
+          "verify": "home/dailycheckin_marker.png",
           "settle_ms": 1500
         },
         {
@@ -90,13 +90,13 @@
     },
     "peel_treasure": {
       "_note": "Power+ Treasure Rewards. Confirm (960,850) -> open_find. Absent -> peel_congrats.",
-      "detect": "treasurereward_marker.png",
+      "detect": "friends/treasurereward_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 960,
           "y": 850,
-          "verify": "treasurereward_marker.png",
+          "verify": "friends/treasurereward_marker.png",
           "settle_ms": 1500
         },
         {
@@ -111,13 +111,13 @@
     },
     "peel_congrats": {
       "_note": "Congratulations! / level-up reward popup. Confirm (954,847) -> open_find. Absent -> close_info (the original Friend's Info recovery).",
-      "detect": "congrats_marker.png",
+      "detect": "boxrun/congrats_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 954,
           "y": 847,
-          "verify": "congrats_marker.png",
+          "verify": "boxrun/congrats_marker.png",
           "settle_ms": 1500
         },
         {
@@ -132,7 +132,7 @@
     },
     "close_info": {
       "_note": "No popup matched -> a 'Friend's Info' screen (opened by a stray tap on an already-requested row) is probably covering the popup -> tap its X (1640,107 — verified live) and loop back via open_find. This is the original check_find absent recovery.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -158,7 +158,7 @@
     },
     "req_row1": {
       "_note": "Fixed-coordinate batch walk — each of the 4 rows gets EXACTLY ONE tap per batch, then Refresh. Why not tap_template scanning: every tap raises a center-screen toast (cream box, 'Friend request sent!' or 'This player's friend list is full!' — visually identical frames). A full player's button stays GREEN, so a template scanner would re-tap that same player forever (livelock). The fixed walk taps a full player once, moves on (skips them), and still requests the other 3 rows. Taps on a dark already-sent button are no-ops; a tap landing on a lingering toast just dismisses it. The 1800ms wait lets each toast fade before the next row's tap so it isn't swallowed. detect=findtab_marker (Refresh pill, y~190-265) stays visible above the toast zone (y~420-650), so it anchors every step even mid-toast.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -181,7 +181,7 @@
     },
     "req_row2": {
       "_note": "Row 2 (y529). See req_row1 for the batch-walk rationale.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -204,7 +204,7 @@
     },
     "req_row3": {
       "_note": "Row 3 (y691).",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -227,7 +227,7 @@
     },
     "req_row4": {
       "_note": "Row 4 (y853). Batch complete after this -> refresh for the next 4 candidates.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -250,7 +250,7 @@
     },
     "do_refresh": {
       "_note": "Batch walked. Tap Refresh (538,226) for a fresh batch of 4, give the list time to reload, then walk again. Refresh also skips past any full-list player whose button stayed green. If the Refresh button isn't visible we're off-screen -> recover via open_find.",
-      "detect": "findtab_marker.png",
+      "detect": "home/findtab_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -273,13 +273,13 @@
     },
     "probe_inactive": {
       "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
-      "detect": "inactive_marker.png",
+      "detect": "home/inactive_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 953,
           "y": 690,
-          "verify": "inactive_marker.png",
+          "verify": "home/inactive_marker.png",
           "settle_ms": 4000
         },
         {
@@ -294,7 +294,7 @@
     },
     "recover_login": {
       "_note": "Login recovery step 1 (DevPlay title). After the inactive-restart the game reopens on the DevPlay title with the orange 'DevPlay Login' button (devplaylogin_marker, self=1.0). Present -> tap it (960,950) to open the account picker, wait for the fade, hand to recover_pick. Absent -> we may already be at the picker (or past login) -> recover_pick.",
-      "detect": "devplaylogin_marker.png",
+      "detect": "home/devplaylogin_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -317,7 +317,7 @@
     },
     "recover_pick": {
       "_note": "Login recovery step 2 (account picker). login_marker = 'You already have an account!' + CookieRun logo (name-agnostic). Present -> tap the top saved account row (1100,490), wait out the ~12s login + home load, re-enter start_state (entry). Absent -> the picker isn't up (login already completed, or the title is still animating) -> go to start_state and let its own detection settle; if we're still on the title, home will be absent and the probe chain loops us back to recover_login.",
-      "detect": "login_marker.png",
+      "detect": "home/login_marker.png",
       "on_match": [
         {
           "type": "tap_xy",

@@ -8,7 +8,7 @@
   "states": {
     "home": {
       "_note": "Same contract as coinrun.json home: Play! visible = safe to tap (1431,963), absent = a modal covers home -> peel via probe_sendlife, never blind-tap.",
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -22,7 +22,7 @@
     },
     "await_shop": {
       "_note": "Shop fade-in settle hop 1/2 (see coinrun.json for the double-tap bug this prevents). Shop up -> straight to the heart gate — no boost buying in this config.",
-      "detect": "boostshop_marker.png",
+      "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -45,7 +45,7 @@
     },
     "await_shop_2": {
       "_note": "Settle hop 2/2. Still no shop -> we're genuinely elsewhere; let the guard chain locate us.",
-      "detect": "boostshop_marker.png",
+      "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -59,13 +59,13 @@
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. 'Daily Check-in' calendar pops once/day at launch over home, hiding Play!; no dismiss stalls the bot. Marker self=1.000, in-run=0.232. Present -> OK (965,985) -> probe_treasurereward. Absent -> probe_treasurereward. Shared with boxrun_default.json.",
-      "detect": "dailycheckin_marker.png",
+      "detect": "home/dailycheckin_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 965,
           "y": 985,
-          "verify": "dailycheckin_marker.png",
+          "verify": "home/dailycheckin_marker.png",
           "settle_ms": 1500
         },
         {
@@ -80,13 +80,13 @@
     },
     "probe_treasurereward": {
       "_note": "'Power+ Treasure Rewards' popup stacks after Daily Check-in at launch, also covers Play!. Marker self=1.000, in-run=0.31, vs dailycheckin=0.40. Present -> Confirm (960,850) -> home. Absent -> probe_sendlife. Shared with boxrun_default.json.",
-      "detect": "treasurereward_marker.png",
+      "detect": "friends/treasurereward_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 960,
           "y": 850,
-          "verify": "treasurereward_marker.png",
+          "verify": "friends/treasurereward_marker.png",
           "settle_ms": 1500
         },
         {
@@ -101,13 +101,13 @@
     },
     "probe_sendlife": {
       "_note": "Send-a-Life dialog over home: Cancel (727,688), never Confirm.",
-      "detect": "sendlife_marker.png",
+      "detect": "sendlife/sendlife_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 727,
           "y": 688,
-          "verify": "sendlife_marker.png",
+          "verify": "sendlife/sendlife_marker.png",
           "settle_ms": 1500
         },
         {
@@ -122,7 +122,7 @@
     },
     "boost_shop": {
       "_note": "In the shop outside the home->Play path (bot started here, or run ended into it). No buying — heart gate, then Play.",
-      "detect": "boostshop_marker.png",
+      "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -137,8 +137,8 @@
       "boost_skip_goto": "check_heart"
     },
     "check_heart": {
-      "_note": "Play gate, identical to coinrun.json: heart_empty.png (separator + leftmost heart gray) present = 0 hearts -> 30s wait self-loop under a 25-min timeout; absent -> tap Play (1365,931). HARD RULE: never buy hearts.",
-      "detect": "heart_empty.png",
+      "_note": "Play gate, identical to coinrun.json: boxrun/heart_empty.png (separator + leftmost heart gray) present = 0 hearts -> 30s wait self-loop under a 25-min timeout; absent -> tap Play (1365,931). HARD RULE: never buy hearts.",
+      "detect": "boxrun/heart_empty.png",
       "on_match": [
         {
           "type": "wait",
@@ -168,7 +168,7 @@
     },
     "running": {
       "_note": "Result up -> run over. Absent -> guard chain decides whether it is safe to jump (never tap before ruling out home/shop).",
-      "detect": "result_marker.png",
+      "detect": "boxrun/result_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -181,7 +181,7 @@
       "timeout_ms": 300000
     },
     "guard_not_home": {
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -195,7 +195,7 @@
     },
     "guard_not_shop": {
       "_note": "Neither home nor shop visible -> we are mid-run: jump. NO Cookie Relay tap in this config (960,540 removed) — it's a farm booster, and cutting it removes the stray-leaderboard-tap failure mode entirely. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
-      "detect": "boostshop_marker.png",
+      "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -209,13 +209,13 @@
     },
     "guard_not_sendlife": {
       "_note": "Guard 3: a \"Send <name> a free Life?\" dialog can pop mid-loop when a stray tap grazes a leaderboard friend row (we are actually still on the Friends-tab home, not mid-run). Detect it and Cancel (727,688 — gray/left, NEVER Confirm) -> home. Absent -> guard_not_levelup. Ported from boxrun_passive.",
-      "detect": "sendlife_marker.png",
+      "detect": "sendlife/sendlife_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 727,
           "y": 688,
-          "verify": "sendlife_marker.png",
+          "verify": "sendlife/sendlife_marker.png",
           "settle_ms": 1500
         },
         {
@@ -230,13 +230,13 @@
     },
     "guard_not_levelup": {
       "_note": "Guard 4: a \"Level Up\" reward popup (levelup_marker, self=1.000) can pop mid-loop from auto-play XP gain — same class as Send-Life. Confirm (959,969, same coord as probe_levelup) -> home. Absent -> genuinely mid-run -> resume the original jump/relay action (moved here from guard_not_shop) and hand to jump_2. Ported from boxrun_passive.",
-      "detect": "levelup_marker.png",
+      "detect": "boxrun/levelup_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 959,
           "y": 969,
-          "verify": "levelup_marker.png",
+          "verify": "boxrun/levelup_marker.png",
           "settle_ms": 1500
         },
         {
@@ -250,7 +250,7 @@
       "timeout_ms": 6000
     },
     "jump_2": {
-      "detect": "result_marker.png",
+      "detect": "boxrun/result_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -273,7 +273,7 @@
       "timeout_ms": 20000
     },
     "jump_3": {
-      "detect": "result_marker.png",
+      "detect": "boxrun/result_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -297,7 +297,7 @@
     },
     "jump_4": {
       "_note": "Last fast-jump hop, then one housekeeping pass through the probe chain (popups don't expire; sweeping every 4th jump is enough — measured in coinrun.json).",
-      "detect": "result_marker.png",
+      "detect": "boxrun/result_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -320,7 +320,7 @@
       "timeout_ms": 20000
     },
     "check_shop_after_run": {
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -333,7 +333,7 @@
       "timeout_ms": 15000
     },
     "probe_boostshop": {
-      "detect": "boostshop_marker.png",
+      "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -347,13 +347,13 @@
     },
     "probe_congrats": {
       "_note": "Level-up Congratulations popup — Confirm (956,846) is free/safe. EXPECTED to fire during this measurement (that's the event we're counting toward).",
-      "detect": "congrats_marker.png",
+      "detect": "boxrun/congrats_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 956,
           "y": 846,
-          "verify": "congrats_marker.png",
+          "verify": "boxrun/congrats_marker.png",
           "settle_ms": 2000
         },
         {
@@ -368,13 +368,13 @@
     },
     "probe_levelup": {
       "_note": "Separate Level Up reward popup — Confirm (959,969) free/safe.",
-      "detect": "levelup_marker.png",
+      "detect": "boxrun/levelup_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 959,
           "y": 969,
-          "verify": "levelup_marker.png",
+          "verify": "boxrun/levelup_marker.png",
           "settle_ms": 2000
         },
         {
@@ -388,13 +388,13 @@
       "timeout_ms": 15000
     },
     "probe_rankingrewards": {
-      "detect": "rankingrewards_marker.png",
+      "detect": "boxrun/rankingrewards_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1672,
           "y": 135,
-          "verify": "rankingrewards_marker.png",
+          "verify": "boxrun/rankingrewards_marker.png",
           "settle_ms": 1500
         },
         {
@@ -408,13 +408,13 @@
       "timeout_ms": 15000
     },
     "probe_giftdraw": {
-      "detect": "giftdraw_marker.png",
+      "detect": "giftdraw/giftdraw_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1685,
           "y": 170,
-          "verify": "giftdraw_marker.png",
+          "verify": "giftdraw/giftdraw_marker.png",
           "settle_ms": 1500
         },
         {
@@ -428,7 +428,7 @@
       "timeout_ms": 15000
     },
     "probe_friendinfo": {
-      "detect": "friendinfo_marker.png",
+      "detect": "friends/friendinfo_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -460,7 +460,7 @@
     },
     "run_result": {
       "_note": "Run over. OK (702,940), never 'Show Off'. Every hit here = +1 completed run in the stats — count 'tap (702,940)' lines in the day log.",
-      "detect": "result_marker.png",
+      "detect": "boxrun/result_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -482,7 +482,7 @@
       "timeout_ms": 8000
     },
     "mystery_box": {
-      "detect": "mysterybox_marker.png",
+      "detect": "boxrun/mysterybox_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -495,7 +495,7 @@
       "timeout_ms": 20000
     },
     "mystery_box_recheck": {
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -509,7 +509,7 @@
     },
     "probe_connectionlost": {
       "_note": "Connection Lost — server drop popup, can appear anywhere (head of the probe chain since nothing else works while offline). Text: 'Connection lost! Tap Confirm to restart the game and reload your data.' Not a dismiss: Confirm (960,700) actually restarts the client, so we hand off to restart_app (cycles the process the same way session_reset does) then the existing recover_login chain re-auths. Absent -> probe_inactive (rest of the popup chain).",
-      "detect": "connectionlost_marker.png",
+      "detect": "home/connectionlost_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -535,7 +535,7 @@
     },
     "probe_enterleague": {
       "_note": "Enter League — 'You have been entered in a League. Check out your position in the League Ranking!' Random season-start popup, can appear anywhere. Plain dismiss: Confirm (960,700) just closes it, no restart needed. Absent -> probe_inactive (rest of the popup chain).",
-      "detect": "enterleague_marker.png",
+      "detect": "boxrun/enterleague_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -558,13 +558,13 @@
     },
     "probe_inactive": {
       "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
-      "detect": "inactive_marker.png",
+      "detect": "home/inactive_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 953,
           "y": 690,
-          "verify": "inactive_marker.png",
+          "verify": "home/inactive_marker.png",
           "settle_ms": 4000
         },
         {
@@ -579,13 +579,13 @@
     },
     "probe_prevresults": {
       "_note": "'Previous Results / You have unreviewed game results' pops after a run that was cut short (e.g. by the inactive-restart). Confirm (950,680) opens the Result screen, then fall through to the normal chain which peels Result/MysteryBox/Congrats. Absent -> probe_dailycheckin (chain unchanged).",
-      "detect": "prevresults_marker.png",
+      "detect": "boxrun/prevresults_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 950,
           "y": 680,
-          "verify": "prevresults_marker.png",
+          "verify": "boxrun/prevresults_marker.png",
           "settle_ms": 3000
         },
         {
@@ -600,13 +600,13 @@
     },
     "guard_not_inactive": {
       "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged).",
-      "detect": "inactive_marker.png",
+      "detect": "home/inactive_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 953,
           "y": 690,
-          "verify": "inactive_marker.png",
+          "verify": "home/inactive_marker.png",
           "settle_ms": 4000
         },
         {
@@ -631,7 +631,7 @@
     },
     "recover_login": {
       "_note": "Login recovery step 1 (DevPlay title). After the inactive-restart the game reopens on the DevPlay title with the orange 'DevPlay Login' button (devplaylogin_marker, self=1.0). Present -> tap it (960,950) to open the account picker, wait for the fade, hand to recover_pick. Absent -> we may already be at the picker (or past login) -> recover_pick.",
-      "detect": "devplaylogin_marker.png",
+      "detect": "home/devplaylogin_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -654,13 +654,13 @@
     },
     "verify_no_popup": {
       "_note": "Play-tap gate. The 'You've been inactive -> restart' popup overlays home/shop while Play! still scores ~0.87 through it, so home.on_match would tap Play INTO the popup and spin. Check inactive_marker first: present -> Confirm (953,690) -> recover_login re-auths. Absent -> no popup, run the real Play tap (original home.on_match body).",
-      "detect": "inactive_marker.png",
+      "detect": "home/inactive_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 953,
           "y": 690,
-          "verify": "inactive_marker.png",
+          "verify": "home/inactive_marker.png",
           "settle_ms": 4000
         },
         {
@@ -675,7 +675,7 @@
     },
     "recover_pick": {
       "_note": "Login recovery step 2 (account picker). login_marker = 'You already have an account!' + CookieRun logo (name-agnostic). Present -> tap the top saved account row (1100,490), wait out the ~12s login + home load, re-enter start_state (home). Absent -> the picker isn't up (login already completed, or the title is still animating) -> go to start_state and let its own detection settle; if we're still on the title, home will be absent and the probe chain loops us back to recover_login.",
-      "detect": "login_marker.png",
+      "detect": "home/login_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -698,13 +698,13 @@
     },
     "verify_no_sendlife": {
       "_note": "Second Play-tap gate. A 'Send <name> a free Life?' dialog can sit ON TOP of home (or the boost shop) while Play! still scores 1.00 through it, same class of bug as the inactive-popup gate. Present -> Cancel (727,688 — gray/left, NEVER Confirm 1189,687) -> back to home to re-check. Absent -> no popup at all -> run the real Play tap (original verify_no_popup.on_absent body, unchanged).",
-      "detect": "sendlife_marker.png",
+      "detect": "sendlife/sendlife_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 727,
           "y": 688,
-          "verify": "sendlife_marker.png",
+          "verify": "sendlife/sendlife_marker.png",
           "settle_ms": 1500
         },
         {
@@ -719,13 +719,13 @@
     },
     "verify_no_prevresults": {
       "_note": "Third Play-tap gate. 'Previous Results / You have unreviewed game results' sits ON TOP of home while Play! still scores 1.00 through it — same class of bug as the inactive and send-life gates. Without this the loop taps Play into the dialog forever: the popup does not cover the button, so home matches, the two existing gates find nothing, and probe_prevresults (which does handle it) is only reachable when home is ABSENT. Present -> Confirm (950,680), verified, then back to home. Absent -> the real Play tap.",
-      "detect": "prevresults_marker.png",
+      "detect": "boxrun/prevresults_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 950,
           "y": 680,
-          "verify": "prevresults_marker.png",
+          "verify": "boxrun/prevresults_marker.png",
           "settle_ms": 3000
         },
         {
@@ -740,13 +740,13 @@
     },
     "verify_no_enterleague": {
       "_note": "Fourth Play-tap gate. The Enter League dialog is centred and leaves the Play button uncovered, so home matches at 1.00 through it and the loop would tap Play into the dialog — the same trap Previous Results fell into. probe_enterleague handles the popup but only runs when home is ABSENT. Present -> Confirm (960,700), verified, back to home. Absent -> the real Play tap.",
-      "detect": "enterleague_marker.png",
+      "detect": "boxrun/enterleague_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 960,
           "y": 700,
-          "verify": "enterleague_marker.png",
+          "verify": "boxrun/enterleague_marker.png",
           "settle_ms": 1500
         },
         {
@@ -773,13 +773,13 @@
     },
     "probe_settings": {
       "_note": "User can manually open Game Settings (gear icon, top-right of home) at any time, on any tab (Options/Notifications/Performance/Game Info) -- no marker recognized this screen before, so the bot sat frozen matching nothing. Detect the teal 'Game Settings' title ribbon (shared by all 4 tabs); close via X (1671,145) -> home re-checks. Absent -> continue the normal chain.",
-      "detect": "gamesettings_marker.png",
+      "detect": "home/gamesettings_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1671,
           "y": 145,
-          "verify": "gamesettings_marker.png",
+          "verify": "home/gamesettings_marker.png",
           "settle_ms": 1200
         },
         {
@@ -793,14 +793,14 @@
       "timeout_ms": 6000
     },
     "probe_fortunebakery": {
-      "_note": "'Fortune Bakery' popup (fortune-cookie dough picker) can sit over home, covering Play!, with no auto-buy risk on our side (we never tap Select Dough). Detected by the teal 'Fortune Bakery' banner (fortunebakery_marker.png). Close via X (1633,301 — scaled from a 1217x703 screenshot ratio, NOT yet CV-verified live; re-crop/re-measure on first live catch if the tap misses). Absent -> probe_prevresults (chain unchanged).",
-      "detect": "fortunebakery_marker.png",
+      "_note": "'Fortune Bakery' popup (fortune-cookie dough picker) can sit over home, covering Play!, with no auto-buy risk on our side (we never tap Select Dough). Detected by the teal 'Fortune Bakery' banner (boxrun/fortunebakery_marker.png). Close via X (1633,301 — scaled from a 1217x703 screenshot ratio, NOT yet CV-verified live; re-crop/re-measure on first live catch if the tap misses). Absent -> probe_prevresults (chain unchanged).",
+      "detect": "boxrun/fortunebakery_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1633,
           "y": 301,
-          "verify": "fortunebakery_marker.png",
+          "verify": "boxrun/fortunebakery_marker.png",
           "settle_ms": 1500
         },
         {
@@ -815,7 +815,7 @@
     },
     "mb_open": {
       "_note": "Mystery Box screen — one self-looping dismiss state (replaces the mb_gate/mystery_box_reveal/mb_reveal_gate/mb_reveal_retry_2..6 chain, which claimed to cap at 6 dual-taps but retry_2 looped straight back to mystery_box_reveal so _3.._6 were dead and the loop was unbounded; mb_gate/mb_reveal_gate also detected inactive_marker while their notes described the Mystery Box screen). Each pass taps Open-all (960,965), box-center (960,540) and per-item Confirm (959,960) — covers both known layouts, a tap that hits nothing is harmless. Marker gone -> mystery_box_recheck. match_timeout_ms is the REAL bound on a stuck MATCH (timeout_ms only fires on the absent path). An inactive popup here covers the marker -> absent path -> recheck -> home's probe chain reaches recover_login, so the per-pass inactive check the old gates did is redundant.",
-      "detect": "mysterybox_marker.png",
+      "detect": "boxrun/mysterybox_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
@@ -857,13 +857,13 @@
     },
     "probe_news": {
       "_note": "'News' popup (patch notes / new-treasure announcements) opens ON TOP of home and fully covers Play! — home_play scores 0.263 through it vs 1.000 on a clear home — so it belongs to the probe family (reached when home is absent), not the verify_no_* family. Detected by the teal 'News' banner (news_marker: self=1.000, clear home=0.383 — clean separation, no threshold change). Close via the X at (1688,113), CV-verified live 2026-08-01. Re-appears after any client relaunch, which is how it arrived mid-night when adb dropped at 22:26 and the game restarted.",
-      "detect": "news_marker.png",
+      "detect": "home/news_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1688,
           "y": 113,
-          "verify": "news_marker.png",
+          "verify": "home/news_marker.png",
           "settle_ms": 1500
         },
         {
@@ -878,13 +878,13 @@
     },
     "guard_not_news": {
       "_note": "Mid-run twin of probe_news, and the guard whose absence caused the 2026-07-31 livelock: News opened while the loop was in the `running` guard chain, all five guards missed it, and guard_not_inactive.on_absent concluded 'genuinely mid-run' and jumped — 389 cycles over 13h into a popup. probe_news cannot cover this: it is only reachable from the probe side. Same detect, same X.",
-      "detect": "news_marker.png",
+      "detect": "home/news_marker.png",
       "on_match": [
         {
           "type": "close_popup",
           "x": 1688,
           "y": 113,
-          "verify": "news_marker.png",
+          "verify": "home/news_marker.png",
           "settle_ms": 1500
         },
         {
@@ -899,7 +899,7 @@
     },
     "recover_unknown": {
       "_note": "Progress-watchdog recovery entry (src/fsm.py no_progress_goto). Reached when nothing the config calls progress has happened for no_progress_s — i.e. the screen is something the FSM does not recognise. Detect home first: if the watchdog fired while home was actually up (a stalled run that already ended, say), there is nothing to recover and we rejoin the loop for free. Absent -> recover_unknown_probe, which spends one cheap pass through the known-popup chain before anything drastic.",
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -913,7 +913,7 @@
     },
     "recover_unknown_probe": {
       "_note": "Cheap half of the recovery: hand to the head of the probe chain, which peels every popup this config has a marker for and ends at home. Costs nothing but poll time and keeps a recognised popup from triggering a restart. If it works, the next watchdog window starts clean; if it does not, the watchdog fires again and lands on recover_unknown_restart — the escalation is the second fire, not extra logic here.",
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -927,7 +927,7 @@
     },
     "recover_unknown_restart": {
       "_note": "Expensive half, and the one that always works. Verified live 2026-08-01: the Events popup has no marker, is not closed by Android BACK, and survived a full probe-chain walk — the loop simply resumed jumping into it. A screen we cannot identify has no close button we can aim at, so cycle the process instead: restart_app -> recover_login re-auths -> home. Costs a life only if one was mid-run, and by definition the watchdog only fires when no run has been progressing for minutes.",
-      "detect": "home_play_marker.png",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",

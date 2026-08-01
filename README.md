@@ -6,7 +6,7 @@ Auto-farm engine for LDPlayer (Android emulator). **CV + scripted control over A
 capture (adb screencap) → perceive (opencv match) → act (adb tap) → FSM loop
 ```
 
-New machine? Follow [SETUP.md](SETUP.md) (onboarding checklist). Day-to-day bot commands: [RUN.md](RUN.md).
+New machine? Follow [SETUP.md](docs/SETUP.md) (onboarding checklist). Day-to-day bot commands: [RUN.md](docs/RUN.md).
 
 > ⚠️ **Clone to a plain-ASCII path outside OneDrive** (e.g. `C:\dev\netrunner`).
 > OpenCV fails **silently** on paths with non-ASCII characters (e.g. Thai `เอกสาร`) —
@@ -181,7 +181,7 @@ tools/
 main.py        CLI entrypoint (--boost, --launch, --dry-run, ...)
 install.bat    first-run setup checker (stays at repo root)
 launchers/     double-click bot launchers (*.bat), one per bot task
-HANDOFF.md     current state + everything blocked on a real emulator
+docs/          RUN.md, SETUP.md, PLAY_SETUP.md, HANDOFF.md + reports/plans
 ```
 
 > RL is **out of scope** for now. `perceive`/`act` are structured so a learned policy could later replace the FSM's rule dispatch, but no agent/training code exists yet.

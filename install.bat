@@ -144,7 +144,7 @@ if "%FAIL%"=="0" (
     echo   INSTALL COMPLETE - ready to use.
     echo.
     echo   IMPORTANT: set the LDPlayer instance to 1920x1080 or the bot
-    echo   will not recognize the game. See PLAY_SETUP.md.
+    echo   will not recognize the game. See docs\PLAY_SETUP.md.
     echo.
     echo   Next: open LDPlayer + CookieRun on the home screen, then
     echo   double-click coinrun.bat ^(or another run_*.bat^).

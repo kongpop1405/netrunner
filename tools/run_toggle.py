@@ -4,7 +4,7 @@
 
 Patches the loaded Config's states dict in memory before handing it to the
 same Runner main.py uses — the JSON on disk (config/cookierun/boxrun_toggle.json)
-never changes. See RUN.md for what each flag does to the FSM.
+never changes. See docs/RUN.md for what each flag does to the FSM.
 """
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ class BoxQuitRunner(Runner):
     COUNTER_OFFSET = (176, -4, 60, 64)
 
     def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False,
-                 counter_template: str = "boxcounter_marker.png",
+                 counter_template: str = "boxrun/boxcounter_marker.png",
                  stop_after_boxes: int = 0,
                  reveal_snap_dir: str | Path | None = None,
                  episode_label: str = "", **kwargs):

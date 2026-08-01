@@ -1,7 +1,7 @@
 # SETUP — new machine onboarding
 
 Checklist for getting NetRunner running on a fresh machine. Generic engine docs live in
-[README.md](README.md); day-to-day bot commands in [RUN.md](RUN.md).
+[README.md](../README.md); day-to-day bot commands in [RUN.md](RUN.md).
 
 ## 1. Clone location — ASCII path, no OneDrive
 

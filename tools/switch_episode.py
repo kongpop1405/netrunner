@@ -51,7 +51,7 @@ MATCH_THRESHOLD = 0.82
 #: step 1, yet switch_episode(5) failed with "not found after 6 swipes" while
 #: parked at Episode 4. Swiping until this marker is on screen makes the reset
 #: deterministic regardless of how far each swipe happens to travel.
-LEFT_EDGE_MARKER = "ep7_banner.png"
+LEFT_EDGE_MARKER = "episode/ep7_banner.png"
 
 
 class SwitchEpisodeError(Exception):
@@ -63,7 +63,7 @@ def switch_episode(device, store: TemplateStore, episode: int,
     """Navigate Cookie Run's home screen to the given Episode. Raises
     SwitchEpisodeError on any step failure (map didn't open, banner not found,
     confirm dialog didn't appear). Caller must already be on/near home."""
-    banner_name = f"ep{episode}_banner.png"
+    banner_name = f"episode/ep{episode}_banner.png"
     if not (store.dir / banner_name).exists():
         raise SwitchEpisodeError(f"no {banner_name} — crop one first (see module docstring)")
 
@@ -75,7 +75,7 @@ def switch_episode(device, store: TemplateStore, episode: int,
         actor.tap(*EPISODE_BUTTON)
         time.sleep(1.5)
         frame = grab(device)
-        m = find_named(frame, store, "episodemap_marker.png", threshold=threshold)
+        m = find_named(frame, store, "episode/episodemap_marker.png", threshold=threshold)
         if m.found:
             break
     else:
@@ -116,7 +116,7 @@ def switch_episode(device, store: TemplateStore, episode: int,
     # The confirm dialog re-draws the episode name on its own ribbon, so the map
     # banner no longer matches — the Enter button is what's unique to the dialog.
     frame = grab(device)
-    enter = find_named(frame, store, "episodeenter_marker.png", threshold=threshold)
+    enter = find_named(frame, store, "episode/episodeenter_marker.png", threshold=threshold)
     if not enter.found:
         raise SwitchEpisodeError(f"confirm dialog for {banner_name} did not open as expected")
 
@@ -124,7 +124,7 @@ def switch_episode(device, store: TemplateStore, episode: int,
     time.sleep(2.0)
 
     frame = grab(device)
-    m3 = find_named(frame, store, "home_play_marker.png", threshold=threshold)
+    m3 = find_named(frame, store, "home/home_play_marker.png", threshold=threshold)
     if not m3.found:
         raise SwitchEpisodeError("home_play_marker not visible after Enter — check manually")
 
