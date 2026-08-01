@@ -4,6 +4,7 @@
 
 - งานสำเร็จหรือคืบหน้าระหว่างทาง (live-test ผ่าน, bug fix verify แล้ว, feature เสร็จบางส่วน) → **รายงานให้ user ทราบทันที** ไม่ต้องรอจบ session
 - Commit เป็นระยะตามงานที่เสร็จจริง (ไม่รวบทุกอย่างเป็น 1 commit ท้าย session) — 1 commit = 1 fix/feature ที่ verify แล้ว
+- **Stage เฉพาะไฟล์ของ scope งานตัวเองเท่านั้น** — ถ้า repo มี unrelated changes ค้างอยู่ (จาก branch/session อื่นที่ปนเข้ามาในดัชนี) ห้าม `git add -A`/`git add .` เหมารวม ใช้ `git add <path เฉพาะไฟล์ของงานนี้>` เสมอ ปล่อยไฟล์อื่นไว้ตามเดิมให้ session ที่เป็นเจ้าของจัดการเอง
 
 ## Branching
 
@@ -44,6 +45,10 @@
 
 ดูตัวล่าสุดด้วย `git tag -l "0.*" --sort=-v:refname`
 
+**⚠️ Slug ต้องตั้งชื่อตามงานที่อยู่บน `main` ณ จุดนั้นจริง ๆ (ดู `git log main -1`), ไม่ใช่งานที่กำลังจะทำต่อบน branch ใหม่** — พลาดจริงมาแล้ว 2026-08-01: กำลังจะทำ bot `sendlife-mailbox` แล้วตั้ง tag เป็น `0.1.0_sendlife-mailbox` ทั้งที่งานนั้นยังไม่ merge เข้า main เลย ต้องแก้เป็น `0.1.0_project-conventions` (ตรงกับ commit ล่าสุดจริงบน main ตอนนั้น). วิธีเช็คไม่ให้พลาด: อ่าน commit message ล่าสุดของ `main` มาตั้งชื่อ tag ก่อนเสมอ ไม่ใช่เอาจาก task ที่กำลังคุยอยู่ในหัว
+
+**เมื่อสลับ branch (`git checkout -b <new> main`) จาก branch ที่มี unrelated staged/modified changes ค้างอยู่** (เช่นจาก session อื่นที่ทำ reorg/refactor คนละเรื่อง): git ไม่ auto-clean tracked-file changes ให้ — state พวกนั้นติดตามมาที่ branch ใหม่ด้วย (เจอจริง 2026-08-01, plan-file-move staged changes จาก `chore/reorg-folders` ติดมาที่ `feature/sendlife-mailbox`). แก้ด้วย `git restore --staged <path เฉพาะที่ไม่ใช่ของงานนี้>` เพื่อ unstage ออกจาก index — **ไม่ใช้ `--worktree`/`reset --hard`** เพราะ permission classifier บล็อก destructive discard; `git restore --staged` (ไม่มี `--worktree`) ไม่แตะ working tree เนื้อไฟล์ ปลอดภัยและผ่านได้
+
 ## Merge เข้า main — ห้ามทำเอง
 
 **การ merge เข้า `main` เป็นสิทธิ์ user เท่านั้น** ไม่ว่ากรณีใด:
@@ -69,6 +74,17 @@ Kill bot process (`TaskStop` หรืออื่น ๆ) แล้ว **ห้
 - ใช้ `json.load()` → แก้ค่าใน object → `json.dump()` เสมอ — escape ถูกต้องอัตโนมัติ กัน unescaped quote ทำ JSON พังทั้งไฟล์
 - หลังแก้ทุกครั้ง ต้อง `json.load()` ยืนยันไฟล์ parse ผ่านจริง ก่อน commit
 - ถ้าจำเป็นต้อง string-replace จริง ๆ (เช่นแก้ comment/note ที่ยาวมาก) ต้อง verify JSON valid ทันทีหลังแก้ ก่อนทำอย่างอื่นต่อ
+
+## `absent_wait_ms` ไม่รับ range เหมือน `wait.ms`
+
+Engine validate ต่างกัน: `wait.ms` รับ `[min, max]` (random ใหม่ทุกครั้ง) แต่ **`absent_wait_ms` ต้องเป็น fixed positive integer เท่านั้น** — ใส่ range แล้ว `tools/lint_config.py` reject ตอน load (`'absent_wait_ms' must be a positive integer (ms)`). อย่าสมมติว่า timing field ทุกตัวใน config schema รับ range แบบเดียวกันหมด เช็ค README/lint ก่อนถ้าไม่ชัวร์
+
+## Dialog/popup marker ต้อง test ทุก content variant ก่อนเชื่อ
+
+Marker ที่ crop จาก text บรรทัดเดียว **อาจ match แค่บาง instance ของ popup เดียวกัน** ถ้าเนื้อหาบางบรรทัดเป็น optional/conditional — พลาดจริง 2026-08-01: OvenBreak mailbox send-life dialog บาง friend มีบรรทัด "(+3 Gift Points)" บางคนไม่มี, marker ที่ crop เฉพาะบรรทัดนั้น score 0.42 (absent) บน friend ที่ไม่มีบรรทัดนี้ → bot สรุปผิดว่า list หมดทั้งที่ dialog เปิดค้างอยู่จริง (0 sends ทั้ง run แรก)
+
+- **แก้แบบยั่งยืน**: หา element ที่ "คงที่ทุก variant" ของ popup เดียวกันมา crop แทน — ในเคสนี้คือ Cancel+Confirm button row (ไม่มีชื่อ ไม่มี conditional text ติด, score 1.000 ทั้ง 2 variant)
+- **ก่อนเชื่อ marker ว่าใช้ได้จริง**: อย่า verify กับ snap เดียว — ต้องเจอ instance ที่ต่างกันจริง (คนละชื่อ, คนละเนื้อหา optional) อย่างน้อย 2-3 แบบ แล้ว verify score ทุกแบบ ไม่ใช่แค่แบบแรกที่เจอ
 
 ## ทุก fix ต้อง live-verify ก่อน commit
 
