@@ -276,9 +276,9 @@
       </tr>
       <tr>
         <td><b>Session reset 1.5–3 ชม.</b></td>
-        <td><span class="pill err"><span class="dot"></span>ไม่มี</span></td>
+        <td><span class="pill ok"><span class="dot"></span>ทำแล้ว</span></td>
         <td>
-          grep <code>session.?reset|force-stop</code> = 0 hit. รันต่อเนื่องไม่จำกัด = long-session signal → <b>Phase 2</b>
+          <b>Phase 2 shipped</b> — <code>src/session.py</code> <code>force_stop()</code> (<code>am force-stop</code>) + <code>src/fsm.py:140,278</code> <code>session_reset_s</code> budget (random ในช่วง) + <code>config.py:62,158</code> parse. เปิดผ่าน config <code>session_reset_s</code>; ปิด = <code>None</code>
         </td>
       </tr>
       <tr>
@@ -292,12 +292,12 @@
       </tr>
       <tr>
         <td><b>Lives routine ทุก 25–35 นาที</b></td>
-        <td><span class="pill err"><span class="dot"></span>ไม่มี</span></td>
+        <td><span class="pill warn"><span class="dot"></span>บางส่วน</span></td>
         <td>
           cookierun-bot ยิง receive+send lives ทุก <code>uniform(25*60, 35*60)</code>
-          (<code>bot.py:193-199</code>) + send หลัง app reset (<code>pending_send_friend_life</code>) —
-          social signal สม่ำเสมอแบบคนเล่นจริง. netrunner มี <code>sendlife.json</code> แต่<b>ต้องรันแยกเอง</b>
-          ไม่ผูกกับ farm loop → <b>Phase 5</b>
+          (<code>bot.py:193-199</code>) + send หลัง app reset. netrunner มี <code>sendlife.json</code> + hook
+          <code>pending_send_friend_life</code> ผูกกับ app restart แล้ว (<code>src/fsm.py:292</code>) —
+          <b>ยังขาด timer 25–35 นาทีระหว่าง farm loop</b> (ตอนนี้ trigger เฉพาะตอน reset) → <b>Phase 5</b> เหลือส่วน timer
         </td>
       </tr>
       <tr>
@@ -1483,7 +1483,7 @@ python main.py --config /tmp/ep6_fastreset.json -v</pre>
     <tbody>
       <tr>
         <td><b>Obstacle dodge — reactive play</b><br>
-          <span class="file">docs/plans/07_PLAN_obstacle-dodge.html</span> (มี plan แล้ว ยังไม่ implement)</td>
+          <span class="file">docs/plans/06_PLAN_in-run-jump-dodge.html</span> (มี plan แล้ว ยังไม่ implement)</td>
         <td>เลิก blind J→J→S→J → อ่าน obstacle จริง = run รอดนานขึ้น, yield/run พุ่ง.
           Synergy กับ Phase 1: การตอบสนองจริงดูเป็นคนกว่า pattern คงที่</td>
         <td>หนักสุดเชิง CV (ROI + latency budget ต่อเฟรม บน capture ~335ms) — ควรมี analytics (Phase 7b)

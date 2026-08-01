@@ -192,8 +192,10 @@ python -m pytest tests/          <span class="c"># ต้องเขียว �
 <div class="note info" style="margin-top:40px">
   <b>อ้างอิง:</b> <code>COUNTER_OFFSET</code> pattern + <code>read_counter()</code> อยู่ใน
   <code>src/perceive.py</code> และ <code>tools/run_toggle.py</code>'s <code>BoxQuitRunner</code>.
-  Episode map order (ไม่ใช่ 1..7 เรียงซ้ายขวา): ep7, ep5, ep4, ep3, ep2, ep1 — ดู
-  <code>switch_episode()</code> ใน <code>tools/switch_episode.py</code>. Plan คู่กัน:
+  Episode map order (ไม่ใช่ 1..7 เรียงซ้ายขวา — วัดจากจอจริง): <b>ep7, ep5, ep4, ep3, ep2, ep1</b>
+  โดย <b>ep6 อยู่จอเดียวกับ ep5</b> และ Special/Event episode แทรกสลับ — ดู docstring จริงใน
+  <code>switch_episode.py</code> (<code>LEFT_EDGE_MARKER = ep7_banner.png</code>). <b>OCR range 1–7 ต้องครอบ ep6 ด้วย</b> —
+  ep6 ไม่ได้อยู่ปลาย order. Plan คู่กัน:
   <code>done/PLAN_relic-stop-mode.html</code> (plan 2/2 — done, <code>--relic-mode stop</code> shipped).
 </div>
 

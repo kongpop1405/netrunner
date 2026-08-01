@@ -35,8 +35,8 @@
   <!-- Stats -->
   <div class="grid grid-cols-4 gap-3 mb-10">
     <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">1 action</div>
-      <div class="text-xs text-slate-500 mt-1"><code>text</code> ใหม่ใน engine</div>
+      <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">✔ action</div>
+      <div class="text-xs text-slate-500 mt-1"><code>text</code> — shipped ใน engine แล้ว</div>
     </div>
     <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
       <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">~14 state</div>
@@ -71,8 +71,8 @@
         <div class="text-slate-500 mt-1">→ <b>ตัดสินใจแล้ว:</b> สร้าง instance ใหม่ที่ <b>1920×1080</b> แล้วเดิน flow ใหม่หมด เก็บ coord + template จากจอจริง. พิกัดใน doc ใช้เป็น "ตำแหน่งคร่าว ๆ ว่าปุ่มอยู่มุมไหน" เท่านั้น — <span class="tok">ไม่ scale ×1.5 มาใช้ตรง ๆ</span> (นั่นเป็นการเดา).</div>
       </div>
       <div>
-        <div><b class="text-rose-600 dark:text-rose-400">2. Engine ไม่มี text input</b> — <code>_ACTION_TYPES</code> มีแค่ <code>tap_template · tap_xy · swipe · wait · goto · stop · key · jump</code>. Step 8 (Set Nickname) ต้อง <code>adb shell input text</code> → ทำใน config ล้วนไม่ได้.</div>
-        <div class="text-slate-500 mt-1">→ <b>ตัดสินใจแล้ว:</b> เพิ่ม action <code>text</code> เข้า engine (เฟส A ข้างล่าง).</div>
+        <div><b class="text-emerald-600 dark:text-emerald-400">2. Engine ไม่มี text input — <span class="tok">แก้แล้ว (shipped)</span></b> — เดิม <code>_ACTION_TYPES</code> ไม่มี text. Step 8 (Set Nickname) ต้อง <code>adb shell input text</code>.</div>
+        <div class="text-slate-500 mt-1">→ <b>ทำเสร็จแล้ว:</b> action <code>text</code> อยู่ใน engine จริง — <code>src/config.py</code> (<code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"]={"value"}</code>) และ <code>src/act.py</code> (<code>Actor.text()</code> → <code>input text</code>, เคารพ <code>dry_run</code>). เฟส A ด้านล่าง = record ว่าทำอะไรไป ไม่ใช่งานค้าง.</div>
       </div>
       <div>
         <div><b class="text-rose-600 dark:text-rose-400">3. Instance base หายหมด</b> — doc อ้าง <code>cookie-idtest</code>(3) / <code>cr-base-loaded</code>(4) / <code>cr-base-preauth</code>(5) แต่ <code>ldconsole list2</code> ตอนนี้เหลือแค่ index 0-1. <b>ไม่มีจอให้ crop template.</b></div>
@@ -83,14 +83,14 @@
 
   <!-- Phase A -->
   <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">A</span>เฟส A — เพิ่ม action <code>text</code> เข้า engine</h2>
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">A</span>เฟส A — action <code>text</code> ใน engine <span class="text-emerald-600 dark:text-emerald-400 text-sm font-normal">✔ shipped</span></h2>
     <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto mb-3">
 <pre><code>{ "type": "text", "value": "cr_a3f91b" }   →  adb shell input text cr_a3f91b</code></pre>
     </div>
     <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2">
-      <div><b>2 ไฟล์ ~10 บรรทัด:</b></div>
-      <div>• <code>src/config.py</code> — เพิ่ม <code>"text"</code> เข้า <code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"] = {"value"}</code></div>
-      <div>• <code>src/act.py</code> — <code>Actor.text()</code> ยิง <code>input text</code>, dispatch ใน <code>run()</code>, เคารพ <code>dry_run</code> เหมือน action อื่น</div>
+      <div><b>2 ไฟล์ — ทำเสร็จแล้วทั้งคู่:</b></div>
+      <div>✔ <code>src/config.py:15,30</code> — <code>"text"</code> อยู่ใน <code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"] = {"value"}</code></div>
+      <div>✔ <code>src/act.py:380</code> — <code>Actor.text()</code> ยิง <code>input text</code> (<code>:324</code>, space → <code>%s</code>), dispatch ใน <code>run()</code>, เคารพ <code>dry_run</code></div>
       <div class="text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-800">
         <b>ข้อจำกัด ADB <code>input text</code>:</b> ASCII เท่านั้น, ช่องว่างต้องเป็น <code>%s</code>, อักขระพิเศษต้อง escape → nickname ใช้ <b>ตัวอักษร+ตัวเลขล้วน</b> ปลอดภัยสุด.
       </div>
