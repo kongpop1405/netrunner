@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,32 +27,14 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - Add Friends (Find tab)
+echo   NetRunner - boxrun: speed (+17% Speed, quit on box)
+echo   Mystery Box farm - buys +17% Speed, Fast Start
+echo   precondition: ANY episode selected on home (bot only taps Play)
+echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
-echo Entry is automated: works from home (taps the
-echo Friends icon then the Find tab), or from the
-echo Find tab already open.
-echo.
-echo Loop: Request x4 visible -^> Refresh -^> repeat.
-echo.
 
-set /p FRIENDS="How many friend requests to send? "
-
-echo %FRIENDS%| findstr /r "^[1-9][0-9]*$" >nul
-if errorlevel 1 (
-    echo Invalid input: "%FRIENDS%" is not a positive whole number.
-    pause
-    exit /b 1
-)
-
-set /a CYCLES=FRIENDS*5/4+8
-
-echo.
-echo Sending %FRIENDS% request(s)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
-echo.
-
-%PY% main.py --config config/cookierun/addfriend.json --launch --max-cycles %CYCLES%
+%PY% main.py --config config/cookierun/boxrun_default.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

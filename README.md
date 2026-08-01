@@ -179,7 +179,8 @@ tools/
   run_toggle.py       boxrun_toggle launcher with per-run feature flags
   fetch_db_icons.py   download cookierundb.com icons + index.json (labeling reference)
 main.py        CLI entrypoint (--boost, --launch, --dry-run, ...)
-run_*.bat      double-click launchers, one per bot task
+install.bat    first-run setup checker (stays at repo root)
+launchers/     double-click bot launchers (*.bat), one per bot task
 HANDOFF.md     current state + everything blocked on a real emulator
 ```
 
