@@ -222,6 +222,48 @@ Manual equivalent:
 python main.py --config config/cookierun/sendlife.json --max-cycles 300
 ```
 
+## Mailbox Send-Life (Mailbox popup — different screen from the Friends-tab bot above)
+
+Double-click **`launchers/sendlife_mailbox.bat`** — runs `config/cookierun/sendlife_mailbox.json`, capped 250 cycles.
+
+Not the same bot as **Send-Life** above: that one drives the home-screen
+**Friends tab** list (per-row icon, "Send \<name\> a free Life? (+3 Gift Points)"
+then a separate "Message sent!" popup). This one drives the **Mailbox → Lives
+tab** popup instead — same game (OvenBreak), different screen and a simpler
+flow (no separate "Message sent" step).
+
+Precondition: **Mailbox open, Lives tab selected** (the "Received Lives are
+stored for 3 days." list with per-friend "Receive & Send" rows and the green
+**"Quick Receive & Send Lives"** banner at the bottom). Loop: tap the banner once
+→ a "Send \<name\> a free Life? (+3 Gift Points)" dialog opens → tap Confirm →
+the **same dialog instantly re-opens for the next friend** — no "Message sent"
+popup in between, unlike the Friends-tab flow. So the loop is just "keep
+confirming until the dialog stops reappearing" (live-verified 2026-08-01 across
+55+ consecutive sends with zero drift, zero extra popup types). `Ctrl+C` to
+abort early.
+
+Design notes (2026-08-01):
+
+- **Confirm dialog marker is name-agnostic** — crops only the "(+3 Gift Points)"
+  line, never the "Send \<name\>..." line above it (a name-specific crop would
+  miss on literally every friend after the first).
+- **`tap_template` everywhere, not `tap_xy`** — the Confirm button and the Quick
+  banner are both found by template match each poll, so the tap follows wherever
+  the element actually renders instead of a hardcoded pixel.
+- **Humanized pacing is mandatory for this bot** (user requirement, applies
+  project-wide — see the new "Humanized timing" rule below): `poll_ms` and every
+  `wait.ms` are `[min, max]` ranges (fresh random draw per cycle), on top of the
+  engine's own per-tap spatial jitter + randomized delay (`src/act.py _jitter`).
+  Live dry-run confirmed no two taps in a row land on the same pixel or wait the
+  same duration (coords wandered ±5-10px, waits varied 700-1400ms across 8
+  consecutive cycles).
+
+Manual equivalent:
+
+```powershell
+python main.py --config config/cookierun/sendlife_mailbox.json --max-cycles 250
+```
+
 ## Add Friends (Find tab)
 
 Double-click **`launchers/addfriend.bat`** — prompts for how many friend requests to send, then runs `config/cookierun/addfriend.json` capped to `friends*5/4 + 8` cycles.
