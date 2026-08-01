@@ -1,0 +1,91 @@
+{
+  "_comment": "Cookie Run OvenBreak — auto Send-Life from the Mailbox > Lives tab. Different screen/flow from sendlife.json (that one drives the home-screen Friends tab list); this one drives the Mailbox popup instead. Precondition: Mailbox open, Lives tab selected (the 'Received Lives are stored for 3 days.' list with per-friend 'Receive & Send' rows and the green 'Quick Receive & Send Lives' banner at the bottom). One tap on that banner opens a 'Send <name> a free Life?' confirm dialog (some friends show an extra '(+3 Gift Points)' line, some don't — live-verified both variants 2026-08-01); tapping Confirm sends it AND immediately re-opens the same dialog for the next friend in the list — no extra 'Message sent' popup in between. So the loop only needs to keep confirming until the dialog stops reappearing (list exhausted). SPEED-TUNED 2026-08-01: poll_ms and waits trimmed after live timing showed the dialog re-opens within ~500-700ms of a Confirm tap. All coords/templates verified live @1920x1080.",
+  "device": "127.0.0.1:5555",
+  "templates_dir": "templates/cookierun/mailbox",
+  "poll_ms": [
+    350,
+    600
+  ],
+  "match_threshold": 0.85,
+  "start_state": "mailbox_base",
+  "states": {
+    "mailbox_base": {
+      "_note": "Lives tab visible, no send-life dialog yet — tap the Quick Receive & Send Lives banner once to kick off the confirm chain. tap_template (not a fixed tap_xy) so the tap follows wherever the banner actually renders, and every tap already gets engine-level spatial jitter + randomized delay (src/act.py _jitter) — no two taps land on the exact same pixel or land at the exact same interval.",
+      "detect": "lives_tab_marker.png",
+      "on_match": [
+        {
+          "type": "tap_template",
+          "template": "quick_btn_marker.png"
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            900
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "confirm_loop"
+        }
+      ],
+      "on_absent": {
+        "goto": "confirm_loop"
+      },
+      "timeout_ms": 15000
+    },
+    "confirm_loop": {
+      "_note": "Marker is the Cancel+Confirm button ROW, not the dialog text — text-based detection broke live: some friends' dialog has no '(+3 Gift Points)' line at all, so a marker cropped from that line scored 0.42 (absent) on those and the bot falsely concluded the list was exhausted after 0 sends (caught 2026-08-01, wint3r's dialog had no Gift Points line). The button row is identical across every dialog variant (name-agnostic AND gift-points-agnostic) — scores 1.000 on both. Present -> tap Confirm via tap_template (jittered position + delay, per-poll fresh timing from poll_ms range) -> the same dialog re-opens for the next friend within ~500-700ms, so we just loop back and re-check. absent_retries tolerates the brief re-open gap without falsely concluding the list is done.",
+      "detect": "dialog_buttons_marker.png",
+      "on_match": [
+        {
+          "type": "tap_template",
+          "template": "confirm_btn.png"
+        },
+        {
+          "type": "wait",
+          "ms": [
+            400,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "confirm_loop"
+        }
+      ],
+      "absent_retries": 3,
+      "absent_wait_ms": 500,
+      "on_absent": {
+        "goto": "done"
+      },
+      "timeout_ms": 20000
+    },
+    "done": {
+      "_note": "List exhausted -> the 'All Lives received and sent!' popup fires (live-verified 2026-08-01, hearts went 495->726 confirming real sends, not a false-absent). Close it via Confirm so the run always ends on a clean Lives-tab screen, not a stray popup blocking the next launch. Absent (e.g. dialog stopped reappearing for some other reason, popup already gone) -> stop directly.",
+      "detect": "alldone_marker.png",
+      "on_match": [
+        {
+          "type": "tap_template",
+          "template": "confirm_btn.png"
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            900
+          ]
+        },
+        {
+          "type": "stop"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "stop"
+        }
+      ],
+      "timeout_ms": 8000
+    }
+  }
+}
