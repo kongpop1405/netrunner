@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from src.perceive import Match, PerceiveError, find
+from src.perceive import Match, PerceiveError, find, ground_present
 
 
 def _frame(h=200, w=300):
@@ -47,3 +47,39 @@ def test_match_is_frozen_dataclass():
     m = Match(found=True, score=0.9, x=1, y=2, w=3, h=4)
     with pytest.raises(AttributeError):
         m.score = 0.5
+
+
+def _flat_frame(h=1080, w=1920, value=80):
+    return np.full((h, w, 3), value, dtype=np.uint8)
+
+
+def test_ground_present_true_when_hard_edge_in_band():
+    frame = _flat_frame()
+    # a sharp horizontal edge at y=885 (background above, ground below)
+    frame[885:, :] = 220
+    assert ground_present(frame, y=885, x_range=(1150, 1500))
+
+
+def test_ground_present_false_over_flat_background():
+    frame = _flat_frame()  # uniform — no vertical gradient anywhere
+    assert not ground_present(frame, y=885, x_range=(1150, 1500))
+
+
+def test_ground_present_checks_only_the_given_x_range():
+    frame = _flat_frame()
+    frame[885:, 0:50] = 220  # edge exists, but outside the probe window
+    assert not ground_present(frame, y=885, x_range=(1150, 1500))
+
+
+def test_ground_present_respects_edge_min_threshold():
+    frame = _flat_frame()
+    frame[885:, 1150:1500] = 90  # weak edge: value 80 -> 90
+    assert not ground_present(frame, y=885, x_range=(1150, 1500), edge_min=100)
+    assert ground_present(frame, y=885, x_range=(1150, 1500), edge_min=5)
+
+
+def test_ground_present_handles_y_near_frame_top():
+    frame = _flat_frame()
+    frame[5:, :] = 220
+    # y=0 with band=13 would want rows -13..13; must clamp, not raise
+    assert ground_present(frame, y=0, x_range=(100, 200))

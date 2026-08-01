@@ -24,7 +24,7 @@
 
   <div class="flex items-center justify-between mb-8">
     <div>
-      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Feature · <span class="text-rose-600 dark:text-rose-400">rev 3 — รวม faster-jump-loop เข้ามา</span></div>
+      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Feature · <span class="text-rose-600 dark:text-rose-400">rev 3 — รวม faster-jump-loop เข้ามา</span> · <span class="text-amber-600 dark:text-amber-400">◐ PARTIAL — engine code+test เสร็จ (step 1-4), ยังไม่เสียบ config/live-tune</span></div>
       <h1 class="text-3xl font-bold mt-1">In-run Jump Loop — กระโดดถี่ + ข้ามหลุม</h1>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · edge-profile ไม่ใช่ template · engine 3 ไฟล์ + config</p>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Branch <code>feature/obstacle-dodge</code></p>
@@ -206,13 +206,25 @@ plat   = any(|Sobel_y|(x, 675) > 100  for x in PROBE_X)
     <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed">
       <ol class="list-decimal ml-5 space-y-1">
         <li><span class="text-emerald-600 dark:text-emerald-400">✔</span> perceive <code>roi</code> · act <code>slide</code></li>
-        <li>เก็บเฟรมหลาย stage → ยืนยัน <code>ground_y</code> + <code>edge_min</code> ว่าคงที่จริง (offline, ไม่ต้องแตะเกม)</li>
-        <li><code>capture.grab_band()</code> + unit-check ว่า byte ครบและ shape ถูก</li>
-        <li><code>fsm</code> dodge state · config <code>dodge_run</code></li>
-        <li><b>Dry-run ระหว่าง run จริง</b> — log บอกว่า “เห็นหลุม/ไม่เห็น” ตรงกับตาหรือไม่ โดยไม่ tap</li>
-        <li>Live 1–2 run → เทียบ ระยะทาง/เหรียญ กับ baseline → ปรับ <code>probe_x</code>, <code>cooldown_ms</code></li>
-        <li><b>(จาก 04)</b> A/B <code>double_jump_chance</code> 0.35 vs 1.0 บนหลุมกว้าง — วัด Play-to-Play interval + ระยะทาง/run. double เสมออาจข้ามแพลตฟอร์มเตี้ยพลาด ต้องวัดจริง</li>
+        <li><span class="text-emerald-600 dark:text-emerald-400">✔</span> เก็บเฟรมหลาย stage → ยืนยัน <code>ground_y</code> + <code>edge_min</code> ว่าคงที่จริง (offline, ไม่ต้องแตะเกม)</li>
+        <li><span class="text-emerald-600 dark:text-emerald-400">✔</span> <code>capture.grab_band()</code> + unit-check ว่า byte ครบและ shape ถูก</li>
+        <li><span class="text-emerald-600 dark:text-emerald-400">✔</span> <code>fsm</code> dodge state · config validation (schema พร้อมใช้ — ยังไม่เสียบใน <code>boxrun_toggle.json</code> จริง)</li>
+        <li class="text-slate-500">Dry-run ระหว่าง run จริง — log บอกว่า "เห็นหลุม/ไม่เห็น" ตรงกับตาหรือไม่ โดยไม่ tap</li>
+        <li class="text-slate-500">Live 1–2 run → เทียบ ระยะทาง/เหรียญ กับ baseline → ปรับ <code>probe_x</code>, <code>cooldown_ms</code></li>
+        <li class="text-slate-500"><b>(จาก 04)</b> A/B <code>double_jump_chance</code> 0.35 vs 1.0 บนหลุมกว้าง — วัด Play-to-Play interval + ระยะทาง/run. double เสมออาจข้ามแพลตฟอร์มเตี้ยพลาด ต้องวัดจริง</li>
       </ol>
+    </div>
+  </section>
+
+  <section class="mb-4">
+    <h2 class="text-lg font-semibold mb-3"><span class="num bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300 mr-2">✓</span>สิ่งที่ implement แล้ว (step 1-4, code + unit test เท่านั้น)</h2>
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm leading-relaxed space-y-2">
+      <p><code>src/device.py</code>: <code>Device.fast_tap()</code> ผ่าน persistent <code>adb shell</code> (lazy-open + auto-reopen ถ้า process ตาย, fallback <code>shell()</code> เดิมถ้า Popen ล้มเหลวหรือ write พัง). Verified live: 45ms → ~9.5ms, tap จริงลงจอ (เปิด Shop popup ยืนยันแล้วปิดกลับ ไม่แตะซื้อ).</p>
+      <p><code>src/capture.py</code>: <code>grab_band(device, y, height, width=1920)</code> — raw <code>screencap | tail | head</code> byte-range cut, decode RGBA→BGR. Verified live: 231ms เทียบ 685ms ของ <code>grab()</code> เต็มเฟรม.</p>
+      <p><code>src/perceive.py</code>: <code>ground_present(frame, y, x_range, edge_min, band)</code> — Sobel_y edge check ตาม section D ด้านบน. Unit test ล้วน (synthetic frame), ยังไม่ live-verify ค่า threshold จริงในเกม (ต้อง step 5-6).</p>
+      <p><code>src/fsm.py</code>: state type <code>dodge</code> (<code>Runner._run_dodge</code>) — tight loop ไม่ sleep, exit 2 ทาง (<code>on_until</code> จาก periodic full-frame check ทุก <code>check_until_every</code> cycle, <code>on_max_ms</code> กันค้าง). <code>on_pit</code>/<code>idle</code> จำกัดเฉพาะ <code>jump</code>/<code>tap_xy</code> (ไม่รองรับ <code>tap_template</code> — ไม่มี full frame ให้ match).</p>
+      <p><code>src/config.py</code>: <code>_validate_dodge_state()</code> validate schema เต็ม (required fields, goto reachability, action type restriction) — <code>goto_targets()</code> รองรับ dodge exits ด้วย.</p>
+      <p class="text-xs text-slate-500 mt-2">Test: 33 test ใหม่ (test_capture.py, test_device.py, +ส่วนเพิ่มใน test_perceive.py/test_fsm.py) — full suite 338 passed. <b>ยังไม่ทำ</b>: เสียบ <code>dodge_run</code> state จริงใน <code>config/cookierun/boxrun_toggle.json</code>, dry-run กับ run จริง, tune <code>probe_x</code>/<code>cooldown_ms</code>/<code>ground_y</code> ข้าม stage, A/B double-jump — ทั้งหมดต้องรัน bot เล่นจริงซึ่งกระทบ progress/เหรียญ account จริง (scope นี้เจตนาหยุดแค่ code+test).</p>
     </div>
   </section>
 

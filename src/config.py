@@ -261,6 +261,12 @@ def _validate(cfg: Config) -> None:
 def goto_targets(state: dict) -> set[str]:
     """Every state name this state can transition to (on_match + on_absent)."""
     outs: set[str] = set()
+    if state.get("dodge"):
+        for field_name in ("on_until", "on_max_ms"):
+            target = state.get(field_name)
+            if isinstance(target, dict) and "goto" in target:
+                outs.add(target["goto"])
+        return outs
     lists: list[list[dict]] = []
     om = state.get("on_match", [])
     lists.extend(om.values()) if isinstance(om, dict) else lists.append(om)
@@ -300,6 +306,9 @@ def unreachable_states(states: dict[str, dict], start_state: str,
 
 
 def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> None:
+    if state.get("dodge"):
+        _validate_dodge_state(sname, state, names, tdir)
+        return
     detect = state.get("detect")
     dnames = detect_names(state)
     if not dnames or not all(isinstance(d, str) for d in dnames):
@@ -386,6 +395,110 @@ def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> Non
 
     for a in actions:
         _validate_action(sname, a, names, tdir)
+
+
+#: dodge state fields the FSM's tight loop reads every cycle — all required
+#: since there is no sane per-field default for a probe geometry the plan says
+#: must be measured live, not guessed.
+_DODGE_REQUIRED = {
+    "until", "on_until", "check_until_every", "max_ms", "on_max_ms",
+    "ground_y", "probe_x", "edge_min", "on_pit", "cooldown_ms",
+}
+
+
+def _validate_dodge_state(sname: str, state: dict, names: set[str], tdir: Path) -> None:
+    """A "dodge" state replaces detect/on_match/on_absent with a tight
+    grab_band -> edge-check -> jump loop (see fsm.py's _run_dodge). It still
+    needs two exits validated the same way every other state does: `on_until`
+    (the marker that proves the run ended) and `on_max_ms` (a hard ceiling so a
+    marker that never appears can't hang the loop forever)."""
+    missing = _DODGE_REQUIRED - state.keys()
+    if missing:
+        raise ConfigError(
+            f"state '{sname}': dodge state missing field(s): {', '.join(sorted(missing))}"
+        )
+
+    until = state.get("until")
+    if not isinstance(until, str) or not until:
+        raise ConfigError(f"state '{sname}': 'until' must be a template filename")
+    _require_template(sname, tdir, until)
+
+    for field_name in ("on_until", "on_max_ms"):
+        target = state[field_name]
+        if not (isinstance(target, dict) and isinstance(target.get("goto"), str)):
+            raise ConfigError(
+                f"state '{sname}': '{field_name}' must be {{\"goto\": \"<state>\"}}"
+            )
+        if target["goto"] not in names:
+            raise ConfigError(
+                f"state '{sname}': '{field_name}' goto targets undefined state "
+                f"'{target['goto']}'"
+            )
+
+    check_every = state["check_until_every"]
+    if not isinstance(check_every, int) or isinstance(check_every, bool) or check_every <= 0:
+        raise ConfigError(
+            f"state '{sname}': 'check_until_every' must be a positive integer (cycles)"
+        )
+
+    max_ms = state["max_ms"]
+    if not isinstance(max_ms, int) or isinstance(max_ms, bool) or max_ms <= 0:
+        raise ConfigError(f"state '{sname}': 'max_ms' must be a positive integer (ms)")
+
+    ground_y = state["ground_y"]
+    if not isinstance(ground_y, int) or isinstance(ground_y, bool) or ground_y < 0:
+        raise ConfigError(f"state '{sname}': 'ground_y' must be a non-negative integer")
+
+    platform_y = state.get("platform_y")
+    if platform_y is not None and (not isinstance(platform_y, int)
+                                    or isinstance(platform_y, bool) or platform_y < 0):
+        raise ConfigError(f"state '{sname}': 'platform_y' must be a non-negative integer")
+
+    probe_x = state["probe_x"]
+    if (not isinstance(probe_x, (list, tuple)) or len(probe_x) != 2
+            or not all(isinstance(v, int) and not isinstance(v, bool) for v in probe_x)
+            or probe_x[0] >= probe_x[1]):
+        raise ConfigError(
+            f"state '{sname}': 'probe_x' must be [min, max] integers with min < max"
+        )
+
+    edge_min = state["edge_min"]
+    if not isinstance(edge_min, (int, float)) or isinstance(edge_min, bool) or edge_min <= 0:
+        raise ConfigError(f"state '{sname}': 'edge_min' must be a positive number")
+
+    on_pit = state["on_pit"]
+    if not isinstance(on_pit, dict):
+        raise ConfigError(f"state '{sname}': 'on_pit' must be an action object")
+    _validate_action(sname, on_pit, names, tdir)
+    if on_pit.get("type") not in ("jump", "tap_xy"):
+        # tap_template needs a full frame to match against; the dodge loop only
+        # ever has the cropped ground/platform band (see fsm._run_dodge) —
+        # trading away full-frame perception for speed is the entire point.
+        raise ConfigError(
+            f"state '{sname}': 'on_pit' action must be jump or tap_xy — "
+            f"got {on_pit.get('type')!r} (tap_template needs a full frame, "
+            f"which a dodge state never captures)"
+        )
+
+    cooldown_ms = state["cooldown_ms"]
+    if not isinstance(cooldown_ms, int) or isinstance(cooldown_ms, bool) or cooldown_ms < 0:
+        raise ConfigError(f"state '{sname}': 'cooldown_ms' must be a non-negative integer (ms)")
+
+    idle = state.get("idle")
+    if idle is not None:
+        _validate_action(sname, idle, names, tdir)
+        if idle.get("type") not in ("jump", "tap_xy"):
+            raise ConfigError(
+                f"state '{sname}': 'idle' action must be jump or tap_xy — "
+                f"got {idle.get('type')!r} (tap_template needs a full frame, "
+                f"which a dodge state never captures)"
+            )
+        idle_every_ms = state.get("idle_every_ms")
+        if not isinstance(idle_every_ms, int) or isinstance(idle_every_ms, bool) \
+                or idle_every_ms <= 0:
+            raise ConfigError(
+                f"state '{sname}': 'idle' set without a positive integer 'idle_every_ms'"
+            )
 
 
 def _require_template(state: str, tdir: Path, name: str) -> None:

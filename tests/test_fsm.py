@@ -170,3 +170,100 @@ def test_stuck_without_target_raises(monkeypatch, grabs):
     states = {"a": {"detect": "a.png", "timeout_ms": 0}}
     with pytest.raises(fsm.FsmError, match="stuck"):
         fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=10)
+
+
+def _dodge_state(**overrides):
+    base = {
+        "dodge": True,
+        "until": "result.png",
+        "on_until": {"goto": "done"},
+        "check_until_every": 2,
+        "max_ms": 50,
+        "on_max_ms": {"goto": "stuck"},
+        "ground_y": 885,
+        "platform_y": 675,
+        "probe_x": [1150, 1500],
+        "edge_min": 100,
+        "on_pit": {"type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55},
+        "cooldown_ms": 0,
+    }
+    base.update(overrides)
+    return base
+
+
+@pytest.fixture
+def dodge_env(monkeypatch):
+    """Stubs grab_band (always returns a dummy band) and lets each test control
+    ground_present's answers and find_named's until-marker hit via closures."""
+    monkeypatch.setattr(fsm, "grab_band",
+                        lambda device, y, h: np.zeros((h, 10, 3), dtype=np.uint8))
+    return {}
+
+
+def test_dodge_exits_via_until_marker(monkeypatch, grabs, dodge_env):
+    """until marker found on a periodic full-frame check -> on_until's goto."""
+    monkeypatch.setattr(fsm, "ground_present", lambda *a, **k: True)  # never a pit
+    _patch_find(monkeypatch, {"result.png"})
+    states = {
+        "run": _dodge_state(),
+        "done": {"detect": "done.png", "on_match": [{"type": "stop"}]},
+        "stuck": {"detect": "stuck.png", "on_match": [{"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "run"), FakeDevice()).run(dry_run=True, max_cycles=1)
+
+
+def test_dodge_exits_via_max_ms_when_until_never_found(monkeypatch, grabs, dodge_env):
+    monkeypatch.setattr(fsm, "ground_present", lambda *a, **k: True)
+    _patch_find(monkeypatch, set())  # until marker never appears
+    states = {
+        "run": _dodge_state(max_ms=1),
+        "stuck": {"detect": "stuck.png", "on_match": [{"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "run"), FakeDevice()).run(dry_run=True, max_cycles=1)
+
+
+def test_dodge_jumps_when_ground_absent(monkeypatch, grabs, dodge_env):
+    """No ground in the probe band -> on_pit action runs (a jump)."""
+    calls = []
+    monkeypatch.setattr(fsm, "ground_present", lambda *a, **k: False)  # always a pit
+    _patch_find(monkeypatch, set())  # until marker never appears this run
+
+    class RecordingActor:
+        UNSURE = object()
+
+        def __init__(self, *a, **k):
+            pass
+
+        def run(self, action, frame):
+            calls.append(action)
+            return None
+
+    monkeypatch.setattr(fsm, "Actor", RecordingActor)
+    states = {
+        "run": _dodge_state(max_ms=30),
+        "stuck": {"detect": "stuck.png", "on_match": [{"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "run"), FakeDevice()).run(dry_run=True, max_cycles=1)
+    jump_calls = [c for c in calls if c.get("type") == "jump"]
+    assert jump_calls, "expected at least one jump action when ground is absent"
+
+
+def test_dodge_config_rejects_tap_template_on_pit():
+    from pathlib import Path
+
+    from src.config import ConfigError, _validate_dodge_state
+    state = _dodge_state(
+        until="boxrun/result_marker.png",
+        on_pit={"type": "tap_template", "template": "boxrun/result_marker.png"},
+    )
+    with pytest.raises(ConfigError, match="jump or tap_xy"):
+        _validate_dodge_state("run", state, {"done", "stuck"}, Path("templates/cookierun"))
+
+
+def test_dodge_config_requires_all_fields():
+    from pathlib import Path
+
+    from src.config import ConfigError, _validate_dodge_state
+    state = {"dodge": True}
+    with pytest.raises(ConfigError, match="missing field"):
+        _validate_dodge_state("run", state, {"done", "stuck"}, Path("templates/cookierun"))

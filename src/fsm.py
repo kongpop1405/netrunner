@@ -10,10 +10,10 @@ import cv2
 
 from .act import ActError, Actor
 from .alert import send_alert, send_alert_with_image
-from .capture import grab
+from .capture import grab, grab_band
 from .config import Config, detect_names
 from .device import AdbError, Device
-from .perceive import Match, PerceiveError, TemplateStore, find_named
+from .perceive import Match, PerceiveError, TemplateStore, find_named, ground_present
 from .session import Restarter, SessionError
 
 log = logging.getLogger("netrunner.fsm")
@@ -159,61 +159,73 @@ class Runner:
                 cycles += 1
 
                 spec = self.cfg.states[state]
+                prev_state = state
+                did_transition = False
                 try:
-                    if frame is None:
-                        frame = grab(self.device)
-                        gotos_on_frame = 0
-                    thr = float(spec.get("threshold", self.cfg.match_threshold))
-                    m, matched = self._detect(frame, spec, thr)
-                    log.debug("state=%s detect=%s found=%s score=%.2f",
-                              state, matched, m.found, m.score)
-
-                    prev_state = state
-                    did_transition = False
-                    mt = spec.get("match_timeout_ms")
-                    if m.found and mt is not None \
-                            and (time.monotonic() - state_entered_at) * 1000 >= mt:
-                        # The marker is STILL on screen after the whole budget —
-                        # the state's own taps aren't dismissing it. timeout_ms
-                        # only fires on the absent path, so a stuck MATCH needs
-                        # this separate escape (the old hand-written
-                        # mb_reveal_retry chains existed to fake it).
-                        target = self._match_timeout_target(spec)
-                        if target is None or target == state:
-                            raise FsmError(
-                                f"state '{state}' still matched after "
-                                f"{(time.monotonic() - state_entered_at) * 1000:.0f}ms "
-                                f"(match_timeout {mt}ms) with no escape target"
-                            )
-                        log.warning("state '%s' still matched >= match_timeout %dms -> goto '%s'",
-                                    state, mt, target)
-                        state = target
-                        did_transition = True
-                        acted = False
-                    elif m.found:
-                        absent_streak = 0
-                        entered_at = time.monotonic()
-                        on_match = spec.get("on_match", [])
-                        if isinstance(on_match, dict):  # per-template branch (detect list)
-                            on_match = on_match[matched]
-                        next_state, acted = self._run_actions(on_match, frame, state)
+                    if spec.get("dodge"):
+                        next_state, acted = self._run_dodge(spec, state)
+                        frame = None  # the dodge loop consumed frames of its own
+                        absent_streak = 0  # dodge is never "absent" — it always ran
                         if next_state == _STOP:
                             log.info("stop action reached, ending run")
                             return
                         if next_state is not None:
                             state = next_state
-                            did_transition = True
-                    else:
-                        absent_streak += 1
-                        next_state, acted = self._handle_absent(
-                            state, spec, entered_at, frame, absent_streak
-                        )
-                        if next_state == _STOP:
-                            return
-                        if next_state is not None:
-                            state = next_state
                             entered_at = time.monotonic()
                             did_transition = True
+                    else:
+                        if frame is None:
+                            frame = grab(self.device)
+                            gotos_on_frame = 0
+                        thr = float(spec.get("threshold", self.cfg.match_threshold))
+                        m, matched = self._detect(frame, spec, thr)
+                        log.debug("state=%s detect=%s found=%s score=%.2f",
+                                  state, matched, m.found, m.score)
+
+                        mt = spec.get("match_timeout_ms")
+                        if m.found and mt is not None \
+                                and (time.monotonic() - state_entered_at) * 1000 >= mt:
+                            # The marker is STILL on screen after the whole budget —
+                            # the state's own taps aren't dismissing it. timeout_ms
+                            # only fires on the absent path, so a stuck MATCH needs
+                            # this separate escape (the old hand-written
+                            # mb_reveal_retry chains existed to fake it).
+                            target = self._match_timeout_target(spec)
+                            if target is None or target == state:
+                                raise FsmError(
+                                    f"state '{state}' still matched after "
+                                    f"{(time.monotonic() - state_entered_at) * 1000:.0f}ms "
+                                    f"(match_timeout {mt}ms) with no escape target"
+                                )
+                            log.warning("state '%s' still matched >= match_timeout %dms -> goto '%s'",
+                                        state, mt, target)
+                            state = target
+                            did_transition = True
+                            acted = False
+                        elif m.found:
+                            absent_streak = 0
+                            entered_at = time.monotonic()
+                            on_match = spec.get("on_match", [])
+                            if isinstance(on_match, dict):  # per-template branch (detect list)
+                                on_match = on_match[matched]
+                            next_state, acted = self._run_actions(on_match, frame, state)
+                            if next_state == _STOP:
+                                log.info("stop action reached, ending run")
+                                return
+                            if next_state is not None:
+                                state = next_state
+                                did_transition = True
+                        else:
+                            absent_streak += 1
+                            next_state, acted = self._handle_absent(
+                                state, spec, entered_at, frame, absent_streak
+                            )
+                            if next_state == _STOP:
+                                return
+                            if next_state is not None:
+                                state = next_state
+                                entered_at = time.monotonic()
+                                did_transition = True
                 except AdbError as e:
                     adb_fail_streak += 1
                     log.warning("adb error on cycle %d (%d/%d before giving up): %s",
@@ -571,6 +583,88 @@ class Runner:
             if result is not None:
                 return result, acted  # goto target or _STOP
         return None, acted
+
+    def _run_dodge(self, spec: dict, state: str) -> tuple[str | None, bool]:
+        """Tight in-run loop: watch for a pit, jump over it, and keep watching.
+
+        A pit has no sprite — it's the *absence* of the ground's drawn edge —
+        so this bypasses the usual detect/on_match template match entirely and
+        polls ground_present() instead (see perceive.py). It must not sleep
+        between checks the way every other state does: a pit is only
+        ~1.5-2s from becoming unavoidable once it enters the probe window, so
+        the poll cadence itself is the thing standing between "dodged" and "fell
+        in". grab_band() (a raw on-device row-range capture, not a full PNG
+        frame) is what keeps each cycle cheap enough to fit that budget.
+
+        Two ways out, both mandatory in config (see config._validate_dodge_state):
+        `until` found on a periodic full-frame check -> on_until's goto (the run
+        legitimately ended); `max_ms` elapsed without that -> on_max_ms's goto
+        (something is wrong — a dead loop must not hang the whole farm forever).
+        """
+        ground_y = spec["ground_y"]
+        platform_y = spec.get("platform_y")
+        probe_x = tuple(spec["probe_x"])
+        edge_min = spec["edge_min"]
+        band_pad = 13
+        y_lo = min(ground_y, platform_y) if platform_y is not None else ground_y
+        y_hi = max(ground_y, platform_y) if platform_y is not None else ground_y
+        band_y = max(0, y_lo - band_pad)
+        band_h = (y_hi - y_lo) + 2 * band_pad
+
+        cooldown_ms = spec["cooldown_ms"]
+        check_every = spec["check_until_every"]
+        max_ms = spec["max_ms"]
+        idle = spec.get("idle")
+        idle_every_ms = spec.get("idle_every_ms")
+
+        started = time.monotonic()
+        last_jump_at = 0.0
+        last_idle_at = started
+        cycle = 0
+        acted_any = False
+
+        while True:
+            elapsed_ms = (time.monotonic() - started) * 1000
+            if elapsed_ms >= max_ms:
+                target = spec["on_max_ms"]["goto"]
+                log.warning("dodge state '%s' hit max_ms %dms -> goto '%s'",
+                            state, max_ms, target)
+                return target, acted_any
+
+            cycle += 1
+            if cycle % check_every == 0:
+                full = grab(self.device)
+                m = find_named(full, self.store, spec["until"], self.cfg.match_threshold)
+                if m.found:
+                    target = spec["on_until"]["goto"]
+                    log.info("dodge state '%s' saw '%s' -> goto '%s'",
+                             state, spec["until"], target)
+                    return target, acted_any
+
+            band = grab_band(self.device, band_y, band_h)
+            ground_row = ground_y - band_y
+            has_ground = ground_present(band, ground_row, probe_x, edge_min, band=band_pad)
+            has_platform = False
+            if platform_y is not None:
+                platform_row = platform_y - band_y
+                has_platform = ground_present(band, platform_row, probe_x, edge_min,
+                                              band=band_pad)
+
+            now_ms = time.monotonic() * 1000
+            if not has_ground and now_ms - last_jump_at >= cooldown_ms:
+                log.info("dodge state '%s': pit ahead (platform=%s) -> jump",
+                         state, has_platform)
+                # frame=None: on_pit is restricted to jump/tap_xy (config
+                # validation), neither of which reads it — only tap_template
+                # would, and that needs a full frame this loop never captures.
+                self.actor.run(spec["on_pit"], None)
+                last_jump_at = now_ms
+                acted_any = True
+
+            if idle is not None and (time.monotonic() - last_idle_at) * 1000 >= idle_every_ms:
+                self.actor.run(idle, None)
+                last_idle_at = time.monotonic()
+                acted_any = True
 
     def _handle_absent(
         self, state: str, spec: dict, entered_at: float, frame, absent_streak: int

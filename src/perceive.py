@@ -195,6 +195,33 @@ def read_text(frame: np.ndarray, region: tuple[int, int, int, int] | None = None
     return pytesseract.image_to_string(gray, config=config).strip()
 
 
+def ground_present(frame: np.ndarray, y: int, x_range: tuple[int, int],
+                    edge_min: float = 100.0, band: int = 13) -> bool:
+    """Is there standable ground (or a platform) at height `y` anywhere in `x_range`?
+
+    Every standable surface in this game is drawn with a crisp vector outline;
+    a pit is not a sprite, it is the *absence* of that outline — so template
+    matching cannot find "nothing" and this checks for the edge itself instead.
+    Sobel_y peaks hard on a horizontal outline and stays low over background art
+    (which is blurred/gradient-shaded), so `max(|Sobel_y|)` in a +/-`band` px
+    strip around `y` separates "ground" from "pit" cleanly (measured live:
+    ground >=142, pit <=72 — edge_min=100 sits in the gap with margin both ways).
+
+    Checks the WIDEST bar across the whole x_range (not a per-column vote) since
+    one solid strip of edge anywhere in the probe window is enough to prove a
+    landing spot exists there.
+    """
+    x0, x1 = x_range
+    y0, y1 = max(0, y - band), y + band
+    gray = frame[y0:y1, x0:x1]
+    if gray.ndim == 3:
+        gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
+    if gray.size == 0:
+        return False
+    sobel = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    return bool(np.abs(sobel).max() >= edge_min)
+
+
 #: tesseract page-segmentation mode 7 = "treat the image as one text line", which
 #: is what a counter pill is; the whitelist keeps it from reading the x in "x3"
 #: or the box glyph as a digit.

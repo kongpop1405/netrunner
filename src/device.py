@@ -28,6 +28,7 @@ class Device:
         self.serial = serial
         self.adb = adb
         self.timeout = timeout
+        self._persistent_shell: subprocess.Popen | None = None
 
     # --- raw command runners -------------------------------------------------
 
@@ -95,6 +96,66 @@ class Device:
     def exec_out(self, *args: str) -> bytes:
         """Run `adb exec-out <args>` and return raw stdout bytes (no line-ending mangling)."""
         return self._run(["exec-out", *args], binary=True)  # type: ignore[return-value]
+
+    # --- persistent shell (fast tap for tight loops) --------------------------
+
+    def _ensure_persistent_shell(self) -> subprocess.Popen | None:
+        """Open (or reuse) a long-lived `adb shell`, or None if it can't start.
+
+        Spawning `adb -s <serial> shell input tap x y` per call measures ~45ms —
+        almost all of it process/adb-server overhead, not the tap itself. Piping
+        commands into one shell's stdin instead measures ~9.5ms, which matters
+        for fsm.py's "dodge" state: a detect-jump cycle has to fit inside a
+        pit's ~1.5-2s window, and spawn overhead alone eats a third of that
+        budget. Only worth this complexity for that tight loop — every other
+        caller keeps using shell()/exec_out(), which is simpler and already
+        proven reliable.
+        """
+        if self._persistent_shell is not None and self._persistent_shell.poll() is None:
+            return self._persistent_shell
+        try:
+            proc = subprocess.Popen(
+                [self.adb, "-s", self.serial, "shell"],
+                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except (FileNotFoundError, OSError) as e:
+            logger.warning("could not open persistent shell, falling back to spawn: %s", e)
+            self._persistent_shell = None
+            return None
+        self._persistent_shell = proc
+        return proc
+
+    def fast_tap(self, x: int, y: int) -> None:
+        """Tap via the persistent shell; falls back to shell() if that fails.
+
+        Fire-and-forget: no return code or stderr comes back over this path
+        (writing to a live shell's stdin, not waiting on a fresh process exit),
+        so a tap the device itself rejects would not surface as an AdbError
+        here. That trade is what buys the speed — see _ensure_persistent_shell.
+        A dead pipe (the shell process exited) is detected before the write and
+        triggers the same one-shot fallback as a failed open.
+        """
+        proc = self._ensure_persistent_shell()
+        if proc is not None:
+            try:
+                proc.stdin.write(f"input tap {x} {y}\n".encode())
+                proc.stdin.flush()
+                return
+            except (BrokenPipeError, OSError) as e:
+                logger.warning("persistent shell write failed, falling back to spawn: %s", e)
+                self._persistent_shell = None
+        self.shell("input", "tap", str(x), str(y))
+
+    def close_persistent_shell(self) -> None:
+        """Terminate the persistent shell, if one is open. Safe to call anytime."""
+        if self._persistent_shell is not None:
+            try:
+                self._persistent_shell.stdin.close()
+            except OSError:
+                pass
+            self._persistent_shell.terminate()
+            self._persistent_shell = None
 
     # --- introspection -------------------------------------------------------
 
