@@ -110,6 +110,10 @@
   .shot-ph .ph-icon { font-size:26px; opacity:.55; }
   .shot-ph .ph-t { font-size:13px; font-weight:600; color:var(--text-dim); margin:6px 0 3px; }
   .shot-ph .ph-s { font-size:11.5px; font-family:'JetBrains Mono',monospace; }
+  figure.shot { margin:0; background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  figure.shot img { display:block; width:100%; height:auto; }
+  figure.shot figcaption { padding:8px 12px; margin:0; font-size:12px; color:var(--text-dim); border-top:1px solid var(--border); }
+  figure.shot figcaption b { color:var(--text); font-family:'JetBrains Mono',monospace; }
 
   /* ── FSM diagram ────────────────────────────────────── */
   .fsm { background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:18px 16px; margin:14px 0; overflow-x:auto; }
@@ -1527,10 +1531,16 @@ python tools/snap.py --device 127.0.0.1:5555 --out docs/plans/shots/
 <span class="c">#   5. captcha     — วัด cells[] 6 จุด + confirm_xy                          [Phase 4 gate]</span>
 <span class="c">#   6.-15. popups  — 10 ตัวของ Phase 6 (snap ตอนโผล่จริง; @720p ของ cookierun-bot = reference)</span></pre>
   <div class="tpl-grid" style="grid-template-columns:repeat(auto-fill,minmax(215px,1fr))">
-    <div class="shot-ph"><div class="ph-icon">🏠</div><div class="ph-t">home</div><div class="ph-s">Play (1650,970)</div></div>
+    <figure class="shot">
+      <img src="assets/feature-parity-anti-detection/home.jpg" alt="Home screen พร้อม Play button">
+      <figcaption><b>home</b> — Play button (จริง: match ผ่าน <code>home_play_marker</code>, ไม่ fixed-pixel)</figcaption>
+    </figure>
     <div class="shot-ph"><div class="ph-icon">🛒</div><div class="ph-t">boost shop</div><div class="ph-s">slot (810,875)</div></div>
     <div class="shot-ph"><div class="ph-icon">🎰</div><div class="ph-t">picker</div><div class="ph-s">Multi-Buy (950,880)</div></div>
-    <div class="shot-ph"><div class="ph-icon">🎁</div><div class="ph-t">mystery box</div><div class="ph-s">P0 — วัด 2 layout</div></div>
+    <figure class="shot">
+      <img src="assets/feature-parity-anti-detection/mystery-box.jpg" alt="Mystery Box screen ก่อนกด Open all">
+      <figcaption><b>mystery box</b> — Open-all (960,965), ตรงกับ layout ที่ระบุใน P0</figcaption>
+    </figure>
     <div class="shot-ph"><div class="ph-icon">🤖</div><div class="ph-t">captcha</div><div class="ph-s">Phase 4 — cells[]</div></div>
   </div>
   <div class="note danger">
