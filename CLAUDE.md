@@ -1,0 +1,78 @@
+# netrunner project conventions
+
+## Progress reporting & commits
+
+- งานสำเร็จหรือคืบหน้าระหว่างทาง (live-test ผ่าน, bug fix verify แล้ว, feature เสร็จบางส่วน) → **รายงานให้ user ทราบทันที** ไม่ต้องรอจบ session
+- Commit เป็นระยะตามงานที่เสร็จจริง (ไม่รวบทุกอย่างเป็น 1 commit ท้าย session) — 1 commit = 1 fix/feature ที่ verify แล้ว
+
+## Branching
+
+เมื่อเริ่มงานใหม่หรือ session ใหม่ และสรุปปัญหา/scope ได้แล้ว **ถ้าต้องแก้โค้ด ให้สร้าง branch ใหม่ก่อนแก้เสมอ**:
+
+| สถานการณ์ | สร้าง branch จาก |
+|---|---|
+| งานใหม่/feature ใหม่ (ไม่เกี่ยวกับสิ่งที่ทำค้างอยู่) | `main` |
+| งานแทรกเข้ามาระหว่าง session เดิมกำลังทำ (bug ที่เจอกลางทาง, ฟีเจอร์ย่อยที่ต่อยอด) | branch ของ session นั้นที่กำลังทำอยู่ |
+
+- อย่าแก้โค้ดบน `main` ตรง ๆ
+- ถ้าไม่แน่ใจว่างานนี้ "ใหม่" หรือ "แทรกใน session เดิม" ให้ถามก่อนสร้าง branch
+
+### Tag ก่อนแตก branch
+
+ก่อนแตก branch ใหม่จาก `main` ทุกครั้ง: เช็คว่า `main` ที่จุดนี้มี tag กำกับไว้หรือยัง (`git tag --points-at main`) — ถ้ายังไม่มี ให้ติด tag ก่อนแตก branch เสมอ
+
+**Pattern:** `0.<n>.<x>_<short-feature-slug>` (ไม่มี `v` นำหน้า)
+
+- **n** เพิ่มเมื่องานใหม่/feature ใหม่ (แตกจาก `main` ตรงงานใหม่)
+- **x** เพิ่มเมื่องานแทรกเล็ก ๆ ระหว่าง session เดิม (bug fix ย่อย, ต่อยอด feature เดิม) — reset เป็น 0 ทุกครั้งที่ n เพิ่ม
+
+```
+0.1.0_episode-loop
+0.1.1_episode-loop-retry-fix
+0.2.0_relic-stop-mode
+0.2.1_relic-tap-template
+0.3.0_auto-detect-ep
+```
+
+ดูตัวล่าสุดด้วย `git tag -l "0.*" --sort=-v:refname`
+
+## Merge เข้า main — ห้ามทำเอง
+
+**การ merge เข้า `main` เป็นสิทธิ์ user เท่านั้น** ไม่ว่ากรณีใด:
+
+- ห้าม `git merge` เข้า `main` เอง แม้เป็น fast-forward ที่ไม่มี conflict
+- ห้าม `git checkout main` แล้ว merge branch อื่นเข้ามาโดยไม่ขอก่อน
+- เตรียม branch/commit ให้พร้อม แล้ว**เสนอ** user ให้ merge เอง หรือขอ confirm ก่อนทำแทน — อย่าตัดสินใจ merge เงียบ ๆ ระหว่างทำงาน แม้จะดูเป็นงานเล็กหรือไม่มีความเสี่ยงทางเทคนิคก็ตาม
+
+## Bot lifecycle — kill ต้อง verify ก่อนรันใหม่เสมอ
+
+Kill bot process (`TaskStop` หรืออื่น ๆ) แล้ว **ห้ามรันรอบใหม่ทันที** — เช็คก่อนเสมอ:
+
+1. Snap จอปัจจุบัน
+2. ตรวจว่ามี popup ค้างอยู่ไหม (Result / Mystery Box / send-life / relic screen ฯลฯ) — bot ที่ถูก kill กลาง action อาจทิ้งจอไว้กลางสถานะ
+3. ถ้ามีค้าง ให้ dismiss ให้ครบจนกลับ `home` สะอาดจริง (ยืนยันด้วย marker score ไม่ใช่เดา) ก่อนสั่งรันใหม่
+
+เหตุผล: popup ที่ค้างจากรอบก่อนจะทำให้ auto-episode-switch หรือ action แรกของรอบใหม่ mis-tap ใส่ popup เดิม แล้วดูเหมือน bug ใหม่ทั้งที่จริงคือสถานะค้างจากรอบที่แล้ว
+
+## แก้ config JSON — ผ่าน json module เท่านั้น
+
+**ห้ามแก้ `config/**/*.json` ด้วย string replace/sed มือเปล่า** แม้เป็นการแก้แค่ 1 บรรทัด (เช่นแก้ `_note`):
+
+- ใช้ `json.load()` → แก้ค่าใน object → `json.dump()` เสมอ — escape ถูกต้องอัตโนมัติ กัน unescaped quote ทำ JSON พังทั้งไฟล์
+- หลังแก้ทุกครั้ง ต้อง `json.load()` ยืนยันไฟล์ parse ผ่านจริง ก่อน commit
+- ถ้าจำเป็นต้อง string-replace จริง ๆ (เช่นแก้ comment/note ที่ยาวมาก) ต้อง verify JSON valid ทันทีหลังแก้ ก่อนทำอย่างอื่นต่อ
+
+## ทุก fix ต้อง live-verify ก่อน commit
+
+ห้าม commit fix ที่ยังไม่เห็นผลจริงบนเกม/อุปกรณ์จริง แม้ logic จะดูถูกต้องบนกระดาษ:
+
+- dry-run/unit test ไม่พอสำหรับ fix ที่เกี่ยวกับ UI timing, coordinate, หรือ state ของเกมจริง
+- ต้องรันจริงอย่างน้อย 1 รอบเห็นพฤติกรรมที่ fix ตั้งใจแก้ (เช่น relic claim สำเร็จจริง ไม่ใช่แค่ routing ถูกใน dry-run)
+- ถ้า fix ยัง verify ไม่ได้ (ต้องรอ state ที่หายาก เช่น relic ครบ) ให้บอก user ตรง ๆ ว่ายัง unverified แทนที่จะ commit เงียบ ๆ แล้วหวังว่าจะถูก
+
+## Snap ก่อนแตะจอเสมอเมื่อเจอสถานะค้าง/แปลก
+
+เมื่อ user รายงานว่าบอทค้าง หรือเจอสถานะจอที่ไม่คาดคิด — **ห้ามสั่ง tap/action ใด ๆ ก่อน snap ดูจอจริงก่อนเสมอ**:
+
+- สถานะค้างอาจเป็นโอกาสหายาก (เช่น relic ครบ, popup ที่ไม่เคยเจอ) — แตะจอทันทีอาจทำให้พลาดโอกาส เก็บ template/coord จากสถานะนั้นไปตลอดกาล
+- Snap แล้ววิเคราะห์ก่อนว่าเป็นอะไรจริง ก่อนตัดสินใจว่าจะ dismiss/เก็บข้อมูล/ปล่อยไว้
