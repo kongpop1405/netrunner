@@ -24,10 +24,15 @@
 
   <div class="flex items-center justify-between mb-8">
     <div>
-      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Feature · <span class="text-rose-600 dark:text-rose-400">rev 2 — หลังวัดจอจริง</span></div>
-      <h1 class="text-3xl font-bold mt-1">Pit Detection — กระโดดข้ามหลุม</h1>
+      <div class="text-xs font-semibold tracking-widest text-sky-600 dark:text-sky-400 uppercase">Plan Spec · Feature · <span class="text-rose-600 dark:text-rose-400">rev 3 — รวม faster-jump-loop เข้ามา</span></div>
+      <h1 class="text-3xl font-bold mt-1">In-run Jump Loop — กระโดดถี่ + ข้ามหลุม</h1>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · edge-profile ไม่ใช่ template · engine 3 ไฟล์ + config</p>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Branch <code>feature/obstacle-dodge</code></p>
+      <div class="text-sm text-slate-600 dark:text-slate-300 mt-2 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800 px-3 py-2">
+        <b>rev 3:</b> รวม <code>04_PLAN_faster-jump-loop</code> (ลบแล้ว) เข้ามา (2 แพลนแก้ <code>guard_not_shop.on_absent</code> จุดเดียวกัน).
+        Dodge state = tight loop ไม่ sleep + persistent shell → ได้ทั้ง <b>"กระโดดถี่"</b> (เป้าเดิมของ 04)
+        และ <b>"กระโดดตรงหลุม"</b> (เป้าของ 07) ในตัวเดียว. เนื้อ jump-frequency + double-jump A/B ของ 04 ย้ายมาที่ section M/E/B ด้านล่าง.
+      </div>
     </div>
     <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
   </div>
@@ -62,6 +67,23 @@
       <p class="text-xs text-slate-500 mt-3 leading-relaxed">
         <b>งบเวลา:</b> คุกกี้วิ่ง ~900 px/s. ถ้าตรวจที่ x≈1150–1500 → หลุมห่างตัว 650–1000 px = <b>0.7–1.1 s</b>.
         Detect 400 ms + tap 10 ms = 410 ms → <b>เหลือ margin ~1 เฟรม</b> แม้พลาดไป 1 รอบก็ยังทัน. <span class="tok">ทำได้</span>
+      </p>
+    </div>
+
+    <div class="mt-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <div class="text-xs font-semibold mb-2 text-slate-500">ตัวเลข jump-frequency (จาก 04 — log จริง 10,073 jump)</div>
+      <table>
+        <thead><tr><th>สิ่งที่วัด</th><th>ค่า</th></tr></thead>
+        <tbody>
+          <tr><td>jump gap ปัจจุบัน (loop ผ่าน probe chain)</td><td>median <b>3s</b> · p75 5s</td></tr>
+          <tr><td>อายุหลุมบนจอ</td><td>~1.5–2 s</td></tr>
+          <tr><td>double-jump rate</td><td>34.4% (config 35% ✓)</td></tr>
+        </tbody>
+      </table>
+      <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+        <b>เหตุผลที่ dodge loop จำเป็น:</b> jump gap 3s ยาวกว่าอายุหลุม 1.5–2s → loop ปัจจุบัน (2 grab + sleep 600ms
+        ต่อรอบ) <b>พลาดหลุมโดยโครงสร้าง ~ครึ่งหนึ่ง</b> แม้กระโดดมั่ว. dodge state ตัด grab เหลือ 1 + ไม่ sleep →
+        ~0.9s/รอบ = ทันหลุม (นี่คือเป้าหมายเดิมของ 04 ที่ dodge ทำให้ฟรีในตัว).
       </p>
     </div>
   </section>
@@ -119,6 +141,10 @@ plat   = any(|Sobel_y|(x, 675) > 100  for x in PROBE_X)
       <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
         <div class="font-semibold text-violet-600 dark:text-violet-400">2. <code>act.py</code> — primitive <code>slide</code> <span class="text-emerald-600 dark:text-emerald-400 text-xs">✔ ทำแล้ว</span></div>
         <p class="mt-1 leading-relaxed">กดค้างปุ่ม Slide (ขวาล่าง <b>1675,940</b> — verify จากจอจริง) ด้วย <code>input swipe x y x y hold_ms</code>. เขียนไว้ใช้ภายหลัง.</p>
+      </div>
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
+        <div class="font-semibold text-violet-600 dark:text-violet-400">2b. <code>device.py</code> — persistent adb shell <span class="text-xs font-normal text-slate-500">(จาก 04)</span></div>
+        <p class="mt-1 leading-relaxed">เปิด <code>adb shell</code> ค้าง ส่งคำสั่งทาง stdin. tap <b>45 ms → 9.5 ms</b> (วัดแล้ว, ดู measured table). ล้มเหลว → fallback spawn เดิม. ยังไม่มีใน <code>device.py</code> (ตรวจแล้ว) — ทำครั้งเดียว dodge loop ได้ประโยชน์เต็ม.</p>
       </div>
       <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
         <div class="font-semibold text-violet-600 dark:text-violet-400">3. <code>capture.py</code> — <code>grab_band()</code> raw + on-device crop</div>
@@ -185,6 +211,7 @@ plat   = any(|Sobel_y|(x, 675) > 100  for x in PROBE_X)
         <li><code>fsm</code> dodge state · config <code>dodge_run</code></li>
         <li><b>Dry-run ระหว่าง run จริง</b> — log บอกว่า “เห็นหลุม/ไม่เห็น” ตรงกับตาหรือไม่ โดยไม่ tap</li>
         <li>Live 1–2 run → เทียบ ระยะทาง/เหรียญ กับ baseline → ปรับ <code>probe_x</code>, <code>cooldown_ms</code></li>
+        <li><b>(จาก 04)</b> A/B <code>double_jump_chance</code> 0.35 vs 1.0 บนหลุมกว้าง — วัด Play-to-Play interval + ระยะทาง/run. double เสมออาจข้ามแพลตฟอร์มเตี้ยพลาด ต้องวัดจริง</li>
       </ol>
     </div>
   </section>

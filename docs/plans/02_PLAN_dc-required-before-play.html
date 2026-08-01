@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Plan — ต้องได้ Double Coins ก่อนถึงกด Play</title>
+<title>Plan — ต้องได้ boost ที่ตั้งไว้ก่อนกด Play (SHIPPED)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class'}</script>
 <style>
@@ -20,10 +20,13 @@
 
   <div class="flex items-center justify-between mb-8">
     <div>
-      <div class="text-xs font-semibold tracking-widest text-rose-600 dark:text-rose-400 uppercase">Plan Spec · Bugfix (template B)</div>
+      <div class="text-xs font-semibold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">Plan Spec · Bugfix (template B) · <span class="text-emerald-600 dark:text-emerald-400">✔ SHIPPED</span></div>
       <h1 class="text-3xl font-bold mt-1">กดซื้อบูสผิด — ได้บูสอื่นแล้วกด Play</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · <code>config/cookierun.json</code> เท่านั้น (ไม่แตะ engine)</p>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Branch <code>fix/dc-required-before-play</code></p>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · <code>config/cookierun/boxrun_toggle.json</code> + <code>boxrun_magnet.json</code> (ไม่แตะ engine)</p>
+      <div class="text-sm text-emerald-700 dark:text-emerald-300 mt-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 px-3 py-2">
+        <b>สถานะจริง:</b> fix นี้ <b>ship แล้ว</b> — state <code>retry_buy</code>/<code>start_run</code> อยู่ใน config พร้อม <code>_note</code>.
+        <b>โค้ดจริง enforce Magnetic Aura ไม่ใช่ Double Coins</b> — กฎที่ implement คือ "ต้องได้ <b>boost ที่ตั้งไว้</b> (toggle = Magnetic Aura) ก่อน Play". เนื้อ plan ด้านล่างใช้คำว่า DC/<code>buy_boost</code> ตาม design แรก — mapping จริง: <code>doublecoins_banner</code>→<code>magneticaura_banner</code>, <code>buy_boost</code>→<code>buy_magnet</code>.
+      </div>
     </div>
     <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
   </div>
@@ -53,8 +56,8 @@
     <h2 class="text-lg font-semibold mb-3"><span class="num bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 mr-2">G</span>Goal</h2>
     <div class="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-5 text-sm leading-relaxed">
       <b class="text-amber-700 dark:text-amber-300">กฏที่ user ยืนยัน:</b>
-      <b>ต้องได้ Double Coins ก่อน ถึงจะกด Play ได้.</b> ได้บูสอื่น (Magnet / Revive / อะไรก็ตาม) = ยังไม่ใช่ → ต้อง<b>ซื้อใหม่จนกว่าจะได้ DC</b>.
-      ทางออกเดียวที่ยอมให้ Play โดยไม่มี DC = <b>เหรียญหมด</b> (<code>nocoins_marker</code>) เท่านั้น.
+      <b>ต้องได้ boost ที่ตั้งไว้ก่อน ถึงจะกด Play ได้.</b> (design แรกเขียนเจาะจง Double Coins; โค้ดที่ ship จริงบน <code>boxrun_toggle</code> enforce <b>Magnetic Aura</b> — กลไกเดียวกัน แค่เปลี่ยน banner ที่ตรวจ.) ได้บูสอื่น = ยังไม่ใช่ → ต้อง<b>ซื้อใหม่จนกว่าจะได้ตัวที่ตั้ง</b>.
+      ทางออกเดียวที่ยอมให้ Play โดยไม่ได้ boost = <b>เหรียญหมด</b> (<code>nocoins_marker</code>) เท่านั้น.
     </div>
   </section>
 
@@ -88,7 +91,7 @@
 
     <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm mb-4">
       <div class="font-semibold mb-2">ทำไมถึงเขียนแบบนั้น — regression จาก fix ก่อนหน้า</div>
-      <p class="leading-relaxed"><a href="PLAN_multibuy-doublecoins-heart-fix.html" class="text-sky-600 dark:text-sky-400 underline">PLAN_multibuy-doublecoins-heart-fix</a> แก้บั๊ก <b>ตรงข้าม</b> — "บอทวน buy ซ้ำระหว่างเกมกำลัง auto-roll อยู่" — เลยตัด <code>start_run → boost_shop</code> ทิ้ง แล้วบังคับ Play ทุกทาง.
+      <p class="leading-relaxed"><a href="done/PLAN_multibuy-doublecoins-heart-fix.html" class="text-sky-600 dark:text-sky-400 underline">PLAN_multibuy-doublecoins-heart-fix</a> แก้บั๊ก <b>ตรงข้าม</b> — "บอทวน buy ซ้ำระหว่างเกมกำลัง auto-roll อยู่" — เลยตัด <code>start_run → boost_shop</code> ทิ้ง แล้วบังคับ Play ทุกทาง.
       Fix นั้น <b>over-corrected</b>: กัน re-buy ระหว่าง roll ได้จริง แต่เปิดช่องใหม่ "roll จบแล้วไม่ได้ DC → Play เลย".</p>
     </div>
 
@@ -214,13 +217,16 @@
   <section class="mb-10">
     <h2 class="text-lg font-semibold mb-3"><span class="num bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 mr-2">B</span>Build steps</h2>
     <ol class="space-y-2 text-sm list-decimal list-inside">
-      <li>แก้ <code>config/cookierun.json</code>: <code>start_run.on_absent</code> → <code>retry_buy</code></li>
-      <li>เพิ่ม state <code>retry_buy</code> (detect nocoins → insufficient_coins / else buy_boost)</li>
-      <li>แก้ <code>picker.on_absent</code> → wait 1200ms → <code>picker_2</code>; เพิ่ม <code>picker_2</code> (match → กด Multi-Buy → wait_roll; absent → <code>retry_buy</code>)</li>
-      <li>อัพเดต <code>_note</code> ของ state ที่แตะ ให้ระบุกฏใหม่ (ห้าม Play โดยไม่มี DC)</li>
-      <li>Dry-run ยืนยัน config parse + state graph ไม่มี dangling goto</li>
-      <li>Live test แบบ capped (<code>--max-cycles</code>) ดู log ว่า retry loop เดินจริง และไม่มี Play ก่อนเห็น DC/nocoins</li>
+      <li>✔ <code>start_run.on_absent</code> → <code>retry_buy</code> (ทำแล้วใน <code>boxrun_toggle.json</code> + <code>boxrun_magnet.json</code>)</li>
+      <li>✔ state <code>retry_buy</code> (detect <code>nocoins_marker</code> → <code>insufficient_coins</code> / else <code>buy_magnet</code>) — มี <code>_note</code> อธิบายกฏครบ</li>
+      <li>✔ <code>picker.on_absent</code> → <code>retry_buy</code>; <code>start_run</code> verify <code>magneticaura_banner.png</code></li>
+      <li>✔ <code>_note</code> ของ <code>start_run</code>/<code>retry_buy</code> ระบุ MAGNET ENFORCEMENT + sanctioned nocoins escape</li>
+      <li class="text-slate-500">Live re-verify (ถ้าอยากยืนยันอีก): capped <code>--max-cycles</code> ดู log ว่าไม่มี Play ก่อนเห็น banner/nocoins</li>
     </ol>
+    <div class="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-3 text-xs">
+      <b>หมายเหตุ:</b> flow diagram + ตัวอย่างโค้ดด้านบนใช้ชื่อ <code>buy_boost</code>/<code>doublecoins</code> ตาม design แรก.
+      โค้ดจริงที่ ship = <code>buy_magnet</code>/<code>magneticaura_banner</code>. gate ที่ชื่อ <code>picker_2</code> ในแผน — ตรวจว่าใน config จริงใช้ retry แบบไหน (ตอน re-verify).
+    </div>
   </section>
 
   <div class="text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-4">

@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Desired Boost (ครบ 11) + Relic Claim — Feature Plan (emulator team)</title>
+<title>Relic Claim — Feature Plan (emulator team)</title>
 <style>
   :root[data-theme="light"]{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;--bd2:#cbd5e1;
     --tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;--acs:#e0f2fe;
@@ -78,14 +78,14 @@
 <div class="wrap">
 <header class="head">
   <div class="titlerow">
-    <h1>Desired Boost (ครบ 11) + Relic Claim</h1>
+    <h1>Relic Claim</h1>
     <button class="toggle" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';this.textContent=r.dataset.theme==='dark'?'☾ Dark':'☀ Light';">☀ Light</button>
   </div>
   <div class="meta">
     <span class="chip">Type <b>FEATURE</b></span>
     <span class="chip">Repo <b>netrunner</b></span>
     <span class="chip">For <b>emulator team</b></span>
-    <span class="chip">Branch <b>feature/desired-boost-and-relic</b></span>
+    <span class="chip">Branch <b>feature/relic-claim</b></span>
     <span class="chip">ต้องมี <b>LDPlayer + เกมจริง</b></span>
   </div>
 </header>
@@ -93,99 +93,35 @@
 <section>
   <h2><span class="n">01</span>Goal &amp; Scope</h2>
   <p class="lead">
-    เพิ่ม 2 feature จาก README ของ cookierun-classic-bot ที่ netrunner ยังไม่ครบ:
-    <b>① Desired Random Boost ทุกแบบ</b> (เลือก 1 จาก 11 boost — ตอนนี้ทำได้แค่ 3) และ
-    <b>② Relic Claim อัตโนมัติ</b> (เมื่อ Relic Complete popup โผล่). <b>ทั้งคู่ engine พร้อมแล้ว</b> —
-    งานที่เหลือคือ <b>crop template @1920×1080 + วัดพิกัดจากเกมจริง</b> ซึ่งต้องมี emulator (เครื่อง dev ไม่มี).
+    <b>Relic Claim อัตโนมัติ</b> — เมื่อ Relic พร้อม claim (badge บน home). <b>Engine พร้อมแล้ว</b> (<code>close_popup</code> + <code>wait</code>);
+    งานคือ crop template @1920×1080 + วัดพิกัด + append probe state ซึ่งต้องมี emulator.
+    <b>ส่วนนี้ implement + verify ไปแล้ว</b> (ดู note ด้านล่าง + flow จริง section 03).
   </p>
+  <div class="note info">
+    <b>Desired Boost 11 ตัว ย้ายไป <code>04_PLAN_feature-parity-anti-detection</code> (Phase 3).</b>
+    เดิมแพลนนี้คลุม boost ด้วย แต่ boost mechanism (<code>src/boost.py</code> <code>PROFILES</code>/<code>apply_boost</code>) เป็นของ 05 Phase 3 —
+    ซ้ำกัน. สถานะ boost: <b>3/11 พร้อม</b> (<code>magnet, speed, doublecoins</code>), อีก 8 รอ crop banner @1080p. track ที่ 05 ที่เดียว.
+  </div>
   <div class="stats">
-    <div class="stat"><div class="l">Boost พร้อม</div><div class="v" style="color:var(--gn)">3 / 11</div></div>
-    <div class="stat"><div class="l">Boost ต้อง crop</div><div class="v" style="color:var(--am)">8</div></div>
-    <div class="stat"><div class="l">Relic template</div><div class="v" style="color:var(--rd)">0 / 2</div></div>
-    <div class="stat"><div class="l">Engine แก้</div><div class="v" style="color:var(--gn)">0*</div></div>
+    <div class="stat"><div class="l">Relic template</div><div class="v" style="color:var(--gn)">crop แล้ว</div></div>
+    <div class="stat"><div class="l">Relic state</div><div class="v" style="color:var(--gn)">4 · shipped</div></div>
+    <div class="stat"><div class="l">Engine แก้</div><div class="v" style="color:var(--gn)">0</div></div>
+    <div class="stat"><div class="l">Cutscene จริง</div><div class="v" style="color:var(--rd)">ไม่มี</div></div>
   </div>
   <div class="tw"><table>
     <thead><tr><th style="width:90px">Scope</th><th>Item</th></tr></thead>
     <tbody>
       <tr><td><span class="pill ok"><span class="d"></span>IN</span></td>
-        <td>Crop banner 8 boost + วัด buy_taps → เติม <code>PROFILES</code> · crop 2 relic marker + วัดพิกัดปุ่ม → เพิ่ม relic probe state · verify แต่ละตัวบนเกมจริง</td></tr>
+        <td>crop relic marker (badge/screen/reward) + วัดพิกัดปุ่ม → append 4 probe state (<code>probe_relic</code>→<code>relic_claim</code>→<code>relic_reward</code>→<code>relic_close</code>) · verify บนเกมจริง</td></tr>
       <tr><td><span class="pill err"><span class="d"></span>OUT</span></td>
-        <td>แก้ engine (mechanism มีครบ) · เปลี่ยน buy-chain shape · relic ที่ episode ไม่มี relic feature</td></tr>
+        <td>Desired boost (→ 05 Phase 3) · แก้ engine (mechanism มีครบ) · relic ที่ episode ไม่มี relic feature</td></tr>
     </tbody>
   </table></div>
-  <div class="note ok">
-    <b>* Engine แก้ 0 ไฟล์.</b> Desired boost ใช้ <code>src/boost.py</code> <code>PROFILES</code> + <code>apply_boost()</code>
-    ที่ทำใน Phase 3 แล้ว — เพิ่ม profile = เพิ่ม dict entry. Relic ใช้ action <code>close_popup</code> + probe state
-    append เข้า popup chain (append-only ไม่แตะ state เดิม). <b>เป็นงาน template + config + วัดพิกัดล้วน.</b>
-  </div>
-</section>
-
-<!-- ══════════ FEATURE ① DESIRED BOOST ══════════ -->
-<section>
-  <h2><span class="n">02</span>① Desired Boost — เติมให้ครบ 11</h2>
-  <p class="lead">
-    <code>--boost {magnet,speed,doublecoins}</code> ทำงานแล้ว (Phase 3). อีก 8 ตัวอยู่ใน
-    <code>PROFILES</code> แต่ <code>banner: None</code> → <code>apply_boost</code> refuse พร้อมบอกว่าต้อง crop อะไร.
-  </p>
-
-  <h3>สถานะ 11 boost</h3>
-  <div class="tw"><table>
-    <thead><tr><th>Key</th><th>Boost</th><th>reference @720p (cookierun-bot)</th><th>สถานะ</th></tr></thead>
-    <tbody>
-      <tr><td><code>magnet</code></td><td>Magnetic Aura</td><td>BOOST_MAGNETIC_AURA_1.png</td><td><span class="pill ok"><span class="d"></span>พร้อม</span></td></tr>
-      <tr><td><code>speed</code></td><td>+17% Base Speed</td><td>BOOST_17P_BASE_SPEED_1.png</td><td><span class="pill ok"><span class="d"></span>พร้อม</span></td></tr>
-      <tr><td><code>doublecoins</code></td><td>Double Coins</td><td>BOOST_DOUBLE_COINS_1.png</td><td><span class="pill ok"><span class="d"></span>พร้อม</span></td></tr>
-      <tr><td><code>goldcoinmagic</code></td><td>Gold Coin Magic</td><td>BOOST_GOLD_COIN_MAGIC_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>crush70</code></td><td>70% Crush Chance</td><td>BOOST_70P_CRUSH_CHANCE_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>hpdrain15</code></td><td>-15% HP Drain</td><td>BOOST_M15P_HP_DRAIN_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>revive80</code></td><td>Revive Once with 80 HP</td><td>BOOST_REVIVE_ONCE_WITH_80HP_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>score15</code></td><td>+15% Score Bonus</td><td>BOOST_15P_SCORE_BONUS_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>potions20</code></td><td>+20% HP from Potions</td><td>BOOST_20P_HP_FROM_POTIONS_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>collision30</code></td><td>-30% Collision Damage</td><td>BOOST_M30P_COLLISION_DAMAGE_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-      <tr><td><code>pitlifts2</code></td><td>2 Pit Lifts</td><td>BOOST_2PIT_LIFTS_1.png</td><td><span class="pill todo"><span class="d"></span>crop</span></td></tr>
-    </tbody>
-  </table></div>
-  <div class="note danger">
-    <b>ห้ามใช้ template 720p ของ cookierun-bot ตรง ๆ</b> — crop ที่ 1280×720, <code>matchTemplate</code>
-    เป็น single-scale ใช้ข้าม resolution ไม่ได้. ใช้เป็น <b>reference ภาพ</b>ว่า pill หน้าตาไง เท่านั้น.
-    อยู่ที่ <code>D:\Project\Mini Project\cookierun-classic-bot\templates\BOOST_*.png</code>
-  </div>
-
-  <h3>ต้องเก็บอะไรต่อ boost — 3 อย่าง</h3>
-  <pre><span class="c"># src/boost.py — PROFILES entry (เทียบกับ magnet ที่ทำไว้แล้ว)</span>
-<span class="k">"goldcoinmagic"</span>: {
-    <span class="k">"label"</span>: <span class="s">"Gold Coin Magic"</span>,
-    <span class="k">"banner"</span>: <span class="s">"goldcoin_banner.png"</span>,   <span class="c">// ① crop pill ตอน equipped @1080p</span>
-    <span class="k">"buy_taps"</span>: [(cx1,cy1), (cx2,cy2)],  <span class="c">// ② taps จาก shop -> Multi picker</span>
-    <span class="k">"multibuy"</span>: (cx, cy),              <span class="c">// ③ ปุ่ม Multi-Buy ของ picker</span>
-}</pre>
-  <ul class="t">
-    <li><b>① banner</b> — pill ที่โชว์เหนือ Play เมื่อ boost นั้น equipped (<code>probe_&lt;boost&gt;</code>/<code>start_run</code> อ่านตัวนี้). crop title ribbon แคบ ๆ (tight crops match ดีสุด)</li>
-    <li><b>② buy_taps</b> — taps ที่พาจาก boost shop → picker ที่เปิด Multi. ดู note ด้านล่างเรื่องจำนวน tap ต่างกัน</li>
-    <li><b>③ multibuy</b> — ปุ่ม Multi-Buy ใน picker (auto-roll จนได้ boost ที่ตั้ง)</li>
-  </ul>
-  <div class="note info">
-    <b>จำนวน buy_taps ต่างกันตาม view:</b> magnet/doublecoins เปิดที่ HP-Upgrade view → ต้อง tap Random Boost cell ก่อน (2 taps) ·
-    +17% speed เข้า Multi ตรง (1 tap). Boost ตัวใหม่อยู่ view ไหนต้องดูจริง — <code>apply_boost</code> รองรับทั้ง 2 แบบอยู่แล้ว
-    (taps สั้นกว่า baseline = ตัด tap แรก + wait อัตโนมัติ).
-  </div>
-
-  <h3>ขั้นตอนต่อ boost (ทำทีละตัว ไม่บล็อกกัน)</h3>
-  <ol class="steps">
-    <li><b>เปิด shop, equip boost นั้น</b> — <code>python tools/snap.py --device 127.0.0.1:5555 --out snaps/</code> ตอน pill โผล่</li>
-    <li><b>Crop banner</b> → <code>templates/cookierun/&lt;boost&gt;_banner.png</code> (verify score: self=1.0 / home&lt;0.4)</li>
-    <li><b>วัด buy_taps + multibuy</b> — เปิด shop นับ tap จริงว่าต้องกดตรงไหนถึงถึง Multi picker</li>
-    <li><b>เติม <code>PROFILES</code></b> ใน <code>src/boost.py</code> — เปลี่ยน <code>"banner": None</code> เป็นไฟล์จริง + ใส่ taps</li>
-    <li><b>Verify</b> — <code>python main.py --config config/cookierun/boxrun_toggle.json --boost &lt;boost&gt; --dry-run --max-cycles 60 -v</code> ดู log ว่า detect เปลี่ยนเป็น banner ใหม่ + buy taps ถูกจุด</li>
-  </ol>
-  <div class="note ok">
-    <b>เช็คว่าตัวไหนพร้อม/ขาด:</b> <code>python main.py --help</code> — บรรทัด <code>--boost</code> list ready + บอกว่าตัวที่ยังไม่พร้อมต้อง crop อะไร (มาจาก <code>describe_choices()</code>)
-  </div>
 </section>
 
 <!-- ══════════ FEATURE ② RELIC CLAIM ══════════ -->
 <section>
-  <h2><span class="n">03</span>② Relic Claim — เมื่อ Relic Complete โผล่</h2>
+  <h2><span class="n">02</span>Relic Claim — flow จริงที่ ship</h2>
   <div class="note ok">
     <b>Implement ไปแล้วด้วยแนวทางที่ต่างจาก design เดิมด้านล่าง</b> — session ถัดมามีโอกาส observe relic
     จริงบน Episode 6 (ของหายาก ไม่ได้ trigger เอง) จึง crop template + เขียน state ตามจอจริงแทนที่จะ port
@@ -259,19 +195,19 @@ probe_relic_claim:
 
   <div class="shots">
     <figure class="shot">
-      <img src="assets/desired-boost-and-relic/01-badge-on-home.jpg" alt="home banner แสดง Get! badge เมื่อ relic พร้อม claim">
+      <img src="assets/relic-claim/01-badge-on-home.jpg" alt="home banner แสดง Get! badge เมื่อ relic พร้อม claim">
       <figcaption><b>badge บน home</b> — จุดที่ <code>probe_relic</code> detect (แทนที่ RELIC_COMPLETE popup)</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/desired-boost-and-relic/02-relic-screen.jpg" alt="Relic screen พร้อมปุ่ม Claim">
+      <img src="assets/relic-claim/02-relic-screen.jpg" alt="Relic screen พร้อมปุ่ม Claim">
       <figcaption><b>Relic screen</b> — เปิดจาก tap badge, มี fragment counter + ปุ่ม Claim ในจอเดียว</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/desired-boost-and-relic/04-reward-popup.jpg" alt="Congratulations popup แสดงรางวัลที่ได้">
+      <img src="assets/relic-claim/04-reward-popup.jpg" alt="Congratulations popup แสดงรางวัลที่ได้">
       <figcaption><b>Reward popup</b> — ยืนยันว่า claim สำเร็จจริง (ไม่มีในแผน RELIC_COMPLETE/RELIC_CLAIM เดิม)</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/desired-boost-and-relic/06-back-home-clean.jpg" alt="กลับมาที่ home จอสะอาดไม่มี popup ค้าง">
+      <img src="assets/relic-claim/06-back-home-clean.jpg" alt="กลับมาที่ home จอสะอาดไม่มี popup ค้าง">
       <figcaption><b>home สะอาด</b> — badge หาย, จบ flow — ไม่มี 10-15s cutscene จริงตามที่ design เดิมกันไว้</figcaption>
     </figure>
   </div>
@@ -286,7 +222,7 @@ probe_relic_claim:
 
 <!-- ══════════ WHERE TO PUT relic states ══════════ -->
 <section>
-  <h2><span class="n">04</span>Relic states แทรกตรงไหน</h2>
+  <h2><span class="n">03</span>Relic states แทรกตรงไหน</h2>
   <p class="lead">popup chain เดินจาก <code>home.on_absent</code> → probe ทีละตัว. แทรก relic ก่อน chain ตัน:</p>
   <pre><span class="c">// ตัวอย่างจุดแทรก (ดู probe chain จริงใน boxrun_magnet.json)</span>
 probe_prevresults  --absent--&gt;  <span class="k">probe_relic_complete</span>  <span class="c">// ← แทรกตรงนี้</span>
@@ -303,16 +239,12 @@ probe_prevresults  --absent--&gt;  <span class="k">probe_relic_complete</span>  
 
 <!-- ══════════ RISK ══════════ -->
 <section>
-  <h2><span class="n">05</span>Risk / Trade-off</h2>
+  <h2><span class="n">04</span>Risk / Trade-off</h2>
   <div class="tw"><table>
     <thead><tr><th style="width:38%">Risk</th><th>Mitigate</th></tr></thead>
     <tbody>
       <tr><td><b>Relic cutscene ยาวกว่า 15s</b> → bot tap มั่วตอน animation</td>
         <td>ใส่ <code>match_timeout_ms</code> ที่ relic state + wait เผื่อยาว; ถ้า marker ยังอยู่หลัง timeout = escape กลับ home</td></tr>
-      <tr><td><b>buy_taps ของ boost ใหม่อยู่คนละ view</b> (HP-Upgrade vs Multi ตรง)</td>
-        <td><code>apply_boost</code> รองรับ taps สั้น/ยาวอยู่แล้ว — วัดจริงว่าต้องกดกี่ครั้งแล้วใส่ตามนั้น</td></tr>
-      <tr><td><b>boost banner คล้ายกัน</b> (score ใกล้) → detect ผิดตัว</td>
-        <td>crop เฉพาะส่วนที่ต่าง (ชื่อ boost) ไม่เอาพื้นหลัง; verify score ของ boost อื่นต้อง &lt;0.7 บน banner นี้</td></tr>
       <tr><td><b>relic ไม่โผล่บ่อย</b> → เทสยาก</td>
         <td>Phase 7 collector (<code>unknown_screens/</code>) เก็บ relic จอให้เองถ้ารัน unattended; หรือเล่นสะสม relic เองให้ครบก่อนเทส</td></tr>
     </tbody>
@@ -321,27 +253,20 @@ probe_prevresults  --absent--&gt;  <span class="k">probe_relic_complete</span>  
 
 <!-- ══════════ VERIFY ══════════ -->
 <section>
-  <h2><span class="n">06</span>Verification</h2>
-  <pre><span class="c"># boost ตัวใหม่</span>
-python main.py --help                                    <span class="c"># ready list ควรมี boost ใหม่</span>
-python main.py --config config/cookierun/boxrun_toggle.json --boost goldcoinmagic --dry-run --max-cycles 60 -v
-<span class="c"># -> log: detect เปลี่ยนเป็น goldcoin_banner.png + buy taps ตรงจุด</span>
-
-<span class="c"># relic</span>
+  <h2><span class="n">05</span>Verification</h2>
+  <pre><span class="c"># relic</span>
 python tools/lint_config.py config/cookierun/*.json      <span class="c"># 0 orphan, chain ต่อครบ</span>
 python -m pytest tests/                                   <span class="c"># ยังเขียว (config เพิ่ม state ไม่ทำ test พัง)</span>
-<span class="c"># dry-run บนจอ relic จริง -> relic_complete/claim detect + tap ถูกจุด + รอ cutscene</span></pre>
+<span class="c"># dry-run บนจอ relic จริง -> badge -> Relic screen -> reward -> close -> home</span></pre>
   <ul class="t">
-    <li><b>Boost:</b> แต่ละตัว dry-run แล้ว log ยืนยัน detect banner ถูก + buy taps ตรง · เลือกตัวที่ยังไม่ครบ → error บอกชัดว่าขาดอะไร</li>
-    <li><b>Relic:</b> lint 0 orphan · pytest เขียว · dry-run: complete → เปิด → claim → close → รอ 10–15s → กลับ home ครบ flow</li>
+    <li><b>Relic (flow จริงที่ ship — ดู section 03):</b> lint 0 orphan · pytest เขียว · dry-run: badge (<code>probe_relic</code>) → Relic screen (<code>relic_claim</code>) → reward popup (<code>relic_reward</code>) → <code>relic_close</code> → home. <b>ไม่มี cutscene 10-15s</b> — ใช้ <code>absent_retries</code> รอ screen/popup render ช้าแทน</li>
     <li><b>อย่า enable บน account จริงจนกว่า dry-run ผ่าน</b> — โดยเฉพาะ relic (tap ผิดตอน cutscene = เสีย relic)</li>
   </ul>
 </section>
 
 <div class="note info" style="margin-top:40px">
-  <b>อ้างอิง:</b> mechanism ของ desired boost อยู่ใน <code>src/boost.py</code> (Phase 3, plan
-  <code>05_PLAN_feature-parity-anti-detection.html</code> section 04). popup coverage + crop workflow อยู่ใน
-  <code>docs/popup-coverage.md</code>. cookierun-bot reference: <code>actions.py</code> (relic 215-226, desired boost 105-125).
+  <b>อ้างอิง:</b> Desired boost 11 ตัว → <code>04_PLAN_feature-parity-anti-detection.html</code> (Phase 3, <code>src/boost.py</code>).
+  popup coverage + crop workflow → <code>docs/popup-coverage.md</code>. cookierun-bot reference: <code>actions.py</code> relic 215-226.
 </div>
 
 </div>
