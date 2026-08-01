@@ -93,6 +93,7 @@ class BoxQuitRunner(Runner):
     def __init__(self, *args, quit_after: int = 0, warmup_burst: bool = False,
                  counter_template: str = "boxrun/boxcounter_marker.png",
                  stop_after_boxes: int = 0,
+                 relic_stop_after_claim: bool = False,
                  reveal_snap_dir: str | Path | None = None,
                  episode_label: str = "", **kwargs):
         super().__init__(*args, **kwargs)
@@ -121,6 +122,20 @@ class BoxQuitRunner(Runner):
         #: next arrival on home, once the post-run popup chain has actually
         #: cleared the screen (see _run_actions).
         self._stop_at_home = False
+        #: "--relic-mode stop": claim the relic once, then end the process —
+        #: for a rest/park session where the user wants the bot to quit itself
+        #: instead of watching the log for the claim.
+        self.relic_stop_after_claim = relic_stop_after_claim
+        #: armed at relic_reward once the claim is confirmed (its on_match ran,
+        #: not just the badge appearing — see _run_actions); consumed the same
+        #: way as _stop_at_home, once the Play tap proves home is clear.
+        self._stop_at_home_relic = False
+        #: set (and never cleared) the moment _stop_at_home_relic is consumed —
+        #: callers like run_episode_loop.py need this after run() returns to
+        #: tell "stopped because the relic was claimed" apart from "stopped for
+        #: some other reason" (max_cycles, an exception, etc.), since
+        #: _stop_at_home_relic itself is reset back to False right before return.
+        self.relic_claimed_and_stopped = False
         #: where to save mb_open reveal screenshots, or None to skip entirely
         #: (tools/run_toggle.py's own CLI never sets this — only
         #: tools/run_episode_loop.py, which needs a per-episode record of what
@@ -249,6 +264,19 @@ class BoxQuitRunner(Runner):
             self._box_counted_this_run = False
             self._box_this_run = False
 
+        # relic_reward's on_match (claim confirmed) tap-closes the reward
+        # popup via close_popup; its on_absent just goes straight to
+        # relic_close without ever having tapped Claim. Matching on the
+        # close_popup action, not "state == relic_reward", is what tells the
+        # two apart — an absent-path goto would otherwise arm the stop for a
+        # relic that was never actually claimed this pass.
+        if (state == "relic_reward" and self.relic_stop_after_claim
+                and any(a.get("type") == "close_popup" for a in actions)):
+            logging.getLogger("netrunner").info(
+                "relic_reward: claim confirmed — will stop once home is clear "
+                "(--relic-mode stop)")
+            self._stop_at_home_relic = True
+
         # home_play_marker matches at 1.00 through several popups (inactive,
         # send-life, previous-results, enter-league — see each verify_no_*
         # state's own note), so stopping the instant state == "home" isn't
@@ -264,14 +292,18 @@ class BoxQuitRunner(Runner):
         # working the moment probe_relic was spliced in after it and inherited
         # the Play tap, and the loop farmed 13 boxes against a limit of 3
         # before anyone noticed. Whoever holds the tap holds the stop point.
-        if self._stop_at_home and any(
+        if (self._stop_at_home or self._stop_at_home_relic) and any(
             a.get("type") == "tap_xy" and (a.get("x"), a.get("y")) == _PLAY_TAP_XY
             for a in actions
         ):
+            reason = "stop_after_boxes" if self._stop_at_home else "--relic-mode stop"
             logging.getLogger("netrunner").info(
                 "home confirmed clear (guard chain reached the Play tap in '%s') — "
-                "ending run() (stop_after_boxes)", state)
+                "ending run() (%s)", state, reason)
+            if self._stop_at_home_relic:
+                self.relic_claimed_and_stopped = True
             self._stop_at_home = False
+            self._stop_at_home_relic = False
             return _STOP, False
 
         if (self.warmup_burst and not self._warmup_done
@@ -341,6 +373,11 @@ def _strip_relic(states: dict) -> None:
     states["probe_relic"]["on_match"] = copy.deepcopy(states["probe_relic"]["on_absent"])
 
 
+#: valid --relic-mode values: claim (default, = --relic y), hoard (= --relic n),
+#: stop (claim then end the process once home is confirmed clear).
+_RELIC_MODES = ("claim", "hoard", "stop")
+
+
 def _strip_jump(states: dict) -> None:
     for name in ("jump_2", "jump_4", "guard_not_inactive"):
         state = states[name]
@@ -404,6 +441,18 @@ def _idle_arg(v: str):
     return (lo, hi)
 
 
+def _resolve_relic_mode(args: argparse.Namespace) -> str:
+    """Collapse --relic/--relic-mode (mutually exclusive, both optional) into
+    one of _RELIC_MODES. Neither given -> "hoard": relic claiming defaults off
+    across every launcher now, and run_toggle.py is the only one that can
+    still opt back into "claim" or "stop" via these flags."""
+    if args.relic_mode is not None:
+        return args.relic_mode
+    if args.relic is None:
+        return "hoard"
+    return "claim" if args.relic else "hoard"
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="boxrun_toggle launcher")
     ap.add_argument("--faststart", type=_yn, required=True)
@@ -416,10 +465,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
     ap.add_argument("--relay", type=_yn, required=True)
-    ap.add_argument("--relic", type=_yn, default=True,
-                    help="y (default) = claim an episode's relic as soon as its "
-                         "'Get!' badge appears; n = hoard, play past the badge "
-                         "and leave the claim for later")
+    relic_group = ap.add_mutually_exclusive_group()
+    relic_group.add_argument("--relic", type=_yn, default=None,
+                    help="y = claim an episode's relic as soon as its 'Get!' "
+                         "badge appears; n (default) = hoard, play past the "
+                         "badge and leave the claim for later. Mutually "
+                         "exclusive with --relic-mode.")
+    relic_group.add_argument("--relic-mode", choices=_RELIC_MODES, default=None,
+                    help="hoard (default) = same as --relic n; claim = same as "
+                         "--relic y; stop = claim the relic then end the process "
+                         "once home is confirmed clear (for a rest/park session). "
+                         "Mutually exclusive with --relic.")
     ap.add_argument("--quit-after-boxes", type=int, default=0,
                     help="quit a run once this many total boxes have been banked "
                          "this session (0 = never quit early, default)")
@@ -437,6 +493,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
+    relic_mode = _resolve_relic_mode(args)
 
     load_dotenv()
     netrunner_main._setup_logging(args.verbose)
@@ -461,7 +518,7 @@ def main(argv: list[str] | None = None) -> int:
         _strip_slide(states)
     if not args.relay:
         _strip_relay(states)
-    if not args.relic:
+    if relic_mode == "hoard":
         _strip_relic(states)
     cfg.states = states
 
@@ -509,10 +566,10 @@ def main(argv: list[str] | None = None) -> int:
     log.info("device: %s  adb: %s", address, adb)
     idle_desc = ("config" if args.idle is _IDLE_CONFIG
                  else "off" if args.idle is None else f"{args.idle[0]:g}-{args.idle[1]:g}s")
-    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic=%s "
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic_mode=%s "
              "quit_after_boxes=%d idle=%s",
               args.faststart, args.boost, args.jump, args.slide, args.relay,
-              args.relic, args.quit_after_boxes, idle_desc)
+              relic_mode, args.quit_after_boxes, idle_desc)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
 
@@ -522,6 +579,7 @@ def main(argv: list[str] | None = None) -> int:
         BoxQuitRunner(
             cfg, device, webhook_url=webhook_url, quit_after=args.quit_after_boxes,
             warmup_burst=(not args.jump and not args.slide),
+            relic_stop_after_claim=(relic_mode == "stop"),
             restarter=netrunner_main.build_restarter(cfg, device, adb, None),
         ).run(dry_run=args.dry_run, max_cycles=args.max_cycles)
     except AdbError as e:

@@ -82,7 +82,7 @@
   <div class="meta">
     <span class="chip">Type <b>FEATURE</b></span>
     <span class="chip">Repo <b>netrunner</b></span>
-    <span class="chip">Branch <b>feature/episode-loop-with-relic</b></span>
+    <span class="chip">Branch <b>feature/relic-stop-mode</b></span>
     <span class="chip">ต้องมี <b>LDPlayer + เกมจริง</b></span>
     <span class="chip">Plan <b>2 / 2</b></span>
   </div>
@@ -199,7 +199,7 @@ probe_relic.on_absent มี Play tap (action shape _PLAY_TAP_XY)
 <section>
   <h2><span class="n">04</span>Interaction กับ auto-detect episode</h2>
   <p class="lead">
-    ถ้า plan คู่กัน (<code>PLAN_auto-detect-episode.html</code>) ทำเสร็จแล้ว — <code>--relic-mode stop</code>
+    ถ้า plan คู่กัน (<code>03_PLAN_auto-detect-episode.html</code>) ทำเสร็จแล้ว — <code>--relic-mode stop</code>
     ใช้ร่วมกับ auto-detect ได้ตรง ๆ: ไม่ใส่ <code>--order</code> → อ่าน ep ปัจจุบันจาก home → farm ep นั้น
     วนจน relic claim สำเร็จ → หยุด. ถ้าใส่ <code>--order</code> หลาย ep → หยุดที่ ep แรกที่ claim สำเร็จ
     (ไม่ไล่ต่อทุก ep ที่เหลือ).
@@ -249,7 +249,7 @@ python -m pytest tests/          <span class="c"># ต้องเขียว �
   <code>tools/run_toggle.py</code>'s <code>BoxQuitRunner._run_actions</code>. <code>--relic y/n</code> เดิม
   (<code>_strip_relic</code>) อยู่ไฟล์เดียวกัน. relic flow เต็ม (<code>probe_relic → relic_claim →
   relic_reward → relic_close</code>) อยู่ใน <code>config/cookierun/boxrun_toggle.json</code>. Plan คู่กัน:
-  <code>PLAN_auto-detect-episode.html</code> (plan 1/2).
+  <code>03_PLAN_auto-detect-episode.html</code> (plan 1/2).
 </div>
 
 </div>
