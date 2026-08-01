@@ -30,24 +30,34 @@
 
 ก่อนแตก branch ใหม่จาก `main` ทุกครั้ง: เช็คว่า `main` ที่จุดนี้มี tag กำกับไว้หรือยัง (`git tag --points-at main`) — ถ้ายังไม่มี ให้ติด tag ก่อนแตก branch เสมอ
 
-**Pattern:** `0.<n>.<x>_<short-feature-slug>` (ไม่มี `v` นำหน้า)
+**Pattern:** `0.<n>.<x>-<short-feature-slug>` (ไม่มี `v` นำหน้า, ตัวคั่นคือ `-` ไม่ใช่ `_`)
 
-- **n** เพิ่มเมื่องานใหม่/feature ใหม่ (แตกจาก `main` ตรงงานใหม่)
-- **x** เพิ่มเมื่องานแทรกเล็ก ๆ ระหว่าง session เดิม (bug fix ย่อย, ต่อยอด feature เดิม) — reset เป็น 0 ทุกครั้งที่ n เพิ่ม
+- **x** คือค่า default ที่เพิ่มแทบทุกครั้ง — branch ใหม่ทั่วไป, งานแทรกใน session เดิม, bug fix ย่อย, ต่อยอด feature เดิม
+- **n** เพิ่ม**เฉพาะ**การเปลี่ยนแปลงใหญ่จริง ๆ เท่านั้น (เช่น restructure ครั้งใหญ่, breaking change, milestone หลักของ project) — ไม่ใช่แค่ "feature ใหม่" ทั่วไป. เมื่อ n เพิ่ม ให้ reset x เป็น 0
+- **ตัดสิน n จาก impact เชิงเนื้อหาเท่านั้น** — ห้ามใช้ diff size (บรรทัด/ไฟล์ที่เปลี่ยน) หรือจำนวน commit ระหว่าง tag เป็นเกณฑ์ตรง ๆ ทั้งคู่ทำให้เข้าใจผิดได้ (merge commit ที่รวมหลาย branch อาจมี commit-count เยอะทั้งที่เนื้อหาเป็นแค่ doc reorg; หรือ commit เดียวที่ diff น้อยแต่เปลี่ยน architecture ทั้งระบบ) — อ่าน commit message + diff จริงในช่วงนั้นแล้วถามว่า "นี่คือจุดเปลี่ยนสถานะ project จริงไหม" (เช่น prototype → usable tool) ก่อนตัดสิน ไม่ใช่นับตัวเลขเฉย ๆ
 
 ```
-0.1.0_episode-loop
-0.1.1_episode-loop-retry-fix
-0.2.0_relic-stop-mode
-0.2.1_relic-tap-template
-0.3.0_auto-detect-ep
+0.1.0-episode-loop
+0.1.1-episode-loop-retry-fix
+0.1.2-relic-stop-mode
+0.1.3-relic-tap-template
+0.1.4-auto-detect-ep
+0.2.0-major-restructure     ← ตัวอย่าง n เพิ่ม: เปลี่ยนแปลงใหญ่จริง ๆ เท่านั้น
 ```
 
 ดูตัวล่าสุดด้วย `git tag -l "0.*" --sort=-v:refname`
 
-**⚠️ Slug ต้องตั้งชื่อตามงานที่อยู่บน `main` ณ จุดนั้นจริง ๆ (ดู `git log main -1`), ไม่ใช่งานที่กำลังจะทำต่อบน branch ใหม่** — พลาดจริงมาแล้ว 2026-08-01: กำลังจะทำ bot `sendlife-mailbox` แล้วตั้ง tag เป็น `0.1.0_sendlife-mailbox` ทั้งที่งานนั้นยังไม่ merge เข้า main เลย ต้องแก้เป็น `0.1.0_project-conventions` (ตรงกับ commit ล่าสุดจริงบน main ตอนนั้น). วิธีเช็คไม่ให้พลาด: อ่าน commit message ล่าสุดของ `main` มาตั้งชื่อ tag ก่อนเสมอ ไม่ใช่เอาจาก task ที่กำลังคุยอยู่ในหัว
+**⚠️ Slug ต้องตั้งชื่อตามงานที่อยู่บน `main` ณ จุดนั้นจริง ๆ (ดู `git log main -1`), ไม่ใช่งานที่กำลังจะทำต่อบน branch ใหม่** — พลาดจริงมาแล้ว 2026-08-01: กำลังจะทำ bot `sendlife-mailbox` แล้วตั้ง tag เป็น `0.1.0-sendlife-mailbox` ทั้งที่งานนั้นยังไม่ merge เข้า main เลย ต้องแก้เป็น `0.1.0-project-conventions` (ตรงกับ commit ล่าสุดจริงบน main ตอนนั้น). วิธีเช็คไม่ให้พลาด: อ่าน commit message ล่าสุดของ `main` มาตั้งชื่อ tag ก่อนเสมอ ไม่ใช่เอาจาก task ที่กำลังคุยอยู่ในหัว
 
 **เมื่อสลับ branch (`git checkout -b <new> main`) จาก branch ที่มี unrelated staged/modified changes ค้างอยู่** (เช่นจาก session อื่นที่ทำ reorg/refactor คนละเรื่อง): git ไม่ auto-clean tracked-file changes ให้ — state พวกนั้นติดตามมาที่ branch ใหม่ด้วย (เจอจริง 2026-08-01, plan-file-move staged changes จาก `chore/reorg-folders` ติดมาที่ `feature/sendlife-mailbox`). แก้ด้วย `git restore --staged <path เฉพาะที่ไม่ใช่ของงานนี้>` เพื่อ unstage ออกจาก index — **ไม่ใช้ `--worktree`/`reset --hard`** เพราะ permission classifier บล็อก destructive discard; `git restore --staged` (ไม่มี `--worktree`) ไม่แตะ working tree เนื้อไฟล์ ปลอดภัยและผ่านได้
+
+## Stash pop ข้าม branch — ต้อง verify content เสมอ
+
+`git stash push` แล้ว checkout ไป branch อื่น แล้ว `git stash pop` — ไฟล์ที่ถูกสร้างใหม่บน branch ที่ stash ไว้ (ยังไม่เคย commit บน branch ปลายทาง) เสี่ยง**เนื้อหาหายเงียบ**ถ้า pop ไปคนละรอบ/คนละ branch ที่ diff กันเยอะ (เจอจริง 2026-08-01: `CLAUDE.md` หาย 2 section หลัง stash pop ข้าม branch, ไม่มี error/conflict message เตือนเลย):
+
+- หลัง `stash pop` ทุกครั้งที่ข้าม branch — **grep หา section/keyword ที่คาดว่าต้องอยู่** ก่อน commit เสมอ ไม่เชื่อแค่ "pop สำเร็จไม่มี error"
+- ถ้าพบว่าหาย — เช็คว่าเนื้อหานั้นมาจาก commit ไหน (`git log --all -- <file>`) แล้วกู้กลับผ่าน `git show <commit>:<file>` หรือ cherry-pick ส่วนที่หาย ไม่ใช่พิมพ์จำจากบทสนทนา
+- ป้องกันไว้ก่อน: ถ้ารู้ตัวว่าจะสลับ branch ระหว่างมี uncommitted work — commit ให้เสร็จก่อนสลับดีกว่า stash ข้าม branch เมื่อเป็นไปได้
 
 ## Merge เข้า main — ห้ามทำเอง
 
