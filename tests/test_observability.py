@@ -164,3 +164,124 @@ class TestReportRuns:
         s = report_runs.summarize([])
         report_runs.render(s, out, tmp_path)
         assert "Nothing to summarize" in out.read_text(encoding="utf-8")
+
+
+# --- progress watchdog -----------------------------------------------------------
+
+
+class TestProgressWatchdog:
+    """The 2026-07-31 livelock: 389 cycles of jumping into an unrecognised News
+    popup over 13h, with BOTH existing detectors silent — state kept changing
+    (same_state_streak reset every poll) and jump/slide count as actions
+    (no_act_streak reset every poll). The watchdog asks the question neither of
+    them does: did the loop reach anywhere that counts as progress?
+    """
+
+    @pytest.fixture(autouse=True)
+    def _stub(self, monkeypatch, tmp_path):
+        self.alerts = []
+        self.dir = tmp_path / "unknown"
+        monkeypatch.setattr(fsm, "send_alert",
+                            lambda url, title, msg, **k: self.alerts.append(title))
+        monkeypatch.setattr(fsm, "send_alert_with_image", lambda *a, **k: None)
+        monkeypatch.setattr(fsm, "grab",
+                            lambda device, retries=2: np.zeros((8, 8, 3), dtype=np.uint8))
+        # Never match: every detect is absent, so the loop walks its absent edges
+        # exactly like a screen nothing recognises.
+        monkeypatch.setattr(fsm, "find_named", lambda f, s, name, t: Match(
+            found=False, score=0.1, x=0, y=0, w=1, h=1))
+
+    def _cfg_with_watchdog(self, **over):
+        # A miniature of the real loop: run -> jump -> back to run, plus a home
+        # the watchdog can recover into. Nothing here ever reaches `home` on its
+        # own — that is the livelock.
+        states = {
+            "running": {"detect": "result.png", "on_absent": {"goto": "jump"}},
+            "jump": {"detect": "result.png",
+                     "on_absent": [{"type": "tap_xy", "x": 1, "y": 1},
+                                   {"type": "goto", "state": "running"}]},
+            "home": {"detect": "home.png", "on_absent": {"goto": "running"}},
+        }
+        cfg = _cfg(states, "running")
+        cfg.progress_states = frozenset(["home"])
+        cfg.no_progress_goto = "home"
+        cfg.no_progress_s = 0.05
+        for k, v in over.items():
+            setattr(cfg, k, v)
+        return cfg
+
+    def _run(self, cfg, cycles=40):
+        fsm.Runner(cfg, FakeDevice(), unknown_dir=self.dir).run(max_cycles=cycles)
+
+    def test_fires_when_no_progress_state_is_reached(self):
+        """The livelock shape: busy, state-changing, going nowhere."""
+        self._run(self._cfg_with_watchdog())
+        assert "NetRunner: no progress" in self.alerts
+        assert list(self.dir.glob("*.png")), "stuck frame must be archived for cropping"
+
+    def test_disabled_by_default(self):
+        """Configs that never opted in must behave exactly as before."""
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_goto = None
+        self._run(cfg)
+        assert "NetRunner: no progress" not in self.alerts
+
+    def test_reaching_a_progress_state_resets_the_timer(self, monkeypatch):
+        """A healthy loop passes through progress states and never trips."""
+        # `home` matches now, so the loop parks there — i.e. it keeps arriving at
+        # a progress state, which is what a working farm loop does between runs.
+        monkeypatch.setattr(fsm, "find_named", lambda f, s, name, t: Match(
+            found=name == "home.png", score=1.0, x=0, y=0, w=1, h=1))
+        cfg = self._cfg_with_watchdog()
+        cfg.states["home"]["on_match"] = [{"type": "wait", "ms": 0}]
+        cfg.start_state = "home"
+        self._run(cfg)
+        assert "NetRunner: no progress" not in self.alerts
+
+    def test_second_fire_escalates(self):
+        """The cheap recovery having failed, the next fire must not repeat it.
+
+        Live 2026-08-01: the Events popup has no marker and ignores Android BACK,
+        so a probe-chain recovery returns to the same stuck screen. Repeating it
+        forever would be the original livelock with extra steps.
+        """
+        cfg = self._cfg_with_watchdog()
+        cfg.states["restart"] = {"detect": "restart.png",
+                                 "on_absent": {"goto": "running"}}
+        cfg.no_progress_escalate_goto = "restart"
+        seen = []
+        cfg.states["home"]["on_absent"] = {"goto": "running"}
+        real = fsm.Runner._archive_unknown
+        fsm.Runner._archive_unknown = lambda self, f, s: seen.append(s)
+        try:
+            # The grace window deliberately spaces fires out, so make it small
+            # enough that a second one lands inside the cycle budget.
+            monkeypatch_grace = 0.05
+            orig_grace = fsm._RECOVERY_GRACE_S
+            fsm._RECOVERY_GRACE_S = monkeypatch_grace
+            self._run(cfg, cycles=200)
+        finally:
+            fsm._RECOVERY_GRACE_S = orig_grace
+            fsm.Runner._archive_unknown = real
+        assert len(seen) >= 2, "watchdog must re-arm and fire again"
+        assert self.alerts.count("NetRunner: no progress") >= 2
+
+    def test_recovery_gets_a_grace_window(self, monkeypatch):
+        """A slow recovery must not be judged while it is still running.
+
+        restart_app + relogin measured 99s live (2026-08-01) — longer than a
+        tight no_progress_s. Without the grace window the watchdog fires again
+        mid-restart and stacks a second restart on the one in flight.
+        """
+        monkeypatch.setattr(fsm, "_RECOVERY_GRACE_S", 30)
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_s = 0.05
+        fires = []
+        real = fsm.Runner._archive_unknown
+        fsm.Runner._archive_unknown = lambda self, f, s: fires.append(s)
+        try:
+            self._run(cfg, cycles=60)
+        finally:
+            fsm.Runner._archive_unknown = real
+        # Without the grace window this loop fires on essentially every poll.
+        assert len(fires) == 1, f"grace window must suppress re-fires, got {len(fires)}"

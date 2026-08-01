@@ -119,6 +119,53 @@ The full plan with per-phase findings: `docs/plans/PLAN_feature-parity-anti-dete
 - **Zero orphan states** — `tools/lint_config.py` guards it; ep3's boost chain and
   the ep5 family's popup probes were silently unreachable before.
 
+## Progress watchdog + News guard (2026-08-01) — live-verified
+
+Fixes a 13h livelock: the bot jumped into an unrecognised **News** popup 389 times
+between 22:18 and 12:00 without a single warning. Both existing livelock detectors
+stayed silent by design — state kept changing (so `same_state_streak` reset every
+poll) and `jump`/`slide` count as actions (so `no_act_streak` reset every poll).
+They ask *"did the bot stop?"*; the bot was working hard and getting nowhere.
+
+**Root cause was two-layered.** ADB dropped at 22:26 (`daemon not running`, then
+`device not found` ×5), the client relaunched itself, and the relaunch brought up
+News — which covers Play! (`home_play` scores 0.263 through it). No guard
+recognised it, so `guard_not_inactive.on_absent` concluded "genuinely mid-run" and
+jumped. The probe chain *would* have handled it, but it is only reachable when the
+loop is on the probe side, and the loop was in the `running` guard chain.
+
+- **`news_marker.png`** — teal News banner. Self 1.000, clear home 0.383, and it
+  scored 1.000 on the actual stuck frame from that night. No threshold change.
+- **Two guards, not one** — `probe_news` (probe side) *and* `guard_not_news` (the
+  mid-run side that failed). Replaying the stuck frame through the patched chain
+  walks the same five guards, then `guard_not_news` matches at 1.000 and closes it
+  at (1688,113).
+- **Progress watchdog** (`src/fsm.py`) — the class fix, since News was the 14th
+  popup patched this way. Configs declare `progress_states` (arrivals that prove
+  the loop got somewhere: `home`, `run_result`, `mystery_box`, `check_heart`) and
+  `no_progress_goto`. Reaching none of them for `no_progress_s` (300s) means the
+  screen is something the FSM cannot name, whatever it looks like. Opt-in: configs
+  without the keys behave exactly as before.
+- **Two-step recovery, escalating** — `recover_unknown` spends one cheap pass
+  through the probe chain (free, and it fixes every *known* popup); a second fire
+  means that failed, so `recover_unknown_restart` cycles the app and re-auths via
+  `recover_login`. The escalation is not optional: live test proved the **Events**
+  popup has no marker, ignores Android BACK, and survives a full probe-chain walk.
+- **Recovery grace window** (`_RECOVERY_GRACE_S`, 180s) — `restart_app` + relogin
+  measured **99s** live, longer than a tight `no_progress_s`. Without the grace the
+  watchdog fires mid-restart and stacks another restart on the one in flight.
+
+Live verification (2026-08-01, `boxrun_toggle` with `no_progress_s=40`):
+fire #1 → probe chain → still stuck → fire #2 → `restart_app` → `recover_login` →
+**home at 13:02:00**, counter reset, loop resumed and banked a Mystery Box.
+
+Applied to all five guard-chain configs (`boxrun_default`, `boxrun_magnet`,
+`boxrun_toggle`, `coinrun`, `xpstat`) — +5 states each. 306 tests pass.
+
+**Known gap**: Events (and any future unnamed popup) is still only *recovered*,
+not *recognised* — each watchdog fire archives its frame to `unknown_screens/` and
+posts it to Discord precisely so the marker can be cropped afterwards.
+
 ## cd into repo first
 
 ```powershell

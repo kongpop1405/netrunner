@@ -69,6 +69,19 @@ class Config:
     #: friends, say. A bot that farms for twelve hours and never touches the
     #: social screens is as distinctive as one that never pauses.
     periodic_routines: tuple[dict, ...] = ()
+    #: states whose arrival proves the loop is getting somewhere (a run ended, a
+    #: box was banked, home came back). Reaching any of them resets the
+    #: no-progress timer.
+    progress_states: frozenset[str] = frozenset()
+    #: where to jump when `no_progress_s` elapses without touching a progress
+    #: state — a recovery state that assumes the screen is unrecognised. None
+    #: disables the watchdog (default), so existing configs behave unchanged.
+    no_progress_goto: str | None = None
+    #: seconds of no progress before `no_progress_goto` fires.
+    no_progress_s: float = 300.0
+    #: where to go on the SECOND consecutive fire — the first recovery having
+    #: failed to produce any progress. None repeats `no_progress_goto` forever.
+    no_progress_escalate_goto: str | None = None
 
     def poll_delay_s(self) -> float:
         """Seconds to sleep for one poll — jittered when a range was configured."""
@@ -161,6 +174,10 @@ def load(path: str | Path) -> Config:
         reset_at_state=raw.get("reset_at_state"),
         package=raw.get("package"),
         periodic_routines=_parse_routines(raw.get("periodic_routines", [])),
+        progress_states=frozenset(raw.get("progress_states", [])),
+        no_progress_goto=raw.get("no_progress_goto"),
+        no_progress_s=float(raw.get("no_progress_s", 300)),
+        no_progress_escalate_goto=raw.get("no_progress_escalate_goto"),
     )
     _validate(cfg)
     return cfg
@@ -204,11 +221,32 @@ def _validate(cfg: Config) -> None:
         if r["at_state"] is not None and r["at_state"] not in cfg.states:
             raise ConfigError(
                 f"routine '{r['name']}': at_state '{r['at_state']}' is not a defined state")
+    unknown_progress = sorted(cfg.progress_states - set(cfg.states))
+    if unknown_progress:
+        raise ConfigError(
+            f"progress_states names undefined state(s): {', '.join(unknown_progress)}")
+    if cfg.no_progress_goto is not None and cfg.no_progress_goto not in cfg.states:
+        raise ConfigError(
+            f"no_progress_goto '{cfg.no_progress_goto}' is not a defined state")
+    if cfg.no_progress_goto is not None and not cfg.progress_states:
+        raise ConfigError("no_progress_goto set without progress_states — the "
+                          "watchdog would fire on a perfectly healthy loop")
+    if cfg.no_progress_s <= 0:
+        raise ConfigError("no_progress_s must be positive (seconds)")
+    esc = cfg.no_progress_escalate_goto
+    if esc is not None and esc not in cfg.states:
+        raise ConfigError(f"no_progress_escalate_goto '{esc}' is not a defined state")
+    if esc is not None and cfg.no_progress_goto is None:
+        raise ConfigError("no_progress_escalate_goto set without no_progress_goto")
     names = set(cfg.states)
     for sname, state in cfg.states.items():
         _validate_state(sname, state, names, tdir)
-    orphans = unreachable_states(cfg.states, cfg.start_state,
-                                 extra_roots=[r["goto"] for r in cfg.periodic_routines])
+    # The watchdog reaches its recovery state without any goto edge pointing at
+    # it, so it is a reachability root like a routine's goto.
+    orphans = unreachable_states(
+        cfg.states, cfg.start_state,
+        extra_roots=[r["goto"] for r in cfg.periodic_routines]
+        + [s for s in (cfg.no_progress_goto, cfg.no_progress_escalate_goto) if s])
     if orphans:
         # Warn, don't raise: an orphan may be parked on purpose (an experiment,
         # a state kept for reference) — but silent orphans have also hidden a

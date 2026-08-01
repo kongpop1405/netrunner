@@ -168,7 +168,11 @@ class TestNoOrphansShipped:
 
         for path in sorted(glob.glob(str(CONFIG_DIR / "*.json"))):
             cfg = cfgmod.load(path)
+            # Same roots the loader uses: routines and the progress watchdog's
+            # recovery states, which the engine jumps to without a goto edge.
             roots = [r["goto"] for r in cfg.periodic_routines]
+            roots += [s for s in (cfg.no_progress_goto,
+                                  cfg.no_progress_escalate_goto) if s]
             orphans = unreachable_states(cfg.states, cfg.start_state, extra_roots=roots)
             assert orphans == [], f"{Path(path).name}: {orphans}"
 

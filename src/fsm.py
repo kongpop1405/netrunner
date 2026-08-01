@@ -32,6 +32,22 @@ _ADB_FAIL_TOLERANCE = 5
 # waits (heart regen, roll animation) don't false-positive.
 _STUCK_STATE_WARN_CYCLES = 100
 
+# Seconds the loop may go without reaching ANY progress state before the screen
+# is declared unrecognised and `no_progress_goto` fires. The existing livelock
+# detectors both ask "did the bot stop?" — they stayed silent for 13h on
+# 2026-07-31 while the bot jumped 389 times into an unrecognised News popup,
+# because state kept changing (so same_state_streak reset) and jump/slide count
+# as actions (so no_act_streak reset). This one asks the useful question
+# instead: "is any of it getting anywhere?" Opt-in per config via
+# `progress_states` + `no_progress_goto`.
+_NO_PROGRESS_DEFAULT_S = 300
+
+# Extra seconds a recovery gets before the watchdog may judge it. `restart_app`
+# plus the relogin chain measured 99s live (2026-08-01), which is longer than a
+# tight `no_progress_s` — without this the watchdog fires again while the restart
+# is still in flight and stacks another one on top of it.
+_RECOVERY_GRACE_S = 180
+
 # Consecutive cycles allowed to fail with a perceive-layer OOM (matchTemplate
 # alloc failing on a RAM-starved host) before we give up, mirrors
 # _ADB_FAIL_TOLERANCE. Below this we cooldown-sleep and retry rather than crash.
@@ -83,6 +99,20 @@ class Runner:
         no_act_streak = 0        # consecutive polls without any screen-affecting action
         no_act_states: set[str] = set()
         no_act_alerted = False
+        # Wall-clock since the loop last reached a state the config calls progress.
+        # Unlike the two streak counters this survives both state churn and busy
+        # tapping, which is exactly the blind spot the News livelock lived in.
+        last_progress_at = time.monotonic()
+        no_progress_s = self.cfg.no_progress_s
+        progress_watchdog = (self.cfg.no_progress_goto is not None
+                             and bool(self.cfg.progress_states))
+        # Consecutive fires with no progress in between. The cheap recovery runs
+        # first; if it had worked, a progress state would have reset this to 0.
+        no_progress_fires = 0
+        if progress_watchdog:
+            log.info("progress watchdog: %.0fs without %s -> goto '%s'",
+                     no_progress_s, sorted(self.cfg.progress_states),
+                     self.cfg.no_progress_goto)
         gotos_on_frame = 0       # pure-goto transitions served by the cached frame
         frame = None  # reused across pure-goto transitions; None = must re-grab
         # The first arrival at the inter-game state is the start of game 1, not
@@ -303,6 +333,49 @@ class Runner:
                             frame = None  # the screen moved on while we idled
                             state_entered_at = time.monotonic()  # don't bill the idle
                                                                  # to match_timeout
+                # Progress watchdog. Arriving at a progress state is the only
+                # thing that clears it — not tapping, not changing state — so a
+                # loop that jumps forever into an unrecognised popup trips it
+                # even though it looks busy to every other counter here.
+                if progress_watchdog:
+                    if state in self.cfg.progress_states:
+                        last_progress_at = time.monotonic()
+                        no_progress_fires = 0  # recovery worked (or never ran)
+                    else:
+                        stalled_s = time.monotonic() - last_progress_at
+                        if stalled_s >= no_progress_s:
+                            no_progress_fires += 1
+                            # A second fire means the first recovery produced no
+                            # progress at all, so repeating it would just stall
+                            # again — escalate if the config offers somewhere.
+                            target = self.cfg.no_progress_goto
+                            if no_progress_fires > 1 and self.cfg.no_progress_escalate_goto:
+                                target = self.cfg.no_progress_escalate_goto
+                            log.warning(
+                                "no progress for %.0fs (fire #%d, last reached one of %s) — "
+                                "screen is probably an unrecognised popup; recovering via '%s'",
+                                stalled_s, no_progress_fires,
+                                sorted(self.cfg.progress_states), target)
+                            send_alert(
+                                self.webhook_url,
+                                "NetRunner: no progress",
+                                f"No progress state reached in {stalled_s:.0f}s on device "
+                                f"{self.device.serial} (fire #{no_progress_fires}) — "
+                                f"recovering via `{target}`.",
+                            )
+                            self._archive_unknown(frame, state)
+                            state = target
+                            # Give the recovery a grace window of its own before
+                            # it can be judged: restart_app + relogin measured
+                            # 99s live on 2026-08-01, so a tight no_progress_s
+                            # would fire again mid-restart and stack a second
+                            # restart on top of the one still running.
+                            last_progress_at = time.monotonic() + _RECOVERY_GRACE_S
+                            frame = None
+                            absent_streak = same_state_streak = 0
+                            entered_at = state_entered_at = time.monotonic()
+                            continue
+
                 if same_state_streak >= _STUCK_STATE_WARN_CYCLES and not stuck_alerted:
                     log.warning("state '%s' unchanged for %d consecutive polls — possible livelock",
                                 state, same_state_streak)

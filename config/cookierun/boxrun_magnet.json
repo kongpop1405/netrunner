@@ -350,7 +350,7 @@
         }
       ],
       "on_absent": {
-        "goto": "guard_not_inactive"
+        "goto": "guard_not_news"
       },
       "timeout_ms": 6000
     },
@@ -543,7 +543,7 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_friendinfo"
+        "goto": "probe_news"
       },
       "timeout_ms": 15000
     },
@@ -1030,6 +1030,111 @@
       },
       "match_timeout_ms": 25000,
       "timeout_ms": 8000
+    },
+    "probe_news": {
+      "_note": "'News' popup (patch notes / new-treasure announcements) opens ON TOP of home and fully covers Play! — home_play scores 0.263 through it vs 1.000 on a clear home — so it belongs to the probe family (reached when home is absent), not the verify_no_* family. Detected by the teal 'News' banner (news_marker: self=1.000, clear home=0.383 — clean separation, no threshold change). Close via the X at (1688,113), CV-verified live 2026-08-01. Re-appears after any client relaunch, which is how it arrived mid-night when adb dropped at 22:26 and the game restarted.",
+      "detect": "news_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1688,
+          "y": 113,
+          "verify": "news_marker.png",
+          "settle_ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_friendinfo"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_news": {
+      "_note": "Mid-run twin of probe_news, and the guard whose absence caused the 2026-07-31 livelock: News opened while the loop was in the `running` guard chain, all five guards missed it, and guard_not_inactive.on_absent concluded 'genuinely mid-run' and jumped — 389 cycles over 13h into a popup. probe_news cannot cover this: it is only reachable from the probe side. Same detect, same X.",
+      "detect": "news_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1688,
+          "y": 113,
+          "verify": "news_marker.png",
+          "settle_ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "guard_not_inactive"
+      },
+      "timeout_ms": 6000
+    },
+    "recover_unknown": {
+      "_note": "Progress-watchdog recovery entry (src/fsm.py no_progress_goto). Reached when nothing the config calls progress has happened for no_progress_s — i.e. the screen is something the FSM does not recognise. Detect home first: if the watchdog fired while home was actually up (a stalled run that already ended, say), there is nothing to recover and we rejoin the loop for free. Absent -> recover_unknown_probe, which spends one cheap pass through the known-popup chain before anything drastic.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "recover_unknown_probe"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_unknown_probe": {
+      "_note": "Cheap half of the recovery: hand to the head of the probe chain, which peels every popup this config has a marker for and ends at home. Costs nothing but poll time and keeps a recognised popup from triggering a restart. If it works, the next watchdog window starts clean; if it does not, the watchdog fires again and lands on recover_unknown_restart — the escalation is the second fire, not extra logic here.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_connectionlost"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_unknown_restart": {
+      "_note": "Expensive half, and the one that always works. Verified live 2026-08-01: the Events popup has no marker, is not closed by Android BACK, and survived a full probe-chain walk — the loop simply resumed jumping into it. A screen we cannot identify has no close button we can aim at, so cycle the process instead: restart_app -> recover_login re-auths -> home. Costs a life only if one was mid-run, and by definition the watchdog only fires when no run has been progressing for minutes.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "restart_app"
+        },
+        {
+          "type": "wait",
+          "ms": 8000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "timeout_ms": 20000
     }
-  }
+  },
+  "progress_states": [
+    "home",
+    "run_result",
+    "mystery_box",
+    "check_heart"
+  ],
+  "no_progress_goto": "recover_unknown",
+  "no_progress_s": 300,
+  "_no_progress_comment": "Progress watchdog (engine-side, src/fsm.py). Reaching any of ['home', 'run_result', 'mystery_box', 'check_heart'] resets the timer; 300s without one means the screen is something the FSM does not recognise — the 2026-07-31 News livelock jumped 389 times over 13h without tripping either existing livelock detector, because state kept changing and jump/slide count as actions. First fire tries the probe chain (recover_unknown); a second fire means that failed, so it cycles the app (recover_unknown_restart) — proven necessary live against the Events popup, which has no marker and ignores Android BACK.",
+  "no_progress_escalate_goto": "recover_unknown_restart",
+  "package": "com.devsisters.crg"
 }
