@@ -1,238 +1,244 @@
-<!DOCTYPE html>
-<html lang="th" class="">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
 <title>Plan — ต้องได้ boost ที่ตั้งไว้ก่อนกด Play (SHIPPED)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={darkMode:'class'}</script>
 <style>
-  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
-  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
-  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  .tok{background:#fef08a;color:#713f12;padding:0 .25rem;border-radius:.25rem;font-weight:600}
-  .dark .tok{background:#713f12;color:#fef9c3}
-  .arrow{color:#94a3b8}
+  :root[data-theme="light"]{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;--bd2:#cbd5e1;
+    --tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;--acs:#e0f2fe;
+    --gn:#10b981;--gns:#d1fae5;--am:#f59e0b;--ams:#fef3c7;--rd:#f43f5e;--rds:#ffe4e6;
+    --in:#6366f1;--vi:#8b5cf6;--vis:#ede9fe}
+  :root[data-theme="dark"]{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;--bd:#1e293b;--bd2:#334155;
+    --tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;--ac:#38bdf8;--acs:rgba(56,189,248,.12);
+    --gn:#34d399;--gns:rgba(52,211,153,.14);--am:#fbbf24;--ams:rgba(251,191,36,.14);
+    --rd:#fb7185;--rds:rgba(251,113,133,.14);--in:#818cf8;--vi:#a78bfa;--vis:rgba(167,139,250,.14)}
+  @media(prefers-color-scheme:dark){:root{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;--bd:#1e293b;
+    --bd2:#334155;--tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;--ac:#38bdf8;--acs:rgba(56,189,248,.12);
+    --gn:#34d399;--gns:rgba(52,211,153,.14);--am:#fbbf24;--ams:rgba(251,191,36,.14);--rd:#fb7185;
+    --rds:rgba(251,113,133,.14);--in:#818cf8;--vi:#a78bfa;--vis:rgba(167,139,250,.14)}}
+  :root[data-theme="light"]{--bg:#fff}
+  *{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+    font:14px/1.6 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:44px 22px 90px}
+  .head{margin-bottom:34px;padding-bottom:22px;border-bottom:1px solid var(--bd)}
+  .titlerow{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0}
+  .kick{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gn);margin-bottom:6px}
+  .toggle{background:var(--elev);color:var(--dim);border:1px solid var(--bd2);border-radius:8px;
+    padding:8px 13px;font:500 13px inherit;cursor:pointer}.toggle:hover{background:var(--elev2);color:var(--tx)}
+  .sub{color:var(--dim);font-size:13.5px;margin:4px 0 0}
+  section{margin-top:40px}
+  h2{font-size:21px;font-weight:700;margin:0 0 14px;display:flex;align-items:center;gap:12px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;
+    background:var(--acs);color:var(--ac);font:700 13px ui-monospace,monospace}
+  h2 .n.gn{background:var(--gns);color:var(--gn)}h2 .n.rd{background:var(--rds);color:var(--rd)}
+  h2 .n.am{background:var(--ams);color:var(--am)}h2 .n.in{background:var(--vis);color:var(--in)}
+  h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+  p{margin:8px 0}.lead{color:var(--dim);font-size:14.5px}
+  code{font:500 12.5px ui-monospace,Consolas,monospace;background:var(--elev2);color:var(--in);
+    padding:1px 7px;border-radius:5px;border:1px solid var(--bd)}
+  pre{margin:0;padding:14px 16px;background:#0b1120;color:#cbd5e1;border-radius:10px;
+    font:12px/1.7 ui-monospace,Consolas,monospace;overflow-x:auto;border:1px solid var(--bd)}
+  pre b{color:#f1f5f9}pre .gn{color:#6ee7b7}pre .rd{color:#fb7185}pre .am{color:#fbbf24}
+  pre .ac{color:#7dd3fc}pre .dim{color:#64748b}pre .arw{color:#64748b}
+  .tok{background:var(--ams);color:var(--am);padding:1px 7px;border-radius:5px;font-weight:600;border:1px solid var(--am)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+  .stat{background:var(--elev);border:1px solid var(--bd);border-radius:10px;padding:14px 16px}
+  .stat .v{font:700 20px ui-monospace,monospace;line-height:1.2}
+  .stat .v.rd{color:var(--rd)}.stat .v.gn{color:var(--gn)}
+  .stat .l{font-size:11.5px;color:var(--faint);margin-top:4px}
+  .card{background:var(--elev);border:1px solid var(--bd);border-radius:10px;padding:16px 18px;margin:12px 0;font-size:13.5px;line-height:1.6}
+  .card .h{font-weight:600;color:var(--ac);margin-bottom:6px}
+  .card.rd .h{color:var(--rd)}
+  .tw{overflow-x:auto;margin:12px 0}
+  table{width:100%;border-collapse:collapse;background:var(--elev);border-radius:10px;overflow:hidden}
+  th{text-align:left;font:600 11px inherit;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);
+    padding:10px 14px;background:var(--elev2);border-bottom:1px solid var(--bd)}
+  td{padding:9px 14px;border-bottom:1px solid var(--bd);vertical-align:top;font-size:13px}
+  tr:last-child td{border-bottom:none}tr:hover td{background:var(--elev2)}
+  .note{margin-top:12px;padding:14px 16px;background:var(--ams);border:1px solid var(--am);border-radius:10px;font-size:13px;line-height:1.6}
+  .note.info{background:var(--acs);border-color:var(--ac)}
+  .note.danger{background:var(--rds);border-color:var(--rd)}
+  .note.ok{background:var(--gns);border-color:var(--gn)}
+  .diff{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+  .diff .lbl{font:600 11px inherit;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .diff .lbl.old{color:var(--rd)}.diff .lbl.new{color:var(--gn)}
+  ol.t{margin:8px 0;padding-left:22px}ol.t li{margin:5px 0}
+  ul.t{margin:8px 0;padding-left:20px}ul.t li{margin:5px 0}
+  .done{color:var(--gn);font-weight:700}
+  .foot{margin-top:44px;padding-top:16px;border-top:1px solid var(--bd);font-size:12px;color:var(--faint)}
+  @media(max-width:780px){.wrap{padding:24px 16px 64px}h1{font-size:22px}.diff{grid-template-columns:1fr}}
 </style>
-</head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
-<div class="max-w-4xl mx-auto px-6 py-10">
 
-  <div class="flex items-center justify-between mb-8">
+<div class="wrap">
+<header class="head">
+  <div class="titlerow">
     <div>
-      <div class="text-xs font-semibold tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">Plan Spec · Bugfix (template B) · <span class="text-emerald-600 dark:text-emerald-400">✔ SHIPPED</span></div>
-      <h1 class="text-3xl font-bold mt-1">กดซื้อบูสผิด — ได้บูสอื่นแล้วกด Play</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · CookieRun · <code>config/cookierun/boxrun_toggle.json</code> + <code>boxrun_magnet.json</code> (ไม่แตะ engine)</p>
-      <div class="text-sm text-emerald-700 dark:text-emerald-300 mt-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 px-3 py-2">
-        <b>สถานะจริง:</b> fix นี้ <b>ship แล้ว</b> — state <code>retry_buy</code>/<code>start_run</code> อยู่ใน config พร้อม <code>_note</code>.
-        <b>โค้ดจริง enforce Magnetic Aura ไม่ใช่ Double Coins</b> — กฎที่ implement คือ "ต้องได้ <b>boost ที่ตั้งไว้</b> (toggle = Magnetic Aura) ก่อน Play". เนื้อ plan ด้านล่างใช้คำว่า DC/<code>buy_boost</code> ตาม design แรก — mapping จริง: <code>doublecoins_banner</code>→<code>magneticaura_banner</code>, <code>buy_boost</code>→<code>buy_magnet</code>.
-      </div>
+      <div class="kick">Plan Spec · Bugfix (template B) · ✔ SHIPPED</div>
+      <h1>กดซื้อบูสผิด — ได้บูสอื่นแล้วกด Play</h1>
+      <p class="sub">netrunner · CookieRun · <code>config/cookierun/boxrun_toggle.json</code> + <code>boxrun_magnet.json</code> (ไม่แตะ engine)</p>
     </div>
-    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓 theme</button>
+    <button class="toggle" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';this.textContent=r.dataset.theme==='dark'?'☾ Dark':'☀ Light';">☀ Light</button>
   </div>
-
-  <!-- Stats -->
-  <div class="grid grid-cols-4 gap-3 mb-10">
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">2 state</div>
-      <div class="text-xs text-slate-500 mt-1">start_run · picker</div>
-    </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">1 ไฟล์</div>
-      <div class="text-xs text-slate-500 mt-1">cookierun.json</div>
-    </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">0 template</div>
-      <div class="text-xs text-slate-500 mt-1">ใช้ PNG เดิมครบ</div>
-    </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">0 gem</div>
-      <div class="text-xs text-slate-500 mt-1">nocoins = escape</div>
-    </div>
+  <div class="note ok" style="margin-top:0">
+    <b>สถานะจริง:</b> fix นี้ <b>ship แล้ว</b> — state <code>retry_buy</code>/<code>start_run</code> อยู่ใน config พร้อม <code>_note</code>.
+    <b>โค้ดจริง enforce Magnetic Aura ไม่ใช่ Double Coins</b> — กฎที่ implement คือ "ต้องได้ <b>boost ที่ตั้งไว้</b> (toggle = Magnetic Aura) ก่อน Play". เนื้อ plan ด้านล่างใช้คำว่า DC/<code>buy_boost</code> ตาม design แรก — mapping จริง: <code>doublecoins_banner</code>→<code>magneticaura_banner</code>, <code>buy_boost</code>→<code>buy_magnet</code>.
   </div>
+</header>
 
-  <!-- Goal -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 mr-2">G</span>Goal</h2>
-    <div class="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-5 text-sm leading-relaxed">
-      <b class="text-amber-700 dark:text-amber-300">กฏที่ user ยืนยัน:</b>
-      <b>ต้องได้ boost ที่ตั้งไว้ก่อน ถึงจะกด Play ได้.</b> (design แรกเขียนเจาะจง Double Coins; โค้ดที่ ship จริงบน <code>boxrun_toggle</code> enforce <b>Magnetic Aura</b> — กลไกเดียวกัน แค่เปลี่ยน banner ที่ตรวจ.) ได้บูสอื่น = ยังไม่ใช่ → ต้อง<b>ซื้อใหม่จนกว่าจะได้ตัวที่ตั้ง</b>.
-      ทางออกเดียวที่ยอมให้ Play โดยไม่ได้ boost = <b>เหรียญหมด</b> (<code>nocoins_marker</code>) เท่านั้น.
-    </div>
-  </section>
+<div class="stats">
+  <div class="stat"><div class="v rd">2 state</div><div class="l">start_run · picker</div></div>
+  <div class="stat"><div class="v rd">1 ไฟล์</div><div class="l">cookierun.json</div></div>
+  <div class="stat"><div class="v gn">0 template</div><div class="l">ใช้ PNG เดิมครบ</div></div>
+  <div class="stat"><div class="v gn">0 gem</div><div class="l">nocoins = escape</div></div>
+</div>
 
-  <!-- Evidence -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">E</span>หลักฐานจาก log <code class="text-xs">logs/2026-07-12.log</code></h2>
-    <div class="rounded-xl bg-slate-900 dark:bg-black border border-slate-700 p-5 text-sm font-mono text-slate-300 overflow-x-auto">
-<pre>01:13:13  tap (754,882)   <span class="text-sky-400">← buy_boost: กดกล่อง Random Boost</span>
-01:13:15  tap (1673,307)  <span class="text-sky-400">← buy_boost: กดปุ่ม Multi</span>
-01:13:20  tap (1365,932)  <span class="text-rose-400">← check_heart: กด PLAY !!</span>
-                          <span class="text-rose-400">   ไม่มี tap (953,899) = ไม่ได้กด Multi-Buy เลย</span></pre>
-    </div>
-    <p class="text-sm mt-3 leading-relaxed">
-      ห่างกัน <b>5 วินาที</b> จาก "เปิด Multi" ถึง "กด Play" — ไม่มี multi-buy tap, ไม่มี roll. บอทลงเอยที่ Play โดยไม่มีบูสอะไรเลย.
-    </p>
-  </section>
+<section>
+  <h2><span class="n">G</span>Goal</h2>
+  <div class="note">
+    <b>กฏที่ user ยืนยัน:</b>
+    <b>ต้องได้ boost ที่ตั้งไว้ก่อน ถึงจะกด Play ได้.</b> (design แรกเขียนเจาะจง Double Coins; โค้ดที่ ship จริงบน <code>boxrun_toggle</code> enforce <b>Magnetic Aura</b> — กลไกเดียวกัน แค่เปลี่ยน banner ที่ตรวจ.) ได้บูสอื่น = ยังไม่ใช่ → ต้อง<b>ซื้อใหม่จนกว่าจะได้ตัวที่ตั้ง</b>.
+    ทางออกเดียวที่ยอมให้ Play โดยไม่ได้ boost = <b>เหรียญหมด</b> (<code>nocoins_marker</code>) เท่านั้น.
+  </div>
+</section>
 
-  <!-- Root cause -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">R</span>Root cause — <code>start_run</code> เป็น "gate ที่ไม่ gate"</h2>
+<section>
+  <h2><span class="n rd">E</span>หลักฐานจาก log <code>logs/2026-07-12.log</code></h2>
+<pre>01:13:13  tap (754,882)   <span class="ac">← buy_boost: กดกล่อง Random Boost</span>
+01:13:15  tap (1673,307)  <span class="ac">← buy_boost: กดปุ่ม Multi</span>
+01:13:20  tap (1365,932)  <span class="rd">← check_heart: กด PLAY !!</span>
+                          <span class="rd">   ไม่มี tap (953,899) = ไม่ได้กด Multi-Buy เลย</span></pre>
+  <p class="lead">
+    ห่างกัน <b>5 วินาที</b> จาก "เปิด Multi" ถึง "กด Play" — ไม่มี multi-buy tap, ไม่มี roll. บอทลงเอยที่ Play โดยไม่มีบูสอะไรเลย.
+  </p>
+</section>
 
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm mb-4">
-      <div class="font-semibold text-rose-600 dark:text-rose-400 mb-2">โค้ดปัจจุบัน (cookierun.json)</div>
-      <pre class="text-xs bg-slate-100 dark:bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>"start_run": {
+<section>
+  <h2><span class="n rd">R</span>Root cause — <code>start_run</code> เป็น "gate ที่ไม่ gate"</h2>
+  <div class="card rd">
+    <div class="h">โค้ดปัจจุบัน (cookierun.json)</div>
+<pre><code>"start_run": {
   "detect": "doublecoins_banner.png",
-  "on_match":  { "goto": "check_heart" },   <span class="text-emerald-600">← มี DC  → Play</span>
-  "on_absent": { "goto": "check_heart" }    <span class="text-rose-600">← ไม่มี DC → Play เหมือนกัน (BUG)</span>
+  "on_match":  { "goto": "check_heart" },   <span class="gn">← มี DC  → Play</span>
+  "on_absent": { "goto": "check_heart" }    <span class="rd">← ไม่มี DC → Play เหมือนกัน (BUG)</span>
 }</code></pre>
-      <p class="mt-3 leading-relaxed">ทั้งสอง branch ไป <code>check_heart</code> เหมือนกัน → <b>detect ไร้ความหมาย</b>. Guard ที่ผลลัพธ์เท่ากันทุกทาง = ไม่ใช่ guard.</p>
-    </div>
-
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm mb-4">
-      <div class="font-semibold mb-2">ทำไมถึงเขียนแบบนั้น — regression จาก fix ก่อนหน้า</div>
-      <p class="leading-relaxed"><a href="done/PLAN_multibuy-doublecoins-heart-fix.html" class="text-sky-600 dark:text-sky-400 underline">PLAN_multibuy-doublecoins-heart-fix</a> แก้บั๊ก <b>ตรงข้าม</b> — "บอทวน buy ซ้ำระหว่างเกมกำลัง auto-roll อยู่" — เลยตัด <code>start_run → boost_shop</code> ทิ้ง แล้วบังคับ Play ทุกทาง.
-      Fix นั้น <b>over-corrected</b>: กัน re-buy ระหว่าง roll ได้จริง แต่เปิดช่องใหม่ "roll จบแล้วไม่ได้ DC → Play เลย".</p>
-    </div>
-
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
-      <div class="font-semibold mb-2">2 เคสที่ต้องแยกให้ออก (คือหัวใจของ fix นี้)</div>
-      <table class="w-full text-xs mt-2">
-        <thead class="text-slate-500"><tr class="text-left border-b border-slate-200 dark:border-slate-800">
-          <th class="py-2">สถานการณ์</th><th>multibuy_marker</th><th>doublecoins_banner</th><th>ต้องทำ</th>
-        </tr></thead>
-        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-          <tr><td class="py-2">เกม roll อยู่</td><td>✅ อยู่</td><td>—</td><td class="text-amber-600 font-semibold">รอเฉย ๆ ห้ามแตะ</td></tr>
-          <tr><td class="py-2">roll จบ ได้ DC</td><td>❌ หาย</td><td>✅ ขึ้น</td><td class="text-emerald-600 font-semibold">Play</td></tr>
-          <tr><td class="py-2">roll จบ <b>ได้บูสอื่น</b></td><td>❌ หาย</td><td>❌ ไม่ขึ้น</td><td class="text-rose-600 font-semibold">ซื้อใหม่ (ปัจจุบัน = Play ← BUG)</td></tr>
-          <tr><td class="py-2">picker ไม่เปิด / กดไม่ติด</td><td>❌ หาย</td><td>❌ ไม่ขึ้น</td><td class="text-rose-600 font-semibold">ซื้อใหม่ (ปัจจุบัน = Play ← BUG)</td></tr>
-        </tbody>
-      </table>
-      <p class="mt-3 leading-relaxed"><code>wait_roll</code> แยกเคส "roll อยู่" ออกไปแล้ว (self-loop จน marker หาย) → ตอนถึง <code>start_run</code> <b>roll จบแน่นอน</b> → เลย <b>ปลอดภัยที่จะให้ on_absent วนกลับไปซื้อใหม่</b> โดยไม่ไปกวน roll.</p>
-    </div>
-  </section>
-
-  <!-- Fix -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">F</span>Fix — retry loop ที่ terminate ด้วย "เหรียญหมด" (ทางเลือก C)</h2>
-
-    <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 p-5 text-sm mb-4">
-      <b class="text-emerald-700 dark:text-emerald-300">ทำไมไม่นับรอบ (retry counter):</b>
-      FSM engine <b>ไม่มี state variable</b> — จะนับรอบต้อง chain state (<code>retry_1 → retry_2 → …</code>) = โค้ดบวม.
-      ใช้ <code>nocoins_marker</code> เป็น <b>ตัวจบ loop ตามธรรมชาติ</b> แทน: เงินยังพอ = วนซื้อต่อ, เงินหมด = เกมเด้ง "Not enough Coins!" → Cancel → <code>force_play</code>. ไม่ต้องแตะ engine.
-    </div>
-
-    <div class="space-y-4">
-      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
-        <div class="font-semibold text-sky-600 dark:text-sky-400">#1 <code>start_run</code> — on_absent เลิกกด Play</div>
-        <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
-          <div>
-            <div class="text-rose-600 font-semibold mb-1">เดิม</div>
-            <pre class="bg-slate-100 dark:bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>on_absent → check_heart</code></pre>
-          </div>
-          <div>
-            <div class="text-emerald-600 font-semibold mb-1">ใหม่</div>
-            <pre class="bg-slate-100 dark:bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>on_absent → retry_buy</code></pre>
-          </div>
-        </div>
-        <p class="mt-3 leading-relaxed">on_match (มี DC) ยังไป <code>check_heart</code> เหมือนเดิม — ไม่แตะ.</p>
-      </div>
-
-      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
-        <div class="font-semibold text-sky-600 dark:text-sky-400">#2 state ใหม่ <code>retry_buy</code> — ด่านเช็คเงินก่อนซื้อรอบใหม่</div>
-        <pre class="text-xs bg-slate-100 dark:bg-slate-950 rounded-lg p-3 mt-2 overflow-x-auto"><code>"retry_buy": {
-  detect: "nocoins_marker.png"
-  on_match  → insufficient_coins   <span class="text-slate-500">// เงินหมด → Cancel → force_play (ยอม Play ไม่มี DC)</span>
-  on_absent → buy_boost            <span class="text-slate-500">// เงินพอ → ซื้อใหม่ วนจนได้ DC</span>
-}</code></pre>
-        <p class="mt-3 leading-relaxed">วางไว้<b>ก่อน</b> <code>buy_boost</code> เพื่อไม่ให้วนกดซื้อทั้งที่เงินหมด. <code>insufficient_coins</code> / <code>force_play</code> ของเดิมใช้ได้เลย ไม่ต้องแก้.</p>
-      </div>
-
-      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm">
-        <div class="font-semibold text-sky-600 dark:text-sky-400">#3 <code>picker</code> — on_absent เลิกส่งต่อ wait_roll ลอย ๆ</div>
-        <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
-          <div>
-            <div class="text-rose-600 font-semibold mb-1">เดิม</div>
-            <pre class="bg-slate-100 dark:bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>on_absent → wait_roll</code></pre>
-          </div>
-          <div>
-            <div class="text-emerald-600 font-semibold mb-1">ใหม่</div>
-            <pre class="bg-slate-100 dark:bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>on_absent → [wait 1200ms] → picker_2</code></pre>
-          </div>
-        </div>
-        <p class="mt-3 leading-relaxed">
-          จาก log: picker <b>ไม่ match</b> (popup ยังเปิดไม่ทันหลังกด Multi 1500ms) → หลุดไป <code>wait_roll</code> → marker ก็ไม่มี (ไม่ได้ roll สักหน่อย) → ไหลถึง Play.
-          เพิ่ม <code>picker_2</code> = re-check รอบสอง (pattern เดียวกับ <code>await_shop</code>/<code>await_shop_2</code> ที่ใช้ได้ผลแล้ว). ยังไม่เจอรอบสอง → <code>retry_buy</code> (ไม่ใช่ Play).
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Flow -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 mr-2">L</span>Flow หลังแก้</h2>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-xs font-mono overflow-x-auto">
-<pre>probe_dc_owned  <span class="arrow">─ มี DC ────────────────────────────────────────▶</span> <span class="text-emerald-600">check_heart ▶ PLAY</span>
-       <span class="arrow">│</span> ไม่มี DC
-       <span class="arrow">▼</span>
-  <span class="text-sky-600">retry_buy</span> <span class="arrow">─ เงินหมด ─▶</span> insufficient_coins <span class="arrow">─▶</span> force_play <span class="arrow">▶</span> <span class="text-amber-600">check_heart ▶ PLAY (ไม่มี DC, ยอมรับ)</span>
-       <span class="arrow">│</span> เงินพอ
-       <span class="arrow">▼</span>
-   buy_boost <span class="arrow">─▶</span> <span class="text-sky-600">picker ─(ไม่เจอ)─▶ picker_2 ─(ไม่เจอ)─▶ retry_buy ⟲</span>
-                 <span class="arrow">│</span> เจอ = กด Multi-Buy
-                 <span class="arrow">▼</span>
-             wait_roll <span class="arrow">⟲</span> (รอเฉย ๆ จน roll จบ)
-                 <span class="arrow">▼</span>
-          check_boost_result <span class="arrow">─ nocoins ─▶</span> insufficient_coins
-                 <span class="arrow">▼</span>
-              start_run <span class="arrow">─ มี DC ─▶</span> <span class="text-emerald-600">check_heart ▶ PLAY</span>
-                 <span class="arrow">└─ ไม่มี DC ─▶</span> <span class="text-sky-600">retry_buy ⟲</span>  <span class="text-rose-500">◀── บรรทัดนี้คือ fix หลัก</span></pre>
-    </div>
-    <p class="text-sm mt-3 leading-relaxed">
-      <b>ทุกเส้นทางไป PLAY</b> ต้องผ่านอย่างใดอย่างหนึ่ง: <b>(ก)</b> เห็น Double Coins banner จริง หรือ <b>(ข)</b> เห็น "Not enough Coins!" จริง. ไม่มีเส้นที่ Play เพราะ "หลุดมา".
-    </p>
-  </section>
-
-  <!-- Risks -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 mr-2">!</span>ความเสี่ยง &amp; ตัวกัน</h2>
-    <div class="space-y-3 text-sm">
-      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-        <b class="text-amber-600">Livelock</b> — ถ้า DC ไม่มีวันออก + nocoins ไม่เคยขึ้น → วน <code>retry_buy ⟲ buy_boost</code> ไม่จบ.
-        <span class="tok">กัน</span> engine เตือนเองที่ 100 poll ติด (<code>_STUCK_STATE_WARN_CYCLES</code> → Discord alert). และ <code>retry_buy</code> มี <code>timeout_ms</code> → ไหลลง <code>buy_boost</code>.
-        <b>ยอมรับได้:</b> nocoins คือ terminator จริงในเกม — เหรียญลดทุกรอบซื้อ.
-      </div>
-      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-        <b class="text-amber-600">เผาเหรียญเร็วขึ้น</b> — เดิมได้บูสอื่นก็ Play (จบ), ตอนนี้ซื้อใหม่จนได้ DC.
-        <span class="tok">ตั้งใจ</span> คือสิ่งที่ user ขอ. Cap เหรียญ = wallet เอง.
-      </div>
-      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-        <b class="text-amber-600">แตะโดน Stop ระหว่าง roll</b> (บั๊กเก่าที่ plan ก่อนแก้ไปแล้ว)
-        <span class="tok">กัน</span> <code>retry_buy</code> เข้าถึงได้จาก <code>start_run</code> เท่านั้น ซึ่งอยู่<b>หลัง</b> <code>wait_roll</code> ยืนยันว่า <code>multibuy_marker</code> หายแล้ว = roll จบแล้ว. ไม่มีทางไปแตะระหว่าง roll.
-      </div>
-    </div>
-  </section>
-
-  <!-- Build -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 mr-2">B</span>Build steps</h2>
-    <ol class="space-y-2 text-sm list-decimal list-inside">
-      <li>✔ <code>start_run.on_absent</code> → <code>retry_buy</code> (ทำแล้วใน <code>boxrun_toggle.json</code> + <code>boxrun_magnet.json</code>)</li>
-      <li>✔ state <code>retry_buy</code> (detect <code>nocoins_marker</code> → <code>insufficient_coins</code> / else <code>buy_magnet</code>) — มี <code>_note</code> อธิบายกฏครบ</li>
-      <li>✔ <code>picker.on_absent</code> → <code>retry_buy</code>; <code>start_run</code> verify <code>magneticaura_banner.png</code></li>
-      <li>✔ <code>_note</code> ของ <code>start_run</code>/<code>retry_buy</code> ระบุ MAGNET ENFORCEMENT + sanctioned nocoins escape</li>
-      <li>✔ config verify ตรง plan ครบ — <code>picker</code> absent branch = settle-retry (~1.2s) แล้วไป <code>retry_buy</code> ตรง (ไม่มี state แยกชื่อ <code>picker_2</code>, merge เข้า absent handler เดียวใน <code>picker</code>)</li>
-    </ol>
-    <div class="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-3 text-xs">
-      <b>หมายเหตุ:</b> flow diagram + ตัวอย่างโค้ดด้านบนใช้ชื่อ <code>buy_boost</code>/<code>doublecoins</code> ตาม design แรก.
-      โค้ดจริงที่ ship = <code>buy_magnet</code>/<code>magneticaura_banner</code>.
-    </div>
-  </section>
-
-  <div class="text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-4">
-    netrunner · plan spec · แก้ไฟล์เดียว (<code>config/cookierun.json</code>) · ไม่แตะ engine · ไม่เพิ่ม template
+    <p style="margin-bottom:0">ทั้งสอง branch ไป <code>check_heart</code> เหมือนกัน → <b>detect ไร้ความหมาย</b>. Guard ที่ผลลัพธ์เท่ากันทุกทาง = ไม่ใช่ guard.</p>
   </div>
+
+  <div class="card">
+    <div class="h" style="color:var(--tx)">ทำไมถึงเขียนแบบนั้น — regression จาก fix ก่อนหน้า</div>
+    <a href="done/PLAN_multibuy-doublecoins-heart-fix.html" style="color:var(--ac)">PLAN_multibuy-doublecoins-heart-fix</a> แก้บั๊ก <b>ตรงข้าม</b> — "บอทวน buy ซ้ำระหว่างเกมกำลัง auto-roll อยู่" — เลยตัด <code>start_run → boost_shop</code> ทิ้ง แล้วบังคับ Play ทุกทาง.
+    Fix นั้น <b>over-corrected</b>: กัน re-buy ระหว่าง roll ได้จริง แต่เปิดช่องใหม่ "roll จบแล้วไม่ได้ DC → Play เลย".
+  </div>
+
+  <div class="card">
+    <div class="h" style="color:var(--tx)">2 เคสที่ต้องแยกให้ออก (คือหัวใจของ fix นี้)</div>
+    <div class="tw"><table>
+      <thead><tr><th>สถานการณ์</th><th>multibuy_marker</th><th>doublecoins_banner</th><th>ต้องทำ</th></tr></thead>
+      <tbody>
+        <tr><td>เกม roll อยู่</td><td>✅ อยู่</td><td>—</td><td style="color:var(--am);font-weight:600">รอเฉย ๆ ห้ามแตะ</td></tr>
+        <tr><td>roll จบ ได้ DC</td><td>❌ หาย</td><td>✅ ขึ้น</td><td style="color:var(--gn);font-weight:600">Play</td></tr>
+        <tr><td>roll จบ <b>ได้บูสอื่น</b></td><td>❌ หาย</td><td>❌ ไม่ขึ้น</td><td style="color:var(--rd);font-weight:600">ซื้อใหม่ (ปัจจุบัน = Play ← BUG)</td></tr>
+        <tr><td>picker ไม่เปิด / กดไม่ติด</td><td>❌ หาย</td><td>❌ ไม่ขึ้น</td><td style="color:var(--rd);font-weight:600">ซื้อใหม่ (ปัจจุบัน = Play ← BUG)</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-bottom:0"><code>wait_roll</code> แยกเคส "roll อยู่" ออกไปแล้ว (self-loop จน marker หาย) → ตอนถึง <code>start_run</code> <b>roll จบแน่นอน</b> → เลย <b>ปลอดภัยที่จะให้ on_absent วนกลับไปซื้อใหม่</b> โดยไม่ไปกวน roll.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n in">F</span>Fix — retry loop ที่ terminate ด้วย "เหรียญหมด" (ทางเลือก C)</h2>
+  <div class="note ok">
+    <b>ทำไมไม่นับรอบ (retry counter):</b>
+    FSM engine <b>ไม่มี state variable</b> — จะนับรอบต้อง chain state (<code>retry_1 → retry_2 → …</code>) = โค้ดบวม.
+    ใช้ <code>nocoins_marker</code> เป็น <b>ตัวจบ loop ตามธรรมชาติ</b> แทน: เงินยังพอ = วนซื้อต่อ, เงินหมด = เกมเด้ง "Not enough Coins!" → Cancel → <code>force_play</code>. ไม่ต้องแตะ engine.
+  </div>
+
+  <div class="card">
+    <div class="h">#1 <code>start_run</code> — on_absent เลิกกด Play</div>
+    <div class="diff">
+      <div><div class="lbl old">เดิม</div><pre><code>on_absent → check_heart</code></pre></div>
+      <div><div class="lbl new">ใหม่</div><pre><code>on_absent → retry_buy</code></pre></div>
+    </div>
+    <p style="margin-bottom:0">on_match (มี DC) ยังไป <code>check_heart</code> เหมือนเดิม — ไม่แตะ.</p>
+  </div>
+
+  <div class="card">
+    <div class="h">#2 state ใหม่ <code>retry_buy</code> — ด่านเช็คเงินก่อนซื้อรอบใหม่</div>
+<pre><code>"retry_buy": {
+  detect: "nocoins_marker.png"
+  on_match  → insufficient_coins   <span class="dim">// เงินหมด → Cancel → force_play (ยอม Play ไม่มี DC)</span>
+  on_absent → buy_boost            <span class="dim">// เงินพอ → ซื้อใหม่ วนจนได้ DC</span>
+}</code></pre>
+    <p style="margin-bottom:0">วางไว้<b>ก่อน</b> <code>buy_boost</code> เพื่อไม่ให้วนกดซื้อทั้งที่เงินหมด. <code>insufficient_coins</code> / <code>force_play</code> ของเดิมใช้ได้เลย ไม่ต้องแก้.</p>
+  </div>
+
+  <div class="card">
+    <div class="h">#3 <code>picker</code> — on_absent เลิกส่งต่อ wait_roll ลอย ๆ</div>
+    <div class="diff">
+      <div><div class="lbl old">เดิม</div><pre><code>on_absent → wait_roll</code></pre></div>
+      <div><div class="lbl new">ใหม่</div><pre><code>on_absent → [wait 1200ms] → picker_2</code></pre></div>
+    </div>
+    <p style="margin-bottom:0">
+      จาก log: picker <b>ไม่ match</b> (popup ยังเปิดไม่ทันหลังกด Multi 1500ms) → หลุดไป <code>wait_roll</code> → marker ก็ไม่มี (ไม่ได้ roll สักหน่อย) → ไหลถึง Play.
+      เพิ่ม <code>picker_2</code> = re-check รอบสอง (pattern เดียวกับ <code>await_shop</code>/<code>await_shop_2</code> ที่ใช้ได้ผลแล้ว). ยังไม่เจอรอบสอง → <code>retry_buy</code> (ไม่ใช่ Play).
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n in">L</span>Flow หลังแก้</h2>
+<pre>probe_dc_owned  <span class="arw">─ มี DC ────────────────────────────────────────▶</span> <span class="gn">check_heart ▶ PLAY</span>
+       <span class="arw">│</span> ไม่มี DC
+       <span class="arw">▼</span>
+  <span class="ac">retry_buy</span> <span class="arw">─ เงินหมด ─▶</span> insufficient_coins <span class="arw">─▶</span> force_play <span class="arw">▶</span> <span class="am">check_heart ▶ PLAY (ไม่มี DC, ยอมรับ)</span>
+       <span class="arw">│</span> เงินพอ
+       <span class="arw">▼</span>
+   buy_boost <span class="arw">─▶</span> <span class="ac">picker ─(ไม่เจอ)─▶ picker_2 ─(ไม่เจอ)─▶ retry_buy ⟲</span>
+                 <span class="arw">│</span> เจอ = กด Multi-Buy
+                 <span class="arw">▼</span>
+             wait_roll <span class="arw">⟲</span> (รอเฉย ๆ จน roll จบ)
+                 <span class="arw">▼</span>
+          check_boost_result <span class="arw">─ nocoins ─▶</span> insufficient_coins
+                 <span class="arw">▼</span>
+              start_run <span class="arw">─ มี DC ─▶</span> <span class="gn">check_heart ▶ PLAY</span>
+                 <span class="arw">└─ ไม่มี DC ─▶</span> <span class="ac">retry_buy ⟲</span>  <span class="rd">◀── บรรทัดนี้คือ fix หลัก</span></pre>
+  <p class="lead">
+    <b>ทุกเส้นทางไป PLAY</b> ต้องผ่านอย่างใดอย่างหนึ่ง: <b>(ก)</b> เห็น Double Coins banner จริง หรือ <b>(ข)</b> เห็น "Not enough Coins!" จริง. ไม่มีเส้นที่ Play เพราะ "หลุดมา".
+  </p>
+</section>
+
+<section>
+  <h2><span class="n am">!</span>ความเสี่ยง &amp; ตัวกัน</h2>
+  <div class="card">
+    <b style="color:var(--am)">Livelock</b> — ถ้า DC ไม่มีวันออก + nocoins ไม่เคยขึ้น → วน <code>retry_buy ⟲ buy_boost</code> ไม่จบ.
+    <span class="tok">กัน</span> engine เตือนเองที่ 100 poll ติด (<code>_STUCK_STATE_WARN_CYCLES</code> → Discord alert). และ <code>retry_buy</code> มี <code>timeout_ms</code> → ไหลลง <code>buy_boost</code>.
+    <b>ยอมรับได้:</b> nocoins คือ terminator จริงในเกม — เหรียญลดทุกรอบซื้อ.
+  </div>
+  <div class="card">
+    <b style="color:var(--am)">เผาเหรียญเร็วขึ้น</b> — เดิมได้บูสอื่นก็ Play (จบ), ตอนนี้ซื้อใหม่จนได้ DC.
+    <span class="tok">ตั้งใจ</span> คือสิ่งที่ user ขอ. Cap เหรียญ = wallet เอง.
+  </div>
+  <div class="card">
+    <b style="color:var(--am)">แตะโดน Stop ระหว่าง roll</b> (บั๊กเก่าที่ plan ก่อนแก้ไปแล้ว)
+    <span class="tok">กัน</span> <code>retry_buy</code> เข้าถึงได้จาก <code>start_run</code> เท่านั้น ซึ่งอยู่<b>หลัง</b> <code>wait_roll</code> ยืนยันว่า <code>multibuy_marker</code> หายแล้ว = roll จบแล้ว. ไม่มีทางไปแตะระหว่าง roll.
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">B</span>Build steps</h2>
+  <ol class="t">
+    <li><span class="done">✔</span> <code>start_run.on_absent</code> → <code>retry_buy</code> (ทำแล้วใน <code>boxrun_toggle.json</code> + <code>boxrun_magnet.json</code>)</li>
+    <li><span class="done">✔</span> state <code>retry_buy</code> (detect <code>nocoins_marker</code> → <code>insufficient_coins</code> / else <code>buy_magnet</code>) — มี <code>_note</code> อธิบายกฏครบ</li>
+    <li><span class="done">✔</span> <code>picker.on_absent</code> → <code>retry_buy</code>; <code>start_run</code> verify <code>magneticaura_banner.png</code></li>
+    <li><span class="done">✔</span> <code>_note</code> ของ <code>start_run</code>/<code>retry_buy</code> ระบุ MAGNET ENFORCEMENT + sanctioned nocoins escape</li>
+    <li style="color:var(--dim)">Live re-verify (ถ้าอยากยืนยันอีก): capped <code>--max-cycles</code> ดู log ว่าไม่มี Play ก่อนเห็น banner/nocoins</li>
+  </ol>
+  <div class="note">
+    <b>หมายเหตุ:</b> flow diagram + ตัวอย่างโค้ดด้านบนใช้ชื่อ <code>buy_boost</code>/<code>doublecoins</code> ตาม design แรก.
+    โค้ดจริงที่ ship = <code>buy_magnet</code>/<code>magneticaura_banner</code>. gate ที่ชื่อ <code>picker_2</code> ในแผน — ตรวจว่าใน config จริงใช้ retry แบบไหน (ตอน re-verify).
+  </div>
+</section>
+
+<div class="foot">
+  netrunner · plan spec · แก้ไฟล์เดียว (<code>config/cookierun.json</code>) · ไม่แตะ engine · ไม่เพิ่ม template
+</div>
 
 </div>
-</body>
-</html>

@@ -1,196 +1,226 @@
-<!DOCTYPE html>
-<html lang="th" class="">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Plan — ID-creation FSM (Cookie Run guest account farming)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={darkMode:'class'}</script>
+<meta charset="utf-8">
+<title>ID-creation FSM — Cookie Run guest account — Feature Plan</title>
 <style>
-  body{font-family:ui-sans-serif,system-ui,'Segoe UI',sans-serif}
-  .num{width:1.75rem;height:1.75rem;display:inline-flex;align-items:center;justify-content:center;border-radius:9999px;font-weight:700;font-size:.8rem}
-  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  .tok{background:#fef08a;color:#713f12;padding:0 .25rem;border-radius:.25rem;font-weight:600}
-  .dark .tok{background:#713f12;color:#fef9c3}
-  table{width:100%;font-size:.8rem}
-  th{text-align:left;font-weight:600;padding:.5rem .6rem;border-bottom:1px solid rgb(203 213 225)}
-  .dark th{border-color:rgb(51 65 85)}
-  td{padding:.45rem .6rem;border-bottom:1px solid rgb(241 245 249);vertical-align:top}
-  .dark td{border-color:rgb(30 41 59)}
+  :root[data-theme="light"]{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;--bd2:#cbd5e1;
+    --tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;--acs:#e0f2fe;
+    --gn:#10b981;--gns:#d1fae5;--am:#f59e0b;--ams:#fef3c7;--rd:#f43f5e;--rds:#ffe4e6;
+    --in:#6366f1;--vi:#8b5cf6;--vis:#ede9fe}
+  :root[data-theme="dark"]{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;--bd:#1e293b;--bd2:#334155;
+    --tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;--ac:#38bdf8;--acs:rgba(56,189,248,.12);
+    --gn:#34d399;--gns:rgba(52,211,153,.14);--am:#fbbf24;--ams:rgba(251,191,36,.14);
+    --rd:#fb7185;--rds:rgba(251,113,133,.14);--in:#818cf8;--vi:#a78bfa;--vis:rgba(167,139,250,.14)}
+  @media(prefers-color-scheme:dark){:root{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;--bd:#1e293b;
+    --bd2:#334155;--tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;--ac:#38bdf8;--acs:rgba(56,189,248,.12);
+    --gn:#34d399;--gns:rgba(52,211,153,.14);--am:#fbbf24;--ams:rgba(251,191,36,.14);--rd:#fb7185;
+    --rds:rgba(251,113,133,.14);--in:#818cf8;--vi:#a78bfa;--vis:rgba(167,139,250,.14)}}
+  :root[data-theme="light"]{--bg:#fff}
+  *{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+    font:14px/1.6 Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:44px 22px 90px}
+  .head{margin-bottom:34px;padding-bottom:22px;border-bottom:1px solid var(--bd)}
+  .titlerow{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0}
+  .kick{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--in);margin-bottom:6px}
+  .toggle{background:var(--elev);color:var(--dim);border:1px solid var(--bd2);border-radius:8px;
+    padding:8px 13px;font:500 13px inherit;cursor:pointer}.toggle:hover{background:var(--elev2);color:var(--tx)}
+  .sub{color:var(--dim);font-size:13.5px;margin:4px 0 0}
+  section{margin-top:40px}
+  h2{font-size:21px;font-weight:700;margin:0 0 14px;display:flex;align-items:center;gap:12px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;
+    background:var(--acs);color:var(--ac);font:700 13px ui-monospace,monospace}
+  h2 .n.gn{background:var(--gns);color:var(--gn)}h2 .n.rd{background:var(--rds);color:var(--rd)}
+  h2 .n.am{background:var(--ams);color:var(--am)}h2 .n.in{background:var(--vis);color:var(--in)}
+  h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+  p{margin:8px 0}.lead{color:var(--dim);font-size:14.5px}
+  code{font:500 12.5px ui-monospace,Consolas,monospace;background:var(--elev2);color:var(--in);
+    padding:1px 7px;border-radius:5px;border:1px solid var(--bd)}
+  pre{margin:0;padding:14px 16px;background:#0b1120;color:#cbd5e1;border-radius:10px;
+    font:12px/1.7 ui-monospace,Consolas,monospace;overflow-x:auto;border:1px solid var(--bd)}
+  pre b{color:#f1f5f9}
+  .tok{background:var(--ams);color:var(--am);padding:1px 7px;border-radius:5px;font-weight:600;border:1px solid var(--am)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+  .stat{background:var(--elev);border:1px solid var(--bd);border-radius:10px;padding:14px 16px}
+  .stat .v{font:700 20px ui-monospace,monospace;line-height:1.2}
+  .stat .v.gn{color:var(--gn)}.stat .v.in{color:var(--in)}.stat .v.rd{color:var(--rd)}
+  .stat .l{font-size:11.5px;color:var(--faint);margin-top:4px}
+  .card{background:var(--elev);border:1px solid var(--bd);border-radius:10px;padding:16px 18px;margin:12px 0;font-size:13.5px;line-height:1.65}
+  .card .h{font-weight:600;margin-bottom:4px}
+  .card .rc{color:var(--rd)}.card .gc{color:var(--gn)}
+  .card .arrow{color:var(--dim);margin-top:3px;font-size:13px}
+  .card>div+div{margin-top:12px}
+  .tw{overflow-x:auto;margin:12px 0}
+  table{width:100%;border-collapse:collapse;background:var(--elev);border-radius:10px;overflow:hidden;min-width:720px}
+  th{text-align:left;font:600 11px inherit;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);
+    padding:10px 14px;background:var(--elev2);border-bottom:1px solid var(--bd)}
+  td{padding:9px 14px;border-bottom:1px solid var(--bd);vertical-align:top;font-size:13px}
+  tr:last-child td{border-bottom:none}tr:hover td{background:var(--elev2)}
+  .note{margin-top:12px;padding:14px 16px;background:var(--ams);border:1px solid var(--am);border-radius:10px;font-size:13px;line-height:1.6}
+  .note.info{background:var(--acs);border-color:var(--ac)}
+  .note.danger{background:var(--rds);border-color:var(--rd)}
+  .note.ok{background:var(--gns);border-color:var(--gn)}
+  .grid-ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:14px 0}
+  .ph{border:1.5px dashed var(--bd2);border-radius:10px;background:var(--elev);padding:16px 12px;text-align:center;color:var(--faint)}
+  .ph .ico{font-size:20px;opacity:.6}
+  .ph .t{font-size:12.5px;font-weight:600;color:var(--dim);margin-top:5px}
+  .ph .f{font:11px ui-monospace,monospace;color:var(--faint);margin-top:3px;word-break:break-word}
+  ul.t{margin:8px 0;padding-left:20px}ul.t li{margin:5px 0}
+  .done{color:var(--gn);font-weight:700}
+  .foot{margin-top:44px;padding-top:16px;border-top:1px solid var(--bd);font-size:12px;color:var(--faint)}
+  @media(max-width:780px){.wrap{padding:24px 16px 64px}h1{font-size:22px}}
 </style>
-</head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased">
-<div class="max-w-5xl mx-auto px-6 py-10">
 
-  <div class="flex items-start justify-between mb-8">
+<div class="wrap">
+<header class="head">
+  <div class="titlerow">
     <div>
-      <div class="text-xs font-semibold tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">Plan Spec · Feature</div>
-      <h1 class="text-3xl font-bold mt-1">ID-creation FSM — Cookie Run guest account</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">netrunner · แปลง <code>docs/id-creation-flow.md</code> (manual walkthrough) → bot จริง · แตะ <code>engine</code> (action <code>text</code>) + <code>config/idcreate.json</code> ใหม่</p>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Branch <code>feature/id-creation-fsm</code></p>
+      <div class="kick">Plan Spec · Feature</div>
+      <h1>ID-creation FSM — Cookie Run guest account</h1>
+      <p class="sub">netrunner · แปลง <code>docs/id-creation-flow.md</code> (manual walkthrough) → bot จริง · แตะ <code>engine</code> (action <code>text</code>) + <code>config/idcreate.json</code> ใหม่</p>
+      <p class="sub">Branch <code>feature/id-creation-fsm</code></p>
     </div>
-    <button onclick="document.documentElement.classList.toggle('dark')" class="text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">🌓 theme</button>
+    <button class="toggle" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';this.textContent=r.dataset.theme==='dark'?'☾ Dark':'☀ Light';">☀ Light</button>
   </div>
+</header>
 
-  <!-- Stats -->
-  <div class="grid grid-cols-4 gap-3 mb-10">
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">✔ action</div>
-      <div class="text-xs text-slate-500 mt-1"><code>text</code> — shipped ใน engine แล้ว</div>
+<div class="stats">
+  <div class="stat"><div class="v gn">✔ action</div><div class="l"><code>text</code> — shipped ใน engine แล้ว</div></div>
+  <div class="stat"><div class="v in">~14 state</div><div class="l">9 step + retry/rescue</div></div>
+  <div class="stat"><div class="v rd">0 template</div><div class="l">ต้อง crop ใหม่ทั้งหมด</div></div>
+  <div class="stat"><div class="v rd">0 coord</div><div class="l">doc = 720p, engine = 1080p</div></div>
+</div>
+
+<section>
+  <div class="note" style="margin-top:0">
+    <b>โจทย์:</b>
+    <code>docs/id-creation-flow.md</code> = manual walkthrough ของการสร้าง guest account Cookie Run (9 step, จดพิกัดไว้แล้ว) — แต่เป็น <b>ADB tap ดิบ ๆ ที่คนต้องนั่งกดเอง</b>.
+    <br><b>เป้า:</b> แปลงเป็น netrunner FSM (<code>config/idcreate.json</code> + template PNGs) ให้บอทสร้าง ID เองจบครบ — จาก launch จนได้ nickname.
+    <br><b>Use case:</b> farm ID ใหม่หลายตัว (clone <code>cr-base-preauth</code> → รัน bot ต่อ tail)
+  </div>
+</section>
+
+<section>
+  <h2><span class="n rd">!</span>3 ปัญหาที่เจอตอนสำรวจ (ทำไม config ล้วนไม่พอ)</h2>
+  <div class="card">
+    <div>
+      <div class="h rc">1. Resolution ชนกัน</div>
+      doc จดพิกัดที่ <b>1280×720</b> แต่ netrunner engine + template ทุกอันของ cookierun อยู่ที่ <b>1920×1080</b>. <code>cv2.matchTemplate</code> เป็น scale-sensitive → template เก่าใช้ข้ามไม่ได้ และพิกัดใน doc ใช้ตรง ๆ ไม่ได้.
+      <div class="arrow">→ <b>ตัดสินใจแล้ว:</b> สร้าง instance ใหม่ที่ <b>1920×1080</b> แล้วเดิน flow ใหม่หมด เก็บ coord + template จากจอจริง. พิกัดใน doc ใช้เป็น "ตำแหน่งคร่าว ๆ ว่าปุ่มอยู่มุมไหน" เท่านั้น — <span class="tok">ไม่ scale ×1.5 มาใช้ตรง ๆ</span> (นั่นเป็นการเดา).</div>
     </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">~14 state</div>
-      <div class="text-xs text-slate-500 mt-1">9 step + retry/rescue</div>
+    <div>
+      <div class="h gc">2. Engine ไม่มี text input — <span class="tok">แก้แล้ว (shipped)</span></div>
+      เดิม <code>_ACTION_TYPES</code> ไม่มี text. Step 8 (Set Nickname) ต้อง <code>adb shell input text</code>.
+      <div class="arrow">→ <b>ทำเสร็จแล้ว:</b> action <code>text</code> อยู่ใน engine จริง — <code>src/config.py</code> (<code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"]={"value"}</code>) และ <code>src/act.py</code> (<code>Actor.text()</code> → <code>input text</code>, เคารพ <code>dry_run</code>). เฟส A ด้านล่าง = record ว่าทำอะไรไป ไม่ใช่งานค้าง.</div>
     </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">0 template</div>
-      <div class="text-xs text-slate-500 mt-1">ต้อง crop ใหม่ทั้งหมด</div>
-    </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
-      <div class="text-2xl font-bold text-rose-600 dark:text-rose-400">0 coord</div>
-      <div class="text-xs text-slate-500 mt-1">doc = 720p, engine = 1080p</div>
+    <div>
+      <div class="h rc">3. Instance base หายหมด</div>
+      doc อ้าง <code>cookie-idtest</code>(3) / <code>cr-base-loaded</code>(4) / <code>cr-base-preauth</code>(5) แต่ <code>ldconsole list2</code> ตอนนี้เหลือแค่ index 0-1. <b>ไม่มีจอให้ crop template.</b>
+      <div class="arrow">→ <b>ตัดสินใจแล้ว:</b> สร้าง instance ใหม่ 1920×1080 + ติดตั้ง CookieRun แล้วเดิน flow ใหม่ (เฟส B).</div>
     </div>
   </div>
+</section>
 
-  <!-- Goal -->
-  <section class="mb-10">
-    <div class="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-5 text-sm leading-relaxed">
-      <b class="text-amber-700 dark:text-amber-300">โจทย์:</b>
-      <code>docs/id-creation-flow.md</code> = manual walkthrough ของการสร้าง guest account Cookie Run (9 step, จดพิกัดไว้แล้ว) — แต่เป็น <b>ADB tap ดิบ ๆ ที่คนต้องนั่งกดเอง</b>.
-      <br><b class="text-amber-700 dark:text-amber-300">เป้า:</b> แปลงเป็น netrunner FSM (<code>config/idcreate.json</code> + template PNGs) ให้บอทสร้าง ID เองจบครบ — จาก launch จนได้ nickname.
-      <br><b class="text-amber-700 dark:text-amber-300">Use case:</b> farm ID ใหม่หลายตัว (clone <code>cr-base-preauth</code> → รัน bot ต่อ tail)
-    </div>
-  </section>
-
-  <!-- Blockers -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 mr-2">!</span>3 ปัญหาที่เจอตอนสำรวจ (ทำไม config ล้วนไม่พอ)</h2>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-4 leading-relaxed">
-      <div>
-        <div><b class="text-rose-600 dark:text-rose-400">1. Resolution ชนกัน</b> — doc จดพิกัดที่ <b>1280×720</b> แต่ netrunner engine + template ทุกอันของ cookierun อยู่ที่ <b>1920×1080</b>. <code>cv2.matchTemplate</code> เป็น scale-sensitive → template เก่าใช้ข้ามไม่ได้ และพิกัดใน doc ใช้ตรง ๆ ไม่ได้.</div>
-        <div class="text-slate-500 mt-1">→ <b>ตัดสินใจแล้ว:</b> สร้าง instance ใหม่ที่ <b>1920×1080</b> แล้วเดิน flow ใหม่หมด เก็บ coord + template จากจอจริง. พิกัดใน doc ใช้เป็น "ตำแหน่งคร่าว ๆ ว่าปุ่มอยู่มุมไหน" เท่านั้น — <span class="tok">ไม่ scale ×1.5 มาใช้ตรง ๆ</span> (นั่นเป็นการเดา).</div>
-      </div>
-      <div>
-        <div><b class="text-emerald-600 dark:text-emerald-400">2. Engine ไม่มี text input — <span class="tok">แก้แล้ว (shipped)</span></b> — เดิม <code>_ACTION_TYPES</code> ไม่มี text. Step 8 (Set Nickname) ต้อง <code>adb shell input text</code>.</div>
-        <div class="text-slate-500 mt-1">→ <b>ทำเสร็จแล้ว:</b> action <code>text</code> อยู่ใน engine จริง — <code>src/config.py</code> (<code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"]={"value"}</code>) และ <code>src/act.py</code> (<code>Actor.text()</code> → <code>input text</code>, เคารพ <code>dry_run</code>). เฟส A ด้านล่าง = record ว่าทำอะไรไป ไม่ใช่งานค้าง.</div>
-      </div>
-      <div>
-        <div><b class="text-rose-600 dark:text-rose-400">3. Instance base หายหมด</b> — doc อ้าง <code>cookie-idtest</code>(3) / <code>cr-base-loaded</code>(4) / <code>cr-base-preauth</code>(5) แต่ <code>ldconsole list2</code> ตอนนี้เหลือแค่ index 0-1. <b>ไม่มีจอให้ crop template.</b></div>
-        <div class="text-slate-500 mt-1">→ <b>ตัดสินใจแล้ว:</b> สร้าง instance ใหม่ 1920×1080 + ติดตั้ง CookieRun แล้วเดิน flow ใหม่ (เฟส B).</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Phase A -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 mr-2">A</span>เฟส A — action <code>text</code> ใน engine <span class="text-emerald-600 dark:text-emerald-400 text-sm font-normal">✔ shipped</span></h2>
-    <div class="rounded-xl bg-slate-900 text-slate-100 border border-slate-800 p-5 text-xs leading-6 overflow-x-auto mb-3">
+<section>
+  <h2><span class="n gn">A</span>เฟส A — action <code>text</code> ใน engine <span style="font-size:14px;font-weight:400;color:var(--gn)">✔ shipped</span></h2>
 <pre><code>{ "type": "text", "value": "cr_a3f91b" }   →  adb shell input text cr_a3f91b</code></pre>
-    </div>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2">
-      <div><b>2 ไฟล์ — ทำเสร็จแล้วทั้งคู่:</b></div>
-      <div>✔ <code>src/config.py:15,30</code> — <code>"text"</code> อยู่ใน <code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"] = {"value"}</code></div>
-      <div>✔ <code>src/act.py:380</code> — <code>Actor.text()</code> ยิง <code>input text</code> (<code>:324</code>, space → <code>%s</code>), dispatch ใน <code>run()</code>, เคารพ <code>dry_run</code></div>
-      <div class="text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-800">
-        <b>ข้อจำกัด ADB <code>input text</code>:</b> ASCII เท่านั้น, ช่องว่างต้องเป็น <code>%s</code>, อักขระพิเศษต้อง escape → nickname ใช้ <b>ตัวอักษร+ตัวเลขล้วน</b> ปลอดภัยสุด.
-      </div>
-    </div>
-  </section>
-
-  <!-- Phase B -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">B</span>เฟส B — instance ใหม่ + เดิน flow เก็บ coord/template จริง</h2>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-3">
-      <div><b>1.</b> <code>ldconsole add --name cr-idfarm</code> → <code>modify --resolution 1920,1080,240</code> (instance ต้องหยุดก่อน modify)</div>
-      <div><b>2.</b> launch → ติดตั้ง CookieRun Classic (<code>com.devsisters.crg</code>) — apk จาก store ในตัว หรือ <code>ldconsole installapp</code></div>
-      <div><b>3.</b> เดิน flow <b>ทีละ step</b>: <code>adb shell input tap X Y</code> → <code>tools/snap.py</code> → Read ภาพ → จด coord + state จริง</div>
-      <div><b>4.</b> crop template จาก snap 1080p → <code>templates/idcreate/</code> (โฟลเดอร์ <b>แยก</b> จาก <code>cookierun/</code> — คนละ flow คนละชุด marker)</div>
-      <div><b>5.</b> verify score ทุก template ≥0.95 บนจอที่ควร match ก่อนเขียน config</div>
-      <div class="text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-800">
-        ⚠️ cv2 ล้มเงียบบน Thai path → crop ลง ASCII scratchpad แล้ว <code>cp</code> เข้า repo · screencap ผ่าน <b>Bash tool</b> เท่านั้น (PowerShell <code>&gt;</code> พัง PNG)
-      </div>
-    </div>
-
-    <div class="mt-4">
-      <div class="text-sm font-semibold mb-2">Screenshot 12 หน้า (ตาม state ใน Phase C) — รอเดิน flow จริง</div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">📱</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">launch</div><div class="text-[10px] font-mono mt-0.5">home_icon.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">🔔</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">notif_perm</div><div class="text-[10px] font-mono mt-0.5">notif_deny.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">🔞</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">age_gate</div><div class="text-[10px] font-mono mt-0.5">agegate_marker.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">📜</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">terms</div><div class="text-[10px] font-mono mt-0.5">terms_marker.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">🎮</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">title</div><div class="text-[10px] font-mono mt-0.5">devplay_login.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">👤</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">login_chooser</div><div class="text-[10px] font-mono mt-0.5">guest_play.png — ★ ID เกิดตรงนี้</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">⬇️</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">download</div><div class="text-[10px] font-mono mt-0.5">download_confirm.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">💬</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">tutorial_popup</div><div class="text-[10px] font-mono mt-0.5">tutpopup_marker.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">⏸️</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">tut_pause</div><div class="text-[10px] font-mono mt-0.5">tut_pause_btn.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">🚪</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">tut_quit / confirm</div><div class="text-[10px] font-mono mt-0.5">tut_quit_btn.png</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">✏️</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">nickname</div><div class="text-[10px] font-mono mt-0.5">nickname_marker.png — action "text"</div></div>
-        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center text-slate-400 dark:text-slate-500"><div class="text-lg opacity-60">✅</div><div class="text-xs font-semibold mt-1 text-slate-500 dark:text-slate-400">done</div><div class="text-[10px] font-mono mt-0.5">home_marker.png</div></div>
-      </div>
-      <div class="text-xs text-slate-400 dark:text-slate-500 mt-2">ยังไม่มี instance/emulator สำหรับ flow นี้ (Phase B ยังไม่เริ่ม) — ไม่มีภาพจริงให้ใส่ ณ ตอนนี้ เพิ่มทีหลังตอนเดิน flow จริง</div>
-    </div>
-  </section>
-
-  <!-- Phase C: FSM -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">C</span>เฟส C — FSM <code>config/idcreate.json</code></h2>
-
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 mb-4 overflow-x-auto">
-      <table>
-        <thead><tr><th>state</th><th>detect (template)</th><th>on_match</th><th>on_absent</th></tr></thead>
-        <tbody>
-          <tr><td><code>launch</code></td><td><code>home_icon.png</code> (LDPlayer desktop)</td><td>tap icon → wait 8s → <code>notif_perm</code></td><td>เกมเปิดอยู่แล้ว → <code>notif_perm</code></td></tr>
-          <tr><td><code>notif_perm</code></td><td><code>notif_deny.png</code></td><td>tap DON'T ALLOW → wait → <code>notif_perm</code>?</td><td>ไม่มี dialog (ปกติ) → <code>age_gate</code></td></tr>
-          <tr><td><code>age_gate</code></td><td><code>agegate_marker.png</code></td><td><b>tap <code>+</code> ×25</b> (25 action, delay 150ms) → tap Confirm → <code>terms</code></td><td>→ <code>terms</code></td></tr>
-          <tr><td><code>terms</code></td><td><code>terms_marker.png</code></td><td>tap OK → wait → <code>title</code></td><td>→ <code>title</code></td></tr>
-          <tr><td><code>title</code></td><td><code>devplay_login.png</code></td><td>tap_template DevPlay Login → wait → <code>login_chooser</code></td><td>retry chain → <code>title_2</code></td></tr>
-          <tr><td><code>login_chooser</code></td><td><code>guest_play.png</code></td><td><b>tap Play (guest)</b> ← ★ ID เกิดตรงนี้ → <code>download</code></td><td>retry → <code>login_chooser_2</code></td></tr>
-          <tr><td><code>download</code></td><td><code>download_confirm.png</code></td><td>tap Confirm → wait <b>ยาว</b> (290MB) → <code>tutorial_popup</code></td><td>→ <code>tutorial_popup</code></td></tr>
-          <tr><td><code>tutorial_popup</code></td><td><code>tutpopup_marker.png</code></td><td>tap Confirm → wait → <code>tut_pause</code></td><td>รอ download → retry chain (timeout ยาว)</td></tr>
-          <tr><td><code>tut_pause</code></td><td><code>tut_pause_btn.png</code></td><td>tap ‖ → wait → <code>tut_quit</code></td><td>retry → rescue</td></tr>
-          <tr><td><code>tut_quit</code></td><td><code>tut_quit_btn.png</code></td><td>tap Quit → wait → <code>tut_quit_confirm</code></td><td>retry</td></tr>
-          <tr><td><code>tut_quit_confirm</code></td><td><code>tut_quitconf.png</code></td><td>tap Confirm → wait → <code>nickname</code></td><td>retry</td></tr>
-          <tr><td><code>nickname</code></td><td><code>nickname_marker.png</code></td><td>tap field → <b><code>{"type":"text"}</code></b> → tap Confirm → <code>done</code></td><td>retry chain → rescue</td></tr>
-          <tr><td><code>done</code></td><td><code>home_marker.png</code></td><td><code>stop</code> — ID สร้างเสร็จ</td><td><code>stop</code></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-3">
-      <div class="font-semibold">Design note — flow นี้ต่างจาก bot อื่นตรงไหน</div>
-      <div>• <b>Linear ไม่ใช่ loop</b> — bot อื่น (giftdraw/sendlife) วนซ้ำจนหมด resource; อันนี้เดินเส้นเดียวจบแล้ว <code>stop</code>. ไม่มี cycle cap ที่มีความหมาย → <code>--max-cycles</code> ตั้งเผื่อ ๆ ไว้กัน hang อย่างเดียว</div>
-      <div>• <b>Age gate ต้องกด <code>+</code> 25 ครั้ง</b> — engine ไม่มี counter → เขียน <code>tap_xy</code> ซ้ำ 25 action ใน <code>on_match</code> เดียว (ยอมได้ ไม่ต้อง state chain)</div>
-      <div>• <b>Download 290MB = wait ยาวสุด</b> — เป็นจุดเสี่ยง timeout ที่สุด. ใช้ <b>retry chain รอ</b> ไม่ใช้ self-goto+timeout (= <code>FsmError</code> crash ตาม gotcha ที่รู้แล้ว)</div>
-      <div>• <b>ทุก state ที่ absent = "ยังไม่มาถึง"</b> ไม่ใช่ error → default คือ "รอ/retry" ไม่ใช่ "ข้าม"</div>
-    </div>
-  </section>
-
-  <!-- Phase D -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 mr-2">D</span>เฟส D — test + launcher</h2>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2">
-      <div>• <code>--dry-run --max-cycles 20 -v</code> → validate config + match score</div>
-      <div>• live capped ทีละช่วง (<code>--start-state</code> ข้ามส่วนที่ผ่านแล้ว — flow นี้เดินซ้ำไม่ได้ ต้อง clone instance ใหม่ทุกครั้งที่ทดสอบเต็ม)</div>
-      <div>• <code>run_idcreate.bat</code> — prompt ชื่อ nickname → เขียนลง config ชั่วคราว หรือส่งเป็น arg</div>
-      <div>• update <code>RUN.md</code> section ใหม่ + update <code>docs/id-creation-flow.md</code> (instance map เก่าตาย, coord 720p ล้าสมัย)</div>
-    </div>
-  </section>
-
-  <!-- Open questions -->
-  <section class="mb-10">
-    <h2 class="text-lg font-semibold mb-3"><span class="num bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 mr-2">?</span>ยังไม่ชัด — จะรู้ตอนเดิน flow จริง</h2>
-    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 text-sm space-y-2">
-      <div>• CookieRun ที่ 1080p จะมี layout เดียวกับ 720p ไหม (ปุ่มอาจย้าย ไม่ใช่แค่ scale)</div>
-      <div>• Download 290MB ใช้เวลาจริงกี่นาที → กำหนด retry chain ยาวเท่าไหร่</div>
-      <div>• nickname ซ้ำได้ไหม / ต้อง random เท่าไหร่</div>
-      <div>• <code>ldconsole installapp</code> ติดตั้ง CookieRun ได้ตรง ๆ หรือต้องผ่าน store ในตัว</div>
-    </div>
-  </section>
-
-  <div class="text-xs text-slate-400 dark:text-slate-600 pt-6 border-t border-slate-200 dark:border-slate-800">
-    netrunner · PLAN_id-creation-fsm · <span class="tok">รอ confirm ก่อน edit</span>
+  <div class="card">
+    <div class="h" style="margin-bottom:8px">2 ไฟล์ — ทำเสร็จแล้วทั้งคู่:</div>
+    <ul class="t" style="margin:0">
+      <li><span class="done">✔</span> <code>src/config.py:15,30</code> — <code>"text"</code> อยู่ใน <code>_ACTION_TYPES</code> + <code>_REQUIRED_FIELDS["text"] = {"value"}</code></li>
+      <li><span class="done">✔</span> <code>src/act.py:380</code> — <code>Actor.text()</code> ยิง <code>input text</code> (<code>:324</code>, space → <code>%s</code>), dispatch ใน <code>run()</code>, เคารพ <code>dry_run</code></li>
+    </ul>
   </div>
+  <div class="note">
+    <b>ข้อจำกัด ADB <code>input text</code>:</b> ASCII เท่านั้น, ช่องว่างต้องเป็น <code>%s</code>, อักขระพิเศษต้อง escape → nickname ใช้ <b>ตัวอักษร+ตัวเลขล้วน</b> ปลอดภัยสุด.
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">B</span>เฟส B — instance ใหม่ + เดิน flow เก็บ coord/template จริง</h2>
+  <div class="card">
+    <ul class="t" style="margin:0">
+      <li><b>1.</b> <code>ldconsole add --name cr-idfarm</code> → <code>modify --resolution 1920,1080,240</code> (instance ต้องหยุดก่อน modify)</li>
+      <li><b>2.</b> launch → ติดตั้ง CookieRun Classic (<code>com.devsisters.crg</code>) — apk จาก store ในตัว หรือ <code>ldconsole installapp</code></li>
+      <li><b>3.</b> เดิน flow <b>ทีละ step</b>: <code>adb shell input tap X Y</code> → <code>tools/snap.py</code> → Read ภาพ → จด coord + state จริง</li>
+      <li><b>4.</b> crop template จาก snap 1080p → <code>templates/idcreate/</code> (โฟลเดอร์ <b>แยก</b> จาก <code>cookierun/</code> — คนละ flow คนละชุด marker)</li>
+      <li><b>5.</b> verify score ทุก template ≥0.95 บนจอที่ควร match ก่อนเขียน config</li>
+    </ul>
+  </div>
+  <div class="note danger">
+    ⚠️ cv2 ล้มเงียบบน Thai path → crop ลง ASCII scratchpad แล้ว <code>cp</code> เข้า repo · screencap ผ่าน <b>Bash tool</b> เท่านั้น (PowerShell <code>&gt;</code> พัง PNG)
+  </div>
+
+  <h3>Screenshot 12 หน้า (ตาม state ใน Phase C) — รอเดิน flow จริง</h3>
+  <div class="grid-ph">
+    <div class="ph"><div class="ico">📱</div><div class="t">launch</div><div class="f">home_icon.png</div></div>
+    <div class="ph"><div class="ico">🔔</div><div class="t">notif_perm</div><div class="f">notif_deny.png</div></div>
+    <div class="ph"><div class="ico">🔞</div><div class="t">age_gate</div><div class="f">agegate_marker.png</div></div>
+    <div class="ph"><div class="ico">📜</div><div class="t">terms</div><div class="f">terms_marker.png</div></div>
+    <div class="ph"><div class="ico">🎮</div><div class="t">title</div><div class="f">devplay_login.png</div></div>
+    <div class="ph"><div class="ico">👤</div><div class="t">login_chooser</div><div class="f">guest_play.png — ★ ID เกิดตรงนี้</div></div>
+    <div class="ph"><div class="ico">⬇️</div><div class="t">download</div><div class="f">download_confirm.png</div></div>
+    <div class="ph"><div class="ico">💬</div><div class="t">tutorial_popup</div><div class="f">tutpopup_marker.png</div></div>
+    <div class="ph"><div class="ico">⏸️</div><div class="t">tut_pause</div><div class="f">tut_pause_btn.png</div></div>
+    <div class="ph"><div class="ico">🚪</div><div class="t">tut_quit / confirm</div><div class="f">tut_quit_btn.png</div></div>
+    <div class="ph"><div class="ico">✏️</div><div class="t">nickname</div><div class="f">nickname_marker.png — action "text"</div></div>
+    <div class="ph"><div class="ico">✅</div><div class="t">done</div><div class="f">home_marker.png</div></div>
+  </div>
+  <p class="lead" style="font-size:12.5px">ยังไม่มี instance/emulator สำหรับ flow นี้ (Phase B ยังไม่เริ่ม) — ไม่มีภาพจริงให้ใส่ ณ ตอนนี้ เพิ่มทีหลังตอนเดิน flow จริง</p>
+</section>
+
+<section>
+  <h2><span class="n">C</span>เฟส C — FSM <code>config/idcreate.json</code></h2>
+  <div class="tw"><table>
+    <thead><tr><th>state</th><th>detect (template)</th><th>on_match</th><th>on_absent</th></tr></thead>
+    <tbody>
+      <tr><td><code>launch</code></td><td><code>home_icon.png</code> (LDPlayer desktop)</td><td>tap icon → wait 8s → <code>notif_perm</code></td><td>เกมเปิดอยู่แล้ว → <code>notif_perm</code></td></tr>
+      <tr><td><code>notif_perm</code></td><td><code>notif_deny.png</code></td><td>tap DON'T ALLOW → wait → <code>notif_perm</code>?</td><td>ไม่มี dialog (ปกติ) → <code>age_gate</code></td></tr>
+      <tr><td><code>age_gate</code></td><td><code>agegate_marker.png</code></td><td><b>tap <code>+</code> ×25</b> (25 action, delay 150ms) → tap Confirm → <code>terms</code></td><td>→ <code>terms</code></td></tr>
+      <tr><td><code>terms</code></td><td><code>terms_marker.png</code></td><td>tap OK → wait → <code>title</code></td><td>→ <code>title</code></td></tr>
+      <tr><td><code>title</code></td><td><code>devplay_login.png</code></td><td>tap_template DevPlay Login → wait → <code>login_chooser</code></td><td>retry chain → <code>title_2</code></td></tr>
+      <tr><td><code>login_chooser</code></td><td><code>guest_play.png</code></td><td><b>tap Play (guest)</b> ← ★ ID เกิดตรงนี้ → <code>download</code></td><td>retry → <code>login_chooser_2</code></td></tr>
+      <tr><td><code>download</code></td><td><code>download_confirm.png</code></td><td>tap Confirm → wait <b>ยาว</b> (290MB) → <code>tutorial_popup</code></td><td>→ <code>tutorial_popup</code></td></tr>
+      <tr><td><code>tutorial_popup</code></td><td><code>tutpopup_marker.png</code></td><td>tap Confirm → wait → <code>tut_pause</code></td><td>รอ download → retry chain (timeout ยาว)</td></tr>
+      <tr><td><code>tut_pause</code></td><td><code>tut_pause_btn.png</code></td><td>tap ‖ → wait → <code>tut_quit</code></td><td>retry → rescue</td></tr>
+      <tr><td><code>tut_quit</code></td><td><code>tut_quit_btn.png</code></td><td>tap Quit → wait → <code>tut_quit_confirm</code></td><td>retry</td></tr>
+      <tr><td><code>tut_quit_confirm</code></td><td><code>tut_quitconf.png</code></td><td>tap Confirm → wait → <code>nickname</code></td><td>retry</td></tr>
+      <tr><td><code>nickname</code></td><td><code>nickname_marker.png</code></td><td>tap field → <b><code>{"type":"text"}</code></b> → tap Confirm → <code>done</code></td><td>retry chain → rescue</td></tr>
+      <tr><td><code>done</code></td><td><code>home_marker.png</code></td><td><code>stop</code> — ID สร้างเสร็จ</td><td><code>stop</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="card">
+    <div class="h" style="margin-bottom:8px">Design note — flow นี้ต่างจาก bot อื่นตรงไหน</div>
+    <ul class="t" style="margin:0">
+      <li><b>Linear ไม่ใช่ loop</b> — bot อื่น (giftdraw/sendlife) วนซ้ำจนหมด resource; อันนี้เดินเส้นเดียวจบแล้ว <code>stop</code>. ไม่มี cycle cap ที่มีความหมาย → <code>--max-cycles</code> ตั้งเผื่อ ๆ ไว้กัน hang อย่างเดียว</li>
+      <li><b>Age gate ต้องกด <code>+</code> 25 ครั้ง</b> — engine ไม่มี counter → เขียน <code>tap_xy</code> ซ้ำ 25 action ใน <code>on_match</code> เดียว (ยอมได้ ไม่ต้อง state chain)</li>
+      <li><b>Download 290MB = wait ยาวสุด</b> — เป็นจุดเสี่ยง timeout ที่สุด. ใช้ <b>retry chain รอ</b> ไม่ใช้ self-goto+timeout (= <code>FsmError</code> crash ตาม gotcha ที่รู้แล้ว)</li>
+      <li><b>ทุก state ที่ absent = "ยังไม่มาถึง"</b> ไม่ใช่ error → default คือ "รอ/retry" ไม่ใช่ "ข้าม"</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">D</span>เฟส D — test + launcher</h2>
+  <ul class="t">
+    <li><code>--dry-run --max-cycles 20 -v</code> → validate config + match score</li>
+    <li>live capped ทีละช่วง (<code>--start-state</code> ข้ามส่วนที่ผ่านแล้ว — flow นี้เดินซ้ำไม่ได้ ต้อง clone instance ใหม่ทุกครั้งที่ทดสอบเต็ม)</li>
+    <li><code>run_idcreate.bat</code> — prompt ชื่อ nickname → เขียนลง config ชั่วคราว หรือส่งเป็น arg</li>
+    <li>update <code>RUN.md</code> section ใหม่ + update <code>docs/id-creation-flow.md</code> (instance map เก่าตาย, coord 720p ล้าสมัย)</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n am">?</span>ยังไม่ชัด — จะรู้ตอนเดิน flow จริง</h2>
+  <ul class="t">
+    <li>CookieRun ที่ 1080p จะมี layout เดียวกับ 720p ไหม (ปุ่มอาจย้าย ไม่ใช่แค่ scale)</li>
+    <li>Download 290MB ใช้เวลาจริงกี่นาที → กำหนด retry chain ยาวเท่าไหร่</li>
+    <li>nickname ซ้ำได้ไหม / ต้อง random เท่าไหร่</li>
+    <li><code>ldconsole installapp</code> ติดตั้ง CookieRun ได้ตรง ๆ หรือต้องผ่าน store ในตัว</li>
+  </ul>
+</section>
+
+<div class="foot">
+  netrunner · PLAN_id-creation-fsm · <span class="tok">รอ confirm ก่อน edit</span>
+</div>
 
 </div>
-</body>
-</html>
