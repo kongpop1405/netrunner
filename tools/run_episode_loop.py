@@ -43,7 +43,45 @@ from tools.run_toggle import (
     _strip_slide,
     _yn,
 )
+from src.capture import grab
+from src.perceive import PerceiveError, find_named, read_counter
 from tools.switch_episode import SwitchEpisodeError, switch_episode
+
+#: Home screen's "Episode N" label — top-left corner of the word "Episode"
+#: itself, which sits before the episode name and so does not shift with the
+#: name's length (unlike relic_get_marker, which sits after variable text).
+EPISODE_LABEL_MARKER = "home/episode_label_marker.png"
+
+#: Digit box relative to the marker's top-left (dx, dy, w, h) — measured live
+#: off a 1920x1080 frame at Episode 4 (marker top-left (352,113), digit ink at
+#: x 492-520, y 113-142). Same measure-don't-guess approach as
+#: BoxQuitRunner.COUNTER_OFFSET.
+EPISODE_DIGIT_OFFSET = (140, 0, 28, 29)
+
+
+def _detect_current_episode(device, store) -> int | None:
+    """Read the Episode number off the home screen's "Episode N" label.
+
+    Returns None when home isn't showing cleanly (a popup is up) or the
+    digit can't be read — the caller must fail loud rather than guess, since
+    a wrong episode number would farm the wrong content silently.
+    """
+    frame = grab(device)
+    if not find_named(frame, store, "home/home_play_marker.png", threshold=0.82).found:
+        return None
+    m = find_named(frame, store, EPISODE_LABEL_MARKER, threshold=0.82)
+    if not m.found:
+        return None
+    dx, dy, w, h = EPISODE_DIGIT_OFFSET
+    x = m.x - m.w // 2 + dx
+    y = m.y - m.h // 2 + dy
+    try:
+        n = read_counter(frame, (max(0, x), max(0, y), w, h))
+    except PerceiveError:
+        return None
+    if n is None or not (1 <= n <= 7):
+        return None
+    return n
 
 
 def _episode_list(v: str) -> list[int]:
@@ -58,9 +96,11 @@ def _episode_list(v: str) -> list[int]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="rotate boxrun_toggle across Episodes")
-    ap.add_argument("--order", type=_episode_list, required=True,
+    ap.add_argument("--order", type=_episode_list, default=None,
                      help="comma-separated episode numbers to cycle through, "
-                          "e.g. 4,2,7,6,5,3,1")
+                          "e.g. 4,2,7,6,5,3,1. Omit to auto-detect the episode "
+                          "already selected on home and farm only that one "
+                          "(no cycling — pick the episode yourself first)")
     ap.add_argument("--boxes-per-episode", type=int, default=3,
                      help="switch to the next episode after this many runs have "
                           "ended with a box banked (default: 3)")
@@ -142,7 +182,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     log.info("device: %s  adb: %s", address, adb)
-    log.info("episode order: %s  boxes_per_episode: %d", args.order, args.boxes_per_episode)
     log.info("reveal snaps: %s", reveal_dir or "disabled")
     log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic_mode=hoard "
               "(fixed — no --relic/--relic-mode flag on this launcher)",
@@ -159,14 +198,32 @@ def main(argv: list[str] | None = None) -> int:
         print(f"adb error: {e}", file=sys.stderr)
         return 2
 
+    auto_detect = args.order is None
+    if auto_detect:
+        log.info("no --order given, reading current episode from home")
+        detected = _detect_current_episode(device, store)
+        if detected is None:
+            msg = "could not read episode number from home — pass --order explicitly"
+            log.error("%s", msg)
+            print(f"error: {msg}", file=sys.stderr)
+            return 2
+        log.info("detected Episode %d — farming this episode only", detected)
+        episode_iter = iter([detected])
+    else:
+        log.info("episode order: %s  boxes_per_episode: %d", args.order, args.boxes_per_episode)
+        episode_iter = itertools.cycle(args.order)
+
     try:
-        for episode in itertools.cycle(args.order):
-            log.info("=== switching to Episode %d ===", episode)
-            try:
-                switch_episode(device, store, episode)
-            except SwitchEpisodeError as e:
-                log.error("switch_episode(%d) failed: %s — skipping this episode", episode, e)
-                continue
+        for episode in episode_iter:
+            if auto_detect:
+                log.info("=== Episode %d (auto-detected, already selected) ===", episode)
+            else:
+                log.info("=== switching to Episode %d ===", episode)
+                try:
+                    switch_episode(device, store, episode)
+                except SwitchEpisodeError as e:
+                    log.error("switch_episode(%d) failed: %s — skipping this episode", episode, e)
+                    continue
             log.info("Episode %d selected, farming until %d boxes banked",
                       episode, args.boxes_per_episode)
 
@@ -187,6 +244,10 @@ def main(argv: list[str] | None = None) -> int:
                       episode, runner._session_boxes, args.boxes_per_episode)
             if args.max_cycles is not None:
                 log.info("--max-cycles set (debug mode) — stopping after one episode")
+                return 0
+            if auto_detect:
+                log.info("auto-detected single-episode run complete — stopping "
+                          "(pass --order to cycle multiple episodes)")
                 return 0
     except KeyboardInterrupt:
         print("\ninterrupted, stopping.")

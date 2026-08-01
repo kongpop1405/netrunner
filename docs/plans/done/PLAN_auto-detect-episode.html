@@ -78,6 +78,7 @@
     <span class="chip">Branch <b>feature/episode-loop-with-relic</b></span>
     <span class="chip">ต้องมี <b>LDPlayer + เกมจริง</b></span>
     <span class="chip">Plan <b>1 / 2</b></span>
+    <span class="chip" style="color:var(--gn);border-color:var(--gn)">✔ SHIPPED</span>
   </div>
 </header>
 
@@ -187,6 +188,17 @@ python -m pytest tests/          <span class="c"># ต้องเขียว �
     <li>ทดสอบ error path: ปิด home_play_marker ไม่ให้เห็น (อยู่กลาง popup) แล้วรัน auto-detect ต้อง fail loud
       ไม่ blind-tap</li>
   </ul>
+  <div class="note ok">
+    <b>✔ Implemented + verified live (ep4):</b> <code>_detect_current_episode()</code> ใน
+    <code>tools/run_episode_loop.py</code> — marker <code>home/episode_label_marker.png</code>
+    (คำว่า "Episode" เอง, อยู่<b>ก่อน</b>ชื่อ ep เลยไม่ขยับตามความยาวชื่อ ต่างจาก <code>relic_get_marker</code>)
+    + <code>EPISODE_DIGIT_OFFSET</code> วัดจริงจากจอ 1920x1080. Gate ด้วย <code>home_play_marker</code>
+    ก่อน OCR ทุกครั้ง (กัน popup). ผลอ่าน OCR clamp 1-7, ค่านอกช่วง = fail loud (None) ไม่เดา.
+    <code>--order</code> เป็น optional แล้ว, auto-detect = รอบเดียวไม่วน (ตรง scope). Unit test 10 เคส
+    (mock marker/OCR path) ใน <code>tests/test_run_episode_loop.py</code>, full suite 316 passed.
+    <b>ยังไม่ verify</b>: OCR ข้าม ep คนละความยาวชื่อ (ep1/ep6) — ต้องสลับ ep จริงบนจอ live ก่อน
+    (ข้ามไว้เพราะการสลับ ep จริงกระทบ progress ของ account จริง).
+  </div>
 </section>
 
 <div class="note info" style="margin-top:40px">

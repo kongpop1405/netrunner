@@ -167,27 +167,27 @@ probe_relic.on_absent มี Play tap (action shape _PLAY_TAP_XY)
   <h3>ภาพจริงของ flow (observe ไว้ตอน relic claim ครั้งแรก, Episode 6)</h3>
   <div class="shots">
     <figure class="shot">
-      <img src="assets/relic-stop-mode/01-badge-on-home.jpg" alt="home banner แสดง Get! badge เมื่อ relic พร้อม claim">
+      <img src="../assets/relic-stop-mode/01-badge-on-home.jpg" alt="home banner แสดง Get! badge เมื่อ relic พร้อม claim">
       <figcaption><b>1. badge บน home</b> — "Get!" ขึ้นเหนือ episode banner เมื่อ fragment ครบ (สถานะที่ <code>probe_relic</code> detect)</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/relic-stop-mode/02-relic-screen.jpg" alt="Relic screen พร้อมปุ่ม Claim">
+      <img src="../assets/relic-stop-mode/02-relic-screen.jpg" alt="Relic screen พร้อมปุ่ม Claim">
       <figcaption><b>2. Relic screen</b> — เปิดจาก tap badge, ปุ่ม Claim สีเขียวพร้อมกด</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/relic-stop-mode/03-claim-pressed.jpg" alt="ปุ่ม Claim ถูกกดแล้ว กำลังปลดล็อค">
+      <img src="../assets/relic-stop-mode/03-claim-pressed.jpg" alt="ปุ่ม Claim ถูกกดแล้ว กำลังปลดล็อค">
       <figcaption><b>3. Claim ถูกกด</b> — ปุ่มเข้มลง, chain กำลังคลาย (ก่อน <code>relic_reward</code> โผล่)</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/relic-stop-mode/04-reward-popup.jpg" alt="Congratulations popup แสดงรางวัลที่ได้">
+      <img src="../assets/relic-stop-mode/04-reward-popup.jpg" alt="Congratulations popup แสดงรางวัลที่ได้">
       <figcaption><b>4. Reward popup</b> — <code>relic_reward_marker</code> คือจุดที่ยืนยันว่า claim สำเร็จจริง (ไม่ใช่แค่ badge หาย)</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/relic-stop-mode/05-relic-screen-reset.jpg" alt="Relic screen กลับมาแสดง 0/7 หลัง claim">
+      <img src="../assets/relic-stop-mode/05-relic-screen-reset.jpg" alt="Relic screen กลับมาแสดง 0/7 หลัง claim">
       <figcaption><b>5. Relic screen รีเซ็ต</b> — counter กลับเป็น 0/N, ปุ่ม Claim หายไป — ต้องปิดด้วย X ก่อนกลับ home</figcaption>
     </figure>
     <figure class="shot">
-      <img src="assets/relic-stop-mode/06-back-home-clean.jpg" alt="กลับมาที่ home จอสะอาดไม่มี popup ค้าง">
+      <img src="../assets/relic-stop-mode/06-back-home-clean.jpg" alt="กลับมาที่ home จอสะอาดไม่มี popup ค้าง">
       <figcaption><b>6. home สะอาด</b> — จุดที่ stop point ต้องยิง (<code>probe_relic</code> absent → Play tap) ไม่ใช่ก่อนหน้านี้</figcaption>
     </figure>
     <figure class="shot empty">
@@ -199,13 +199,13 @@ probe_relic.on_absent มี Play tap (action shape _PLAY_TAP_XY)
 <section>
   <h2><span class="n">04</span>Interaction กับ auto-detect episode</h2>
   <p class="lead">
-    ถ้า plan คู่กัน (<code>03_PLAN_auto-detect-episode.html</code>) ทำเสร็จแล้ว — <code>--relic-mode stop</code>
+    plan คู่กัน (<code>PLAN_auto-detect-episode.html</code>) <b>ship แล้ว</b> — <code>--relic-mode stop</code>
     ใช้ร่วมกับ auto-detect ได้ตรง ๆ: ไม่ใส่ <code>--order</code> → อ่าน ep ปัจจุบันจาก home → farm ep นั้น
     วนจน relic claim สำเร็จ → หยุด. ถ้าใส่ <code>--order</code> หลาย ep → หยุดที่ ep แรกที่ claim สำเร็จ
     (ไม่ไล่ต่อทุก ep ที่เหลือ).
   </p>
   <div class="note info">
-    <b>ทำได้อิสระจากกัน</b> — ถ้า auto-detect ยังไม่เสร็จ <code>--relic-mode stop</code> ก็ยังใช้กับ
+    <b>ทำได้อิสระจากกัน</b> — ก่อน auto-detect เสร็จ <code>--relic-mode stop</code> ก็ยังใช้กับ
     <code>--order</code> เดิมได้ปกติ ไม่ต้องรอ plan 1 ก่อน.
   </div>
 </section>
@@ -249,7 +249,7 @@ python -m pytest tests/          <span class="c"># ต้องเขียว �
   <code>tools/run_toggle.py</code>'s <code>BoxQuitRunner._run_actions</code>. <code>--relic y/n</code> เดิม
   (<code>_strip_relic</code>) อยู่ไฟล์เดียวกัน. relic flow เต็ม (<code>probe_relic → relic_claim →
   relic_reward → relic_close</code>) อยู่ใน <code>config/cookierun/boxrun_toggle.json</code>. Plan คู่กัน:
-  <code>03_PLAN_auto-detect-episode.html</code> (plan 1/2).
+  <code>PLAN_auto-detect-episode.html</code> (plan 1/2).
 </div>
 
 </div>
