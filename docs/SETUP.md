@@ -59,8 +59,8 @@ adb and the emulator are **auto-detected**: the engine finds adb (`PATH`, then n
 `C:\LDPlayer\LDPlayer*\adb.exe`) and scans ports 5555/5557/5559/5561 for the one
 running instance. With LDPlayer started, the bots just work — no `.env` needed.
 
-Need one? Open **[docs/env-helper.html](docs/env-helper.html)** in a browser — answer
-three questions and it generates the `.env` content to copy/download. Cases that need it:
+Need one? Copy **[.env.example](../.env.example)** to `.env` and fill in only the keys
+you need. Cases that need it:
 
 | key | when |
 |-----|------|

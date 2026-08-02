@@ -20,4 +20,6 @@ were archived to trim the active set, not because anything is wrong with them.
 back up to `config/cookierun/` to reactivate it — nothing else needs changing,
 the engine finds it by path.
 
-The full per-config flow diagrams are in `docs/flow/FLOW_bots.html`.
+The bot comparison — including these archived configs and the `guard loop`
+in-run shape they use — is in `docs/flow/COMPARE_bots.html`. Per-state SVG
+graphs: `python tools/lint_config.py --svg docs/graphs <config>.json`.

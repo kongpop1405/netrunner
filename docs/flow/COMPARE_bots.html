@@ -1,0 +1,1251 @@
+<meta charset="utf-8">
+<title>NetRunner — เปรียบเทียบบอท (launcher)</title>
+<style>
+  :root{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;--bd2:#cbd5e1;
+    --tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;--acs:#e0f2fe;
+    --gn:#10b981;--gns:#d1fae5;--am:#f59e0b;--ams:#fef3c7;--rd:#f43f5e;--rds:#ffe4e6;
+    --in:#6366f1;--ins:#e0e7ff;--vi:#8b5cf6;--vis:#ede9fe;--cy:#06b6d4;--cys:#cffafe;
+    --shot:#0f172a}
+  @media(prefers-color-scheme:dark){:root{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;
+    --bd:#1e293b;--bd2:#334155;--tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;
+    --ac:#38bdf8;--acs:rgba(56,189,248,.12);--gn:#34d399;--gns:rgba(52,211,153,.14);
+    --am:#fbbf24;--ams:rgba(251,191,36,.14);--rd:#fb7185;--rds:rgba(251,113,133,.14);
+    --in:#818cf8;--ins:rgba(129,140,248,.14);--vi:#a78bfa;--vis:rgba(167,139,250,.14);
+    --cy:#22d3ee;--cys:rgba(34,211,238,.14);--shot:#000}}
+  :root[data-theme="dark"]{--bg:#020617;--elev:#0f172a;--elev2:#1e293b;--bd:#1e293b;
+    --bd2:#334155;--tx:#f1f5f9;--dim:#94a3b8;--faint:#64748b;--ac:#38bdf8;
+    --acs:rgba(56,189,248,.12);--gn:#34d399;--gns:rgba(52,211,153,.14);--am:#fbbf24;
+    --ams:rgba(251,191,36,.14);--rd:#fb7185;--rds:rgba(251,113,133,.14);--in:#818cf8;
+    --ins:rgba(129,140,248,.14);--vi:#a78bfa;--vis:rgba(167,139,250,.14);--cy:#22d3ee;
+    --cys:rgba(34,211,238,.14);--shot:#000}
+  :root[data-theme="light"]{--bg:#fff;--elev:#f8fafc;--elev2:#f1f5f9;--bd:#e2e8f0;
+    --bd2:#cbd5e1;--tx:#0f172a;--dim:#475569;--faint:#94a3b8;--ac:#0ea5e9;
+    --acs:#e0f2fe;--gn:#10b981;--gns:#d1fae5;--am:#f59e0b;--ams:#fef3c7;--rd:#f43f5e;
+    --rds:#ffe4e6;--in:#6366f1;--ins:#e0e7ff;--vi:#8b5cf6;--vis:#ede9fe;--cy:#06b6d4;
+    --cys:#cffafe;--shot:#0f172a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:14px/1.6 Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:44px 22px 90px}
+  .head{border-bottom:1px solid var(--bd);padding-bottom:22px;margin-bottom:8px}
+  .toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  h1{font-size:25px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px}
+  .sub{color:var(--dim);font-size:14px}
+  .toggle{background:var(--elev);color:var(--dim);border:1px solid var(--bd2);
+    border-radius:8px;padding:7px 13px;font:500 13px inherit;cursor:pointer}
+  .toggle:hover{background:var(--elev2);color:var(--tx)}
+  nav.toc{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  nav.toc a{font:600 12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:5px 10px;
+    border-radius:7px;background:var(--elev);border:1px solid var(--bd);color:var(--dim);text-decoration:none}
+  nav.toc a:hover{background:var(--acs);color:var(--ac);border-color:var(--ac)}
+  h2{font-size:20px;font-weight:700;margin:44px 0 6px;display:flex;align-items:center;gap:10px;scroll-margin-top:16px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:7px;background:var(--acs);color:var(--ac);font:700 12px ui-monospace,monospace;flex:none}
+  h3{font-size:15px;font-weight:700;margin:26px 0 8px}
+  p{margin:8px 0 14px;color:var(--dim)}
+  code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--elev2);
+    border:1px solid var(--bd);border-radius:5px;padding:1px 5px;color:var(--tx)}
+  .lead{color:var(--dim);margin:10px 0 0}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0 4px}
+  .tile{background:var(--elev);border:1px solid var(--bd);border-radius:10px;padding:12px 14px}
+  .tile .v{font:700 21px ui-monospace,monospace;letter-spacing:-.02em}
+  .tile .k{font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+  .scroll{overflow-x:auto;border:1px solid var(--bd);border-radius:10px;margin:14px 0}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+  thead th{background:var(--elev);font-weight:700;font-size:11.5px;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--faint);white-space:nowrap;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--elev)}
+  td.mono,th.mono{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tag{display:inline-block;font:600 11px ui-monospace,monospace;padding:2px 7px;border-radius:6px;
+    border:1px solid transparent;white-space:nowrap}
+  .t-box{background:var(--acs);color:var(--ac);border-color:var(--ac)}
+  .t-util{background:var(--vis);color:var(--vi);border-color:var(--vi)}
+  .t-lab{background:var(--cys);color:var(--cy);border-color:var(--cy)}
+  .t-ok{background:var(--gns);color:var(--gn)}
+  .t-no{background:var(--elev2);color:var(--faint)}
+  .t-warn{background:var(--ams);color:var(--am)}
+  .t-hot{background:var(--rds);color:var(--rd)}
+  .yes{color:var(--gn);font-weight:700}
+  .no{color:var(--faint)}
+  .note{border-left:3px solid var(--am);background:var(--ams);padding:10px 14px;
+    border-radius:0 8px 8px 0;margin:14px 0;color:var(--tx);font-size:13px}
+  .note.ac{border-color:var(--ac);background:var(--acs)}
+  .note.rd{border-color:var(--rd);background:var(--rds)}
+  .note b{font-weight:700}
+
+  /* ---- marker chips: crop จริงที่ CV จับ ---- */
+  .mk{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+  .mk figure{margin:0;background:var(--elev);border:1px solid var(--bd);border-radius:10px;
+    padding:10px;width:172px}
+  .mk .img{height:52px;background-repeat:no-repeat;background-position:center;
+    background-size:contain;background-color:var(--shot);border-radius:6px}
+  .mk figcaption{margin-top:7px;font:600 11px ui-monospace,monospace;color:var(--dim);
+    word-break:break-all;line-height:1.4}
+  .mk .px{color:var(--faint);font-weight:400}
+
+  /* ---- full screenshots: popup ชนิดไหน ---- */
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin:16px 0}
+  .shots figure{margin:0;background:var(--elev);border:1px solid var(--bd);border-radius:11px;
+    padding:12px;display:flex;flex-direction:column}
+  .shots .img{aspect-ratio:16/9;background-repeat:no-repeat;background-position:center;
+    background-size:contain;background-color:var(--shot);border-radius:7px;border:1px solid var(--bd)}
+  .shots figcaption{margin-top:10px;font-size:12.5px;color:var(--dim);line-height:1.55}
+  .shots figcaption b{color:var(--tx)}
+  .shots .hd{font:700 12px ui-monospace,monospace;margin-bottom:6px;display:flex;
+    align-items:center;gap:7px;flex-wrap:wrap}
+
+  /* ---- 3-tier flow ---- */
+  .tier{font:700 10.5px ui-monospace,monospace;letter-spacing:.07em;text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:7px;margin:0 0 10px}
+  .tier.t1{background:var(--acs);color:var(--ac)}
+  .tier.t2{background:var(--vis);color:var(--vi)}
+  .tier.t3{background:var(--ams);color:var(--am)}
+  /* detailed state node: name / detect / match / absent */
+  .sn{background:var(--bg);border:1px solid var(--bd2);border-radius:9px;overflow:hidden;
+    min-width:186px;flex:none;font-size:11px}
+  .sn .nm{font:700 11.5px ui-monospace,monospace;padding:6px 9px;border-bottom:1px solid var(--bd);
+    background:var(--elev2);display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .sn .nm em{font:400 9.5px ui-monospace,monospace;font-style:normal;color:var(--faint)}
+  .sn .det{padding:5px 9px;color:var(--dim);font:10.5px ui-monospace,monospace;
+    border-bottom:1px dashed var(--bd);word-break:break-all}
+  .sn .br{padding:5px 9px;display:flex;gap:7px;align-items:flex-start;line-height:1.5}
+  .sn .br + .br{border-top:1px solid var(--bd)}
+  .sn .br i{font-style:normal;font:700 9.5px ui-monospace,monospace;flex:none;
+    padding:1px 5px;border-radius:4px;margin-top:1px}
+  .sn .br.y i{background:var(--gns);color:var(--gn)}
+  .sn .br.n i{background:var(--rds);color:var(--rd)}
+  .sn .br span{color:var(--dim);word-break:break-word}
+  .sn .br b{color:var(--tx);font-weight:600}
+  .sn.gn{border-color:var(--gn)} .sn.gn .nm{background:var(--gns)}
+  .sn.ac{border-color:var(--ac)} .sn.ac .nm{background:var(--acs)}
+  .sn.am{border-color:var(--am)} .sn.am .nm{background:var(--ams)}
+  .sn.rd{border-color:var(--rd)} .sn.rd .nm{background:var(--rds)}
+  .sn.vi{border-color:var(--vi)} .sn.vi .nm{background:var(--vis)}
+  .sn.dead{border-style:dashed;opacity:.6}
+  .vflow{display:flex;flex-direction:column;gap:0;align-items:flex-start}
+  .var{color:var(--bd2);font:600 12px ui-monospace,monospace;padding:3px 0 3px 22px;white-space:pre}
+  .var b{color:var(--rd)} .var i{color:var(--gn);font-style:normal}
+  .chain{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:10px 0}
+  .chain .c{font:600 10.5px ui-monospace,monospace;padding:4px 8px;border-radius:6px;
+    background:var(--elev);border:1px solid var(--bd);color:var(--dim);white-space:nowrap}
+  .chain .c.hit{background:var(--gns);border-color:var(--gn);color:var(--gn)}
+  .chain .c.end{background:var(--acs);border-color:var(--ac);color:var(--ac)}
+  .chain .s{color:var(--faint);font:11px ui-monospace,monospace}
+
+  /* ---- flow diagram ---- */
+  .flow{background:var(--elev);border:1px solid var(--bd);border-radius:12px;padding:18px;margin:16px 0;overflow-x:auto}
+  .row{display:flex;align-items:stretch;gap:0;min-width:min-content}
+  .nd{background:var(--bg);border:1px solid var(--bd2);border-radius:9px;padding:9px 12px;
+    min-width:104px;text-align:center;flex:none}
+  .nd .t{font:700 11.5px ui-monospace,monospace;color:var(--tx);white-space:nowrap}
+  .nd .d{font-size:10.5px;color:var(--faint);margin-top:2px;white-space:nowrap}
+  .nd.ac{border-color:var(--ac);background:var(--acs)}
+  .nd.gn{border-color:var(--gn);background:var(--gns)}
+  .nd.am{border-color:var(--am);background:var(--ams)}
+  .nd.rd{border-color:var(--rd);background:var(--rds)}
+  .nd.vi{border-color:var(--vi);background:var(--vis)}
+  .nd.in{border-color:var(--in);background:var(--ins)}
+  .ar{display:flex;align-items:center;justify-content:center;color:var(--bd2);
+    font:600 13px ui-monospace,monospace;padding:0 7px;flex:none;white-space:nowrap}
+  .ar b{color:var(--ac)}
+  .lbl{font:600 10.5px ui-monospace,monospace;color:var(--faint);margin:12px 0 6px;
+    text-transform:uppercase;letter-spacing:.05em}
+  .branch{border-left:2px dashed var(--bd2);margin-left:16px;padding-left:16px;margin-top:10px}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:14px 0}
+  .card{background:var(--elev);border:1px solid var(--bd);border-radius:11px;padding:14px 16px}
+  .card h4{margin:0 0 4px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card p{margin:6px 0 0;font-size:12.5px}
+  .card ul{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--dim)}
+  .card li{margin:3px 0}
+  .kv{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .kv span{font:600 11px ui-monospace,monospace;background:var(--elev2);border:1px solid var(--bd);
+    border-radius:6px;padding:2px 7px;color:var(--dim)}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--bd);
+    color:var(--faint);font-size:12px}
+  /* template crops (webp, inline) */
+.m-home_play{background-image:url(data:image/webp;base64,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)}
+.m-heart_empty{background-image:url(data:image/webp;base64,UklGRsIAAABXRUJQVlA4ILYAAABwBQCdASoqAB4APmEoj0WkIqEdWzQAQAYEtIAAi9+1LM/bYd2TLOzIiPUESzrWk3OyN2EAAP7xIDlFVttIffq8SS9P6ULMIUpVM9eguoUMBrOzFWu+6QZZozbcO2rgPRtcpTxKdXPHtHxV7Oqhs+/19NRl/AhlMaGvTDHuUsjgYdMlGlfWZsxawUFu0KyiZry4mFNx6n3J5P0/H8pR3uMD9xWdKK9uAl1kn3yln9O5+bztq/cgAA==)}
+.m-boostshop{background-image:url(data:image/webp;base64,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)}
+.m-magnet{background-image:url(data:image/webp;base64,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)}
+.m-speed{background-image:url(data:image/webp;base64,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)}
+.m-doublecoins{background-image:url(data:image/webp;base64,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)}
+.m-result{background-image:url(data:image/webp;base64,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)}
+.m-mysterybox{background-image:url(data:image/webp;base64,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)}
+.m-boxcounter{background-image:url(data:image/webp;base64,UklGRroFAABXRUJQVlA4IK4FAACwHgCdASp4AFIAPmkojUWkIqEc+dxwQAaEoAvkX4Wh6g5y+bh/N+qOn5TPR+52jdX/QAbM7x1G/QNXXqiWdLr0oAn8LX175BAr0+yF5gv+df3zK85OJ2AFGs4QqG+Px7LlxQCi7po/hSctfQeLRiu30gD3PIUZdLEXlG+TyhRtJ2RKR7sk8c4bQlG3wj82ndWGuDbhoKDQv7RQJCI0VJVme0LwH0avTkbG0u4s3c8CV1LHsDYTfYkAosHF3hh8mPVSXKIDhUD6TzJKpxsap9n7MHJAIPfFkpJhCb8PVzCx/gdyj+pXtYx0eBJK0xq4pw4vanpK5KMLdeLEu4aEwADI7P2U9UXMhaaMl6ho/btXQv6PqFjipYv//ZrNJ8uge2m3V6uttTdS4KlT+9gecVdpaQ3KgmvTY3rAQbboDLLTKft6/1fMvvnNakzbR3YaXjVTE0/T2qu5L78b592S4fWEuJ7jMthR0YBexN5thrxA/4m9N1+ELcOUaUoE9+cOQw2PKAmB/oTToTMi5WpXwpaKPR1qZmyUgT3YD4LLJ44TX11/3QVuQEmeLkAHjCZtW4LZi3Ffc8XQMaW6yje0hV2SJDuXmUAosWnuwFAD+1g5liiIVuh3UIKZoSHqyq9VArSZ6o4WirI2MPm9svw+WTFWhT8XKSI6zl3WDchD499K6WTybPnpKs9j2bXeg6ShC7X5g1AKoXlE/NzUMS1LhIWdVJE1Ktnq3FdAIYsMweadZdBv+J/CBMIMjjSLxPy15N71cQu6IWK7bTWOSXkpObbmeZOq1nbt/efS+C+pFO7rFHqWIcN8zn4khIu7oQufNMrB2cUrwlFOsO5ail16o4nEvHdQsqXzrGkNlQb7IHI52HCHKNphsSWgxX/N50cI08rvzm7M+QjM6FSHDfrhNk8wAI1hy/7Fz0DL2whSdRAaIFj3TcKVSMNTi0qgtUE7ZoaM41JK9Q/RuWBCRUVfAeigSXX/qrzUDwiFkgPtLSvUwOC4c+RwQC1M7skIV+NlQ8vb8JxZ8qf8lIXwZThEPPGwlYOft1yg6MHY+JaPgemcAzRVZJWbYwjYykfm+rheXms6d/rIp/2cMfE9+WgGRXXh8hmCe7gOh7Ird4KNPWoao+zoX23T9ilEqqLiNYkUrsh59860cHssTsp4/A6ItVjiV8ruoJPdrMqecFb8FoqzZ/yIFYjCZeAeIPwjaJ3VmUHiYBlcSCSNeAWbCsbrCRDtyKRfIn7uh4HrkZjyQBTrg6mpOxqLcAvIGFto96wJD4L7sdupDS9YfJ5ip3jWgXK61rCWpsI8tgDrqC7Ig55p+i4FBNZNHEwdHfOKKAykMtTQ04+Z839C5Q/l/eB4FREsoFYGrOJOe6lk0vcRCdnLwDh/0qAiYnlOMXRwqy3rInwiBqCrPxmNNY18TAdfesI9suW5TEqsD1idd3C+3TPMM428JQIQ9nodmdiAa5MHBx2/EFR3bsEisHKSApsZP6BzQo+Y3Jqtca+9tL12ymub92OTLQezi3zuoKVUbIjwo59q7HO5UuOMXSaN5n7zg+c1t0BjG7Nf2zYwS7Y7O2jhyGQ6vF4nSkJLX/LCmQ2DkRNeTtgo15yEtgRbFqN8Hi4c60XF88jJRZsEs/nBt9seUCg3oYM/jOkU6khuF4iWnZavrEAEvpviF8QNRwKkwDCsbkFojyPBon2Y+P55OzOLADRTKFWY6NUOVkpr4q813hC8o3VgAToJm4hXLjb52VBhvBUTMZ/oxSxGz8A+crPc/GRehNWbNAGGr3kcy5iuRLMll7ic/JsFGyhGN3qsVkMeg0lzGuscnXpuXzKXGw7isaselZuUxEGnBsu/x06d0rBls8tnkyg9DozHtBAfP/oWK1bicKZQqEuYtTQ4TBfn4dimsDJLlOG3HyCZvUAA3dRcuP+1j6DIi0UeeKwgAA==)}
+.m-picker{background-image:url(data:image/webp;base64,UklGRpIBAABXRUJQVlA4IIYBAADQDQCdASosARwAPm00lUgkIqIhpRgJgIANiWgAwpsF7f/Jz8GoS9vGh6ys4eL4+hH/2CTkl8qlwafNDLpf7nZeCFWhAJi2M56MgaSjLWWE+D/Nn24oshidQfzRmsrWvWdcxfK6T00496szxBqb6/9f3L3qzDsHAAD+/hY4p6nlq7IDyI8Gi8TVwu3oiH2AeOxytu3/kbr8sz/gCvOdfjlpiopoF+x0UgXHCdXMJFZSspxghGhaZNrwcBH+tuT5W9WDMKgL/AhMZH1tRFAi3mca5nlvAccc9ivBdTXV4+P34JeLHMH2cVtYaRVf6i8FMs2CJx2dBALJwz0gRH+zkREL8mItg38IfLQcfkAnrXlllGCkX5v4sT3E4M5sE8QOdwZFGw3V/kzPZNQ539DiYYw22ih90BOQor8H8GpEXQK4+b7QeHsXBp3+7ohYbXGqS/Ab+Y1PTmPmOPptD82qOvadj/KQc03+UfOtOG95kxZNS9NZE7x38ucaVFb26MJJBxPSyS4uYAA=)}
+.m-relic_get{background-image:url(data:image/webp;base64,UklGRo4EAABXRUJQVlA4IIIEAAAQGgCdASp9ADIAPm0sk0YkIqGhLRO9CIANiWoA0BA+RFfLflLzpnZXgzidDE3AP7N6s9tP5gP2G9U3pAP7T1QHoZ+XD7OP7c+jdqx7Bv8J0cXrLLvfEezuAOXVwf0z5r6U28OUHzYcZ+pAuCcyKGnweTclUf/Pis4NhmjFtVPBPlcqND0JtxXrM+I2AvhzEk/IbaeHG2D0S+CBam5aelq5bsXYJTqO+wEBfHZh5vF5xA5Q8s/cqEiET5B0rW9E0ZLGjyORRUnRMjsWRK/g71r4HlcxzZvU7rqgAP2wXk2sdnI4p72XvUB3d92iBZz+Z3xMPl+/y35PCe7IQ3BhJ3s3ZbNSu5V21XWe0Kgt/3mHFJZtfVjhpZTv/KAnOe9g9icUq6Eywf0eZaMf5bo3wSK9gna6jd1kGR+88tRSx5w8dahodoDDj7VisXseDwV9fIwdafabEHyOBh/z2N2E2ZJD4X8ZN+1CqzaVOdb9iVNlz8miwesRQeEZB6qBH8mPGnW/do9odnWCn2Sm1/mQgSWaQsdhvgXDmduJdAjRyz/z0rzRfMreC+Iq+mSdn8hHwqjHSU4X6uH6uiXgqO6L2mKltR//2Dw9ubv2JphOS/NO4W6/axgQ5eDldjS8Q7Bj/1kp6ydoWMjl/Ac37w4bO10d6a4TeNWeC+lv+2nY1TEIame5uu+9lLr1XcxLeOruWcK3w0Uq+Wnxjok0ZC+rcsuI2/loyVwOxYvn004++W9lL5+o26OZIIxWPQPD7eiz9GRRFH/EnSDQktMrM1dzFKBI2C5fgF+sxiHrUP+FgTGfU9tmvLmCkzNLtN27mMqXlRBMZqVq7SHQMcJSnGPBGSO+ivNqPMPu9f00rY+8F1k72bBJ3oZjj6NjJioFZNrvBxSWXYYngm7AL1QJFpbVHrzv6j3XJjUqpLY5jJTaHXkwpl/MRZC2F3XWBe3UUotECNcX5cBJgsCHPt9gLF5ygI+Zx/wYdRusLk4B7JYBgFuWwutE+wt/cdy8Nc0Jg8U4/hldDJoUz8FiQdrBwJvdw29hZhuM2ZV2r/Xa44f+eH95CLJfKnFWTAxitxhE/sY0e8MBfrvzjKE6vMOqJi6znPeT/g5oKpDadEAfLKCUchuyf4ETxX8vPETwlpA4osHIDhAclI1Hek4vwvS+KUaQUEiYyDB1dYUTlmontXGn5QrWoSkKezJyPrxGIt0/c43WWC61sTdUx10uU/p6dtEyg17k421J/BZvTuiAzDAaXDUloG3K7MPe+UBWWNP3PAq77tS/9hhq+PuHzCT6oD4Gr1mAr7z4UEm/8Bybydn9D4HgH7zn7vNsQxHIHdQwpuBnrrZsHsHX1gavl9Nf4qqTbsk04f2FNuZmKGyFZlr3ByHNz0HkaWLtnTtQorQaoZhPork1PiNhl95m2VRi95FsDE1F9yLWFvtIAXRUkZcEEip98g7mcXYp7gkuo9CYlANyndAaGLzRD21hAhOF/Cb6E8JxQjnhd5rjez/DzFinGL8Nfcm0qjX1my4Owy8WJhkY83oAAA==)}
+.m-findtab{background-image:url(data:image/webp;base64,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)}
+  /* full-screen captures (webp, inline) */
+.s-popup_visible{background-image:url(data:image/webp;base64,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)}
+.s-popup_covers{background-image:url(data:image/webp;base64,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)}
+  @media(max-width:640px){.wrap{padding:28px 14px 60px}h1{font-size:21px}}
+</style>
+
+<div class="wrap">
+<header class="head">
+  <div class="toprow">
+    <div>
+      <h1>NetRunner — เปรียบเทียบบอทแต่ละตัว</h1>
+      <div class="sub">13 launcher · 11 config · engine เดียวกัน · Cookie Run: OvenBreak @1920×1080 · ณ 2026-08-02</div>
+    </div>
+    <button class="toggle" id="tg">☀ Light</button>
+  </div>
+  <nav class="toc">
+    <a href="#s1">01 ตารางเทียบ</a>
+    <a href="#s2">02 บอทเห็นอะไร</a>
+    <a href="#s3">03 flow box-farm</a>
+    <a href="#s4">04 diff 3 จุด</a>
+    <a href="#s5">05 flow utility</a>
+    <a href="#s6">06 เลือกตัวไหน</a>
+    <a href="#s7">07 pacing</a>
+    <a href="#s8">08 กลไกร่วม</a>
+    <a href="#s9">09 archived</a>
+    <a href="#s10">10 popup coverage</a>
+  </nav>
+  <p class="lead">ทุกบอทใช้ engine ตัวเดียว (<code>src/fsm.py</code> — capture → perceive → act loop) ความต่างอยู่ที่ <b>config JSON</b> ล้วน. launcher <code>.bat</code> แค่เลือก config + ถาม flag แล้วเรียก <code>main.py</code> หรือ <code>tools/run_toggle.py</code>.</p>
+</header>
+
+<div class="stats">
+  <div class="tile"><div class="v">13</div><div class="k">launcher .bat</div></div>
+  <div class="tile"><div class="v">11</div><div class="k">config JSON</div></div>
+  <div class="tile"><div class="v">75</div><div class="k">state สูงสุด (toggle)</div></div>
+  <div class="tile"><div class="v">3</div><div class="k">state ต่ำสุด (mailbox)</div></div>
+  <div class="tile"><div class="v">~37</div><div class="k">state ร่วม box-farm</div></div>
+  <div class="tile"><div class="v">3</div><div class="k">จุดที่ต่างกันจริง</div></div>
+  <div class="tile"><div class="v">14</div><div class="k">popup ที่ปิดได้</div></div>
+  <div class="tile"><div class="v">10</div><div class="k">popup ที่ยัง stall</div></div>
+</div>
+
+<h2 id="s1"><span class="n">01</span> ตารางเทียบ — launcher ทั้งหมด</h2>
+<p>เรียงตามกลุ่มงาน. คอลัมน์ <b>ผ่าน</b> = launcher เรียก <code>main.py</code> ตรง (config บน disk) หรือ <code>run_toggle.py</code> (patch FSM ใน memory ตอนรัน — ไฟล์ JSON ไม่เปลี่ยน).</p>
+<div class="scroll">
+<table>
+<thead><tr>
+  <th>Launcher</th><th>กลุ่ม</th><th>ผ่าน</th><th>Config</th><th class="mono">states</th>
+  <th>Boost</th><th>จบ run ยังไง</th><th>Cycle cap</th><th>ต้องตอบคำถาม</th>
+</tr></thead>
+<tbody>
+<tr>
+  <td class="mono">boxrun_default.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">main.py</td><td class="mono">boxrun_default</td><td class="mono">47</td>
+  <td><span class="tag t-warn">speed +17%</span></td><td>quit ทันทีที่ได้กล่อง</td><td class="no">∞</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">boxrun_speed.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">main.py</td><td class="mono">boxrun_speed</td><td class="mono">52</td>
+  <td><span class="tag t-warn">speed +17%</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">boxrun_magnet.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">main.py</td><td class="mono">boxrun_magnet</td><td class="mono">52</td>
+  <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">boxrun_relay.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">main.py</td><td class="mono">boxrun_relay</td><td class="mono">52</td>
+  <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · <b>relay ×2/hop</b></td><td class="no">∞</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">boxrun_toggle.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">75</td>
+  <td>เลือกตอนรัน</td><td>เลือกตอนรัน (<code>--quit-after-boxes</code>)</td><td class="no">∞</td><td><span class="tag t-warn">8 ข้อ</span></td>
+</tr>
+<tr>
+  <td class="mono">boxrun_magnet_hoard.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">75</td>
+  <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · relic=hoard</td><td class="no">∞</td><td class="no">— (preset)</td>
+</tr>
+<tr>
+  <td class="mono">run_boxrun_noboost_claim.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">75</td>
+  <td><span class="tag t-no">none</span></td><td>เล่นจนตาย · relic=claim</td><td class="no">∞</td><td class="no">— (preset)</td>
+</tr>
+<tr>
+  <td class="mono">coinrun.bat</td><td><span class="tag t-box">coin</span></td>
+  <td class="mono">main.py</td><td class="mono">coinrun</td><td class="mono">54</td>
+  <td><span class="tag t-ok">Double Coins</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">giftdraw.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">main.py</td><td class="mono">giftdraw</td><td class="mono">13</td>
+  <td class="no">—</td><td>draw หมด → ปิด popup</td><td class="mono">boxes×4+8</td><td>จำนวนกล่อง</td>
+</tr>
+<tr>
+  <td class="mono">sendlife.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">main.py</td><td class="mono">sendlife</td><td class="mono">16</td>
+  <td class="no">—</td><td>สุด list (2 scan ว่าง)</td><td class="mono">300</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">sendlife_mailbox.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">main.py</td><td class="mono">sendlife_mailbox</td><td class="mono">3</td>
+  <td class="no">—</td><td>dialog ไม่เด้งซ้ำ</td><td class="mono">250</td><td class="no">—</td>
+</tr>
+<tr>
+  <td class="mono">addfriend.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">main.py</td><td class="mono">addfriend</td><td class="mono">15</td>
+  <td class="no">—</td><td><span class="tag t-warn">ไม่มี</span> — cap เท่านั้น</td><td class="mono">friends×5/4+8</td><td>จำนวน request</td>
+</tr>
+<tr>
+  <td class="no mono">— (ไม่มี .bat)</td><td><span class="tag t-lab">lab</span></td>
+  <td class="mono">main.py</td><td class="mono">xpstat</td><td class="mono">45</td>
+  <td class="no">none (คุม coin คงที่)</td><td>วัด XP/run</td><td class="no">—</td><td class="no">—</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="note ac"><b>3 launcher นั่งบน config เดียวกัน</b> — <code>boxrun_toggle.bat</code> / <code>boxrun_magnet_hoard.bat</code> / <code>run_boxrun_noboost_claim.bat</code> ใช้ <code>boxrun_toggle.json</code> ทั้งหมด ต่างกันแค่ argv ที่ส่งเข้า <code>run_toggle.py</code>. สองตัวหลัง = preset ไม่ต้องตอบ 8 คำถามซ้ำ.</div>
+
+<div class="note rd"><b>⚠ xpstat = test account เท่านั้น — ห้ามชี้ที่ main</b>. config ปักไว้ที่ <code>127.0.0.1:5559</code> (<code>cr-idfarm</code>) — <b>ห้ามเปลี่ยนไป 5557 (main account)</b>. เป็น copy ของ <code>coinrun</code> ที่ถอด buy chain ออกทั้งชุด (<code>probe_dc_owned</code>/<code>buy_boost</code>/<code>picker</code>/<code>wait_roll</code>/<code>check_boost_result</code>/<code>insufficient_coins</code>/<code>force_play</code>/<code>start_run</code>/<code>retry_buy</code>) — ไม่ซื้ออะไรเลย coin จึงคงที่ ตัวแปรเดียวคือ XP/run. relay tap (960,540) ก็ถอดออกด้วย — เป็นตัวการอันดับ 1 ที่ทำให้ tap หลุดไปโดนกระดาน leaderboard.</div>
+
+<p>อยากได้ graph ต่อ state แบบเต็มของ config ไหน — <code>tools/lint_config.py</code> gen ให้ได้ (BFS-layered, orphan state โชว์สีแดง):</p>
+<div class="scroll" style="border:0"><table style="min-width:0"><tbody><tr><td class="mono" style="border:0;padding:0">python tools/lint_config.py --svg docs/graphs config/cookierun/&lt;name&gt;.json</td></tr></tbody></table></div>
+
+<h2 id="s2"><span class="n">02</span> บอท "เห็น" อะไร — template จริงที่ CV จับ</h2>
+<p>บอทไม่ได้เข้าใจเกม — มันจับคู่ crop เล็ก ๆ พวกนี้กับหน้าจอทุก poll (<code>cv2.matchTemplate</code>, threshold 0.82–0.85). ทุกภาพข้างล่างคือไฟล์จริงใน <code>templates/cookierun/</code> ที่ state machine อ่าน.</p>
+<div class="mk">
+  <figure><div class="img m-home_play"></div><figcaption>home/home_play_marker<span class="px"> · 200×75</span></figcaption></figure>
+  <figure><div class="img m-heart_empty"></div><figcaption>boxrun/heart_empty<span class="px"> · 42×30 · gate</span></figcaption></figure>
+  <figure><div class="img m-boostshop"></div><figcaption>boxrun/boostshop_marker<span class="px"> · 550×70</span></figcaption></figure>
+  <figure><div class="img m-picker"></div><figcaption>boxrun/picker_marker<span class="px"> · 640×60</span></figcaption></figure>
+  <figure><div class="img m-magnet"></div><figcaption>boxrun/magneticaura_banner<span class="px"> · 595×86</span></figcaption></figure>
+  <figure><div class="img m-speed"></div><figcaption>boxrun/speedbase17_banner<span class="px"> · 460×70</span></figcaption></figure>
+  <figure><div class="img m-doublecoins"></div><figcaption>boxrun/doublecoins_banner<span class="px"> · 460×70</span></figcaption></figure>
+  <figure><div class="img m-result"></div><figcaption>boxrun/result_marker<span class="px"> · 400×110</span></figcaption></figure>
+  <figure><div class="img m-mysterybox"></div><figcaption>boxrun/mysterybox_marker<span class="px"> · 520×110</span></figcaption></figure>
+  <figure><div class="img m-boxcounter"></div><figcaption>boxrun/boxcounter_marker<span class="px"> · 120×82</span></figcaption></figure>
+  <figure><div class="img m-relic_get"></div><figcaption>relic/relic_get_marker<span class="px"> · 125×50</span></figcaption></figure>
+  <figure><div class="img m-findtab"></div><figcaption>home/findtab_marker<span class="px"> · 290×75</span></figcaption></figure>
+</div>
+<div class="note"><b>3 banner นี้คือหัวใจของการเทียบบอท</b> — <code>magneticaura</code> / <code>speedbase17</code> / <code>doublecoins</code> ต่างกันแค่ว่า config ไหน probe อันไหน. เจอ banner บนแผงขวา = "ซื้อแล้ว ข้ามไปเล่น" · ไม่เจอ = เดิน buy chain. คะแนน CV แยกขาด: มี banner ≈ 1.000 · ไม่มี ≈ 0.35.</div>
+
+<h2 id="s3"><span class="n">03</span> Flow box-farm — 3 ชั้นความละเอียด</h2>
+<p>ชั้น 1 = วงรอบ · ชั้น 2 = ข้างในแต่ละก้อน · ชั้น 3 = state จริงพร้อม detect/tap. อ้างอิง <code>boxrun_magnet.json</code> (52 states) — config อื่นต่างแค่ 3 จุดใน <a href="#s4">section 04</a>.</p>
+
+<div class="tier t1">ชั้น 1 · วงรอบ</div>
+<div class="flow">
+  <div class="row">
+    <div class="nd gn"><div class="t">A · เข้าเกม</div><div class="d">home → gate → Play!</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">B · ซื้อ boost</div><div class="d">shop → picker → roll</div></div>
+    <div class="ar">→</div>
+    <div class="nd rd"><div class="t">C · gate หัวใจ</div><div class="d">0 ❤ → รอ</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">D · วิ่ง</div><div class="d">J→S→J ตาบอด</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">E · เก็บกล่อง</div><div class="d">result → box</div></div>
+    <div class="ar">↺</div>
+    <div class="nd gn"><div class="t">home</div><div class="d">ครบรอบ</div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <div class="nd rd"><div class="t">marker หาย</div><div class="d">จอไม่ตรงที่คาด</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">F · popup chain</div><div class="d">ไล่ปิดทีละตัว</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">กลับวงเดิม</div><div class="d">—</div></div>
+  </div>
+</div>
+
+<div class="tier t2">ชั้น 2 · ข้างในแต่ละก้อน</div>
+
+<h3>A · เข้าเกม — gate 4 ชั้น fallthrough</h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd gn"><div class="t">home</div><div class="d">home_play 1.00</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">no_popup</div><div class="d">inactive?</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">no_sendlife</div><div class="d">sendlife?</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">no_prevresults</div><div class="d">prevresults?</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">no_enterleague</div><div class="d">enterleague?</div></div>
+    <div class="ar">ว่างหมด →</div>
+    <div class="nd ac"><div class="t">tap Play!</div><div class="d">(1650,970)</div></div>
+  </div>
+  <div class="var">   เจอตัวไหน → ปิด → <b>กลับ home ตั้งต้นใหม่</b> (ไม่เดินต่อ)</div>
+</div>
+
+<h3>B · ซื้อ boost</h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd ac"><div class="t">await_shop</div><div class="d">shop เปิด?</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">probe_magnet</div><div class="d">มี banner แล้ว?</div></div>
+    <div class="ar">ไม่มี →</div>
+    <div class="nd am"><div class="t">buy_magnet</div><div class="d">เปิด picker</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">picker</div><div class="d">ติ๊ก + Multi-Buy</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">wait_roll</div><div class="d">เกม roll เอง</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">start_run</div><div class="d">banner มายัง?</div></div>
+  </div>
+  <div class="var">   probe เจอ banner ─────────────────────────────────────────────→ <i>ข้ามไป C</i></div>
+  <div class="var">   start_run ไม่เจอ ×4 → retry_buy ↺ · shop ไม่เปิดเลย → <i>ข้ามไป D</i></div>
+</div>
+
+<h3>C · gate หัวใจ</h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd rd"><div class="t">check_heart</div><div class="d">heart_empty?</div></div>
+    <div class="ar">เจอ (0 ❤) ↺</div>
+    <div class="nd rd"><div class="t">รอ 30 วิ</div><div class="d">timeout 25 นาที</div></div>
+  </div>
+  <div class="var">   ไม่เจอ (มี ❤) → tap Play (1365,931) → faststart ×18 → <i>D</i></div>
+</div>
+
+<h3>D · วิ่ง — hop 4 จังหวะ</h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd am"><div class="t">guard_not_inactive</div><div class="d">J + relay</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">jump_2</div><div class="d">J + relay</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">jump_3</div><div class="d">S + relay</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">jump_4</div><div class="d">J + relay</div></div>
+    <div class="ar">↺ ทุกก้าวเช็ค</div>
+    <div class="nd vi"><div class="t">result_marker</div><div class="d">เจอ = ตายแล้ว → E</div></div>
+  </div>
+</div>
+
+<h3>E · เก็บกล่อง</h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd vi"><div class="t">run_result</div><div class="d">tap (702,940)</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">mystery_box</div><div class="d">มีกล่อง?</div></div>
+    <div class="ar">มี →</div>
+    <div class="nd am"><div class="t">mb_open</div><div class="d">3 tap ↺ จนหมด</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">mb_recheck</div><div class="d">Play! กลับมา?</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">home</div><div class="d">ครบรอบ</div></div>
+  </div>
+  <div class="var">   ไม่มีกล่อง ────────────────────────────────────→ <i>home ตรง</i></div>
+</div>
+
+<h3>F · popup chain — 2 ทาง เข้าคนละจุด</h3>
+<p>ทั้งสองเป็นสายเดียวกัน ต่างที่จุดเข้า:</p>
+<div class="chain">
+  <span class="c end">home absent</span><span class="s">→</span>
+  <span class="c hit">connectionlost</span><span class="s">→</span>
+  <span class="c">enterleague</span><span class="s">→</span>
+  <span class="c">inactive</span><span class="s">→</span>
+  <span class="c">settings</span><span class="s">→</span>
+  <span class="c">fortunebakery</span><span class="s">→</span>
+  <span class="c">prevresults</span><span class="s">→</span>
+  <span class="c">dailycheckin</span><span class="s">→</span>
+  <span class="c">treasure</span><span class="s">→</span>
+  <span class="c">sendlife</span><span class="s">→</span>
+  <span class="c end">boost_shop</span>
+</div>
+<div class="chain">
+  <span class="c end">running absent</span><span class="s">→</span>
+  <span class="c hit">guard_not_home</span><span class="s">→</span>
+  <span class="c">shop</span><span class="s">→</span>
+  <span class="c">sendlife</span><span class="s">→</span>
+  <span class="c">levelup</span><span class="s">→</span>
+  <span class="c">news</span><span class="s">→</span>
+  <span class="c">inactive</span><span class="s">→</span>
+  <span class="c end">jump hops (D)</span>
+</div>
+<div class="chain">
+  <span class="c end">หลัง run</span><span class="s">→</span>
+  <span class="c hit">check_shop_after_run</span><span class="s">→</span>
+  <span class="c">boostshop</span><span class="s">→</span>
+  <span class="c">congrats</span><span class="s">→</span>
+  <span class="c">levelup</span><span class="s">→</span>
+  <span class="c">rankingrewards</span><span class="s">→</span>
+  <span class="c">giftdraw</span><span class="s">→</span>
+  <span class="c">news</span><span class="s">→</span>
+  <span class="c">friendinfo</span><span class="s">→</span>
+  <span class="c end">running</span>
+</div>
+<div class="note ac">เจอตัวไหน → <code>close_popup</code> + <code>verify</code> → <b>กลับ <code>home</code></b> เดินสายใหม่ตั้งแต่ต้น. ไม่เจอเลยทั้งสาย → ตกท้ายสาย.</div>
+
+<div class="tier t3">ชั้น 3 · state จริง — detect / เจอ / ไม่เจอ</div>
+
+<h3>A — gate chain เต็ม</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn gn"><div class="nm">home <em>to 20s</em></div>
+    <div class="det">home/home_play_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ <b>verify_no_popup</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ probe_connectionlost <b>(F)</b></span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">verify_no_popup <em>to 6s</em></div>
+    <div class="det">home/inactive_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>close(953,690) → <b>recover_login</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ verify_no_sendlife</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">verify_no_sendlife <em>to 6s</em></div>
+    <div class="det">sendlife/sendlife_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>close(727,688) → <b>home</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ verify_no_prevresults</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">verify_no_prevresults <em>to 6s</em></div>
+    <div class="det">boxrun/prevresults_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>close(950,680) → <b>home</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ verify_no_enterleague</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn ac"><div class="nm">verify_no_enterleague <em>to 6s</em></div>
+    <div class="det">boxrun/enterleague_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>close(960,700) → <b>home</b></span></div>
+    <div class="br n"><i>ไม่</i><span><b>tap(1650,970)</b> · wait 3s → await_shop</span></div>
+  </div>
+</div>
+</div>
+<div class="note rd">Play! ถูกกดที่ <b><code>on_absent</code> ของ gate ตัวสุดท้าย</b> — ไม่ใช่ state แยก. เพิ่ม gate ใหม่ = ย้าย 2 action นี้ไปไว้ที่ตัวใหม่.</div>
+
+<h3>B — buy chain เต็ม</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn ac"><div class="nm">await_shop <em>retries 6</em></div>
+    <div class="det">boxrun/boostshop_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ <b>probe_magnet</b></span></div>
+    <div class="br n"><i>ไม่</i><span>faststart ×14 → running <b>(D)</b></span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn vi"><div class="nm">probe_magnet <em>retries 3</em></div>
+    <div class="det">boxrun/magneticaura_banner.png</div>
+    <div class="br y"><i>เจอ</i><span>ซื้อแล้ว → <b>check_heart (C)</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ buy_magnet</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">buy_magnet</div>
+    <div class="det">boxrun/boostshop_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(810,875) · tap(1645,340) → <b>picker</b></span></div>
+    <div class="br n"><i>ไม่</i><span>shop ปิดไปแล้ว → running</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">picker <em>retries 1</em></div>
+    <div class="det">boxrun/picker_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>เคลียร์ติ๊กเก่า 10 ช่อง · ติ๊ก magnet · <b>Multi-Buy(950,880)</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ retry_buy</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">wait_roll <em>match_to 90s</em></div>
+    <div class="det">boxrun/rollstop_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>ยัง roll อยู่ · wait 800ms ↺ <b>ตัวเอง</b></span></div>
+    <div class="br n"><i>ไม่</i><span>roll จบ → start_run</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn ac"><div class="nm">start_run <em>retries 4</em></div>
+    <div class="det">boxrun/magneticaura_banner.png</div>
+    <div class="br y"><i>เจอ</i><span>ซื้อสำเร็จ → <b>check_heart (C)</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ retry_buy ↺</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn rd"><div class="nm">retry_buy</div>
+    <div class="det">boxrun/nocoins_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ insufficient_coins</span></div>
+    <div class="br n"><i>ไม่</i><span>→ buy_magnet ↺</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn rd"><div class="nm">insufficient_coins</div>
+    <div class="det">boxrun/nocoins_marker.png</div>
+    <div class="br y"><i>เจอ</i><span><b>close(770,685) = Cancel</b> → force_play</span></div>
+    <div class="br n"><i>ไม่</i><span>→ force_play</span></div>
+  </div>
+</div>
+</div>
+<div class="note rd">(770,685) คือ <b>Cancel</b>. ปุ่ม Confirm ข้าง ๆ จ่ายด้วยเพชร — ห้ามแตะ.</div>
+
+<h3>C — heart gate</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn rd"><div class="nm">check_heart <em>to 25 นาที</em></div>
+    <div class="det">boxrun/heart_empty.png</div>
+    <div class="br y"><i>เจอ</i><span>0 หัวใจ · wait 30s ↺ <b>ตัวเอง</b> · ไม่ซื้อหัวใจ</span></div>
+    <div class="br n"><i>ไม่</i><span>tap Play(1365,931) · faststart ×18 → <b>running</b></span></div>
+  </div>
+</div>
+</div>
+<div class="note">margin บาง: 0 ❤ = 1.000 · มี ❤ = ~0.75 (threshold 0.82) — เช็คใหม่ก่อนขยับ threshold. ไม่มี <code>match_timeout_ms</code> โดยเจตนา.</div>
+
+<h3>D — hop loop เต็ม</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn gn"><div class="nm">running <em>to 5 นาที</em></div>
+    <div class="det">boxrun/result_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>ตายแล้ว → <b>run_result (E)</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ guard chain <b>(F)</b></span></div>
+  </div>
+  <div class="var">   ↓ ท้าย guard chain</div>
+  <div class="sn am"><div class="nm">guard_not_inactive</div>
+    <div class="det">home/inactive_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>close(953,690) → recover_login</span></div>
+    <div class="br n"><i>ไม่</i><span><b>jump</b> + relay → jump_2</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn"><div class="nm">jump_2 <em>to 20s</em></div>
+    <div class="det">boxrun/result_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ run_result <b>(E)</b></span></div>
+    <div class="br n"><i>ไม่</i><span><b>jump</b>(238,940) + relay → jump_3</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn"><div class="nm">jump_3 <em>to 20s</em></div>
+    <div class="det">boxrun/result_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ run_result <b>(E)</b></span></div>
+    <div class="br n"><i>ไม่</i><span><b>slide</b>(1671,937) + relay → jump_4</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn"><div class="nm">jump_4 <em>to 20s</em></div>
+    <div class="det">boxrun/result_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ run_result <b>(E)</b></span></div>
+    <div class="br n"><i>ไม่</i><span><b>jump</b> + relay → check_shop_after_run</span></div>
+  </div>
+  <div class="var">   ↓ วนกลับ guard chain ทุก 4 hop</div>
+</div>
+</div>
+<div class="note">ทุก hop เช็ค <code>result_marker</code> ก่อนเสมอ — ตายเมื่อไหร่ออกทันที ไม่ต้องรอครบรอบ.</div>
+
+<h3>E — เก็บกล่องเต็ม</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn vi"><div class="nm">run_result</div>
+    <div class="det">boxrun/result_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(702,940) · wait 2.5s → <b>mystery_box</b></span></div>
+    <div class="br n"><i>ไม่</i><span>→ mystery_box</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn vi"><div class="nm">mystery_box <em>to 20s</em></div>
+    <div class="det">boxrun/mysterybox_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ <b>mb_open</b></span></div>
+    <div class="br n"><i>ไม่</i><span>run นี้ไม่ได้กล่อง → <b>home</b></span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn am"><div class="nm">mb_open <em>match_to 25s</em></div>
+    <div class="det">boxrun/mysterybox_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(960,965)·(960,540)·(959,960) ↺ <b>ตัวเอง</b></span></div>
+    <div class="br n"><i>ไม่</i><span>กล่องหมด → mystery_box_recheck</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn ac"><div class="nm">mystery_box_recheck</div>
+    <div class="det">home/home_play_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ <b>home</b> ครบรอบ</span></div>
+    <div class="br n"><i>ไม่</i><span>ยังมีอะไรบัง → probe_inactive <b>(F)</b></span></div>
+  </div>
+</div>
+</div>
+<div class="note rd"><code>match_timeout_ms</code> ต่างจาก <code>timeout_ms</code> — หนีตอน marker <b>ยังอยู่</b> (self-loop ไม่จบ) ไม่ใช่ตอนหาย.</div>
+
+<h3>F — popup / recovery เต็ม</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn rd"><div class="nm">probe_connectionlost <em>หัวสาย</em></div>
+    <div class="det">home/connectionlost_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(960,700) · <b>restart_app</b> → recover_login</span></div>
+    <div class="br n"><i>ไม่</i><span>→ probe_enterleague</span></div>
+  </div>
+  <div class="var">   ↓ ... สาย probe ...</div>
+  <div class="sn am"><div class="nm">probe_friendinfo <em>ท้ายสาย</em></div>
+    <div class="det">friends/friendinfo_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(1552,117) · tap(1633,107) ↺ <b>ตัวเอง</b> (X 2 ชั้น)</span></div>
+    <div class="br n"><i>ไม่</i><span>→ <b>running</b></span></div>
+  </div>
+  <div class="var">   ↓ ทางกู้ login</div>
+  <div class="sn ac"><div class="nm">recover_login <em>to 30s</em></div>
+    <div class="det">home/devplaylogin_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(960,950) · wait 4s → recover_pick</span></div>
+    <div class="br n"><i>ไม่</i><span>→ recover_pick</span></div>
+  </div>
+  <div class="var">   ↓</div>
+  <div class="sn ac"><div class="nm">recover_pick <em>to 30s</em></div>
+    <div class="det">home/login_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>tap(1100,490) · <b>wait 12s</b> → home</span></div>
+    <div class="br n"><i>ไม่</i><span>→ home</span></div>
+  </div>
+</div>
+</div>
+
+<h3 style="color:var(--rd)">⚠ 3 state ที่เขียนไว้แต่ไม่มีใครเรียก</h3>
+<div class="flow">
+<div class="vflow">
+  <div class="sn dead"><div class="nm">recover_unknown <em>ไม่มี edge เข้า</em></div>
+    <div class="det">home/home_play_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ home</span></div>
+    <div class="br n"><i>ไม่</i><span>→ recover_unknown_probe</span></div>
+  </div>
+  <div class="var">   ↓ <b>สายนี้เข้าไม่ถึงจากไหนเลย</b></div>
+  <div class="sn dead"><div class="nm">recover_unknown_restart <em>ไม่มี edge เข้า</em></div>
+    <div class="det">home/home_play_marker.png</div>
+    <div class="br y"><i>เจอ</i><span>→ home</span></div>
+    <div class="br n"><i>ไม่</i><span><b>restart_app</b> · wait 8s → recover_login</span></div>
+  </div>
+</div>
+</div>
+<div class="note rd"><code>python tools/lint_config.py config/cookierun/*.json</code> รายงาน <b>3 unreachable ทุก box-farm config (7/7)</b> — <code>recover_unknown</code> · <code>recover_unknown_probe</code> · <code>recover_unknown_restart</code>. ทางกู้ "เจอจอที่ไม่รู้จัก → restart" จึงไม่เคยทำงาน. utility bot ทั้ง 4 ตัวสะอาด.</div>
+
+<div class="note rd"><b>in-run ไม่มี CV ต่อเฟรม</b> — hop J→S→J ยิงแบบตาบอด. ทำไมถึงเลี่ยงไม่ได้ ⇣</div>
+
+<h3>ทำไมถึงตาบอด — ตัวเลขที่วัดจริง</h3>
+<div class="grid2">
+  <div class="card">
+    <h4>คอขวด = ADB transfer</h4>
+    <div class="scroll" style="margin:8px 0 0">
+    <table style="min-width:0">
+    <tbody>
+      <tr><td>device render (ไม่ transfer)</td><td class="mono">126 ms</td></tr>
+      <tr><td><code>screencap -p</code> + imdecode <b>(ตอนนี้)</b></td><td class="mono"><span class="tag t-hot">~856 ms</span></td></tr>
+      <tr><td>screencap raw</td><td class="mono">~614 ms</td></tr>
+      <tr><td>raw + crop บน device</td><td class="mono">~400 ms</td></tr>
+      <tr><td><code>adb shell input tap</code></td><td class="mono">45 ms</td></tr>
+      <tr><td>persistent shell tap</td><td class="mono"><span class="tag t-ok">9.5 ms</span></td></tr>
+    </tbody>
+    </table>
+    </div>
+    <p>ภาพ 8.3MB ต่อเฟรม. <b>act ไม่ใช่ปัญหา — perceive ต่างหาก.</b></p>
+  </div>
+  <div class="card">
+    <h4>jump ถี่ไม่พอ <span class="tag t-warn">log 10,073 jump</span></h4>
+    <div class="chain" style="margin-top:10px">
+      <span class="c hit">gap จริง 3s</span><span class="s">vs</span>
+      <span class="c end">หลุมอยู่บนจอ 1.5–2s</span>
+    </div>
+    <p>gap ยาวกว่าอายุหลุมเท่าตัว → พลาดเป็นเรื่องโครงสร้าง. double-jump 34.4% (ตั้ง 35% ✓).</p>
+  </div>
+  <div class="card">
+    <h4>3 สมมติฐานที่<b>ผิด</b></h4>
+    <div class="chain" style="margin-top:10px">
+      <span class="c">เดา: ชน obstacle ตาย</span><span class="s">→</span><span class="c hit">จริง: ตกหลุม</span>
+    </div>
+    <div class="chain">
+      <span class="c">เดา: ชนแล้วเจ็บ</span><span class="s">→</span><span class="c hit">จริง: Bonus Time = HP เต็ม 52s</span>
+    </div>
+    <div class="chain">
+      <span class="c">เดา: crop หลุมได้</span><span class="s">→</span><span class="c hit">จริง: หลุมไม่มี sprite</span>
+    </div>
+    <p>หลุม = "ไม่มีพื้น" — template หา<b>ของที่ไม่มี</b>ไม่ได้ ต้องใช้ edge profile. ค้างบน <code>feature/dodge-pit-detection</code>.</p>
+  </div>
+</div>
+
+<h2 id="s4"><span class="n">04</span> ต่างกันจริงแค่ 3 จุด</h2>
+<p>37 จาก 52 state เหมือนกันหมดข้าม box-farm config — spine + popup recovery + guard chain + jump hops. ที่เหลือคือ 3 จุดนี้:</p>
+
+<h3>สายพันธุ์ — ใครแตกจากใคร</h3>
+<p><code>boxrun_magnet</code> คือ baseline ของ jump-hops ทุกตัวที่เหลือคือมันบวก/ลบ:</p>
+<div class="flow">
+  <div class="row">
+    <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline · 52 states</div></div>
+    <div class="ar">− buy chain<br>+ check_box→quit_run →</div>
+    <div class="nd ac"><div class="t">boxrun_default</div><div class="d">47 · quit ที่กล่องแรก</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
+    <div class="ar">boost magnet→speed →</div>
+    <div class="nd am"><div class="t">boxrun_speed</div><div class="d">52 · เท่ากันเป๊ะ</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
+    <div class="ar">relay_tap taps:1→2 →</div>
+    <div class="nd vi"><div class="t">boxrun_relay</div><div class="d">52 · ต่างจุดเดียว</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
+    <div class="ar">boost→doublecoins<br>+ probe_dc_owned guard →</div>
+    <div class="nd gn"><div class="t">coinrun</div><div class="d">54 · เป้าหมายเหรียญ</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div class="nd gn"><div class="t">coinrun</div><div class="d">54</div></div>
+    <div class="ar">− buy chain ทั้งชุด<br>− relay tap →</div>
+    <div class="nd in"><div class="t">xpstat</div><div class="d">45 · coin คงที่</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
+    <div class="ar">+ lives chain + relic<br>+ pacing/reset →</div>
+    <div class="nd am"><div class="t">boxrun_toggle</div><div class="d">75 · superset</div></div>
+  </div>
+</div>
+<div class="note ac"><code>probe_dc_owned</code> คือ guard ที่มีแต่ <code>coinrun</code> — เช็คว่า Double Coins ติดอยู่แล้วมั้ยก่อนเข้า buy chain (<b>กันซื้อซ้ำ</b> ตอนบอท restart หลัง roll ลงแต่ยังไม่ได้ใช้). banner มี ≈1.0 vs ไม่มี ≈0.36 แยกขาดที่ threshold 0.82.</div>
+
+<h3>① BOOST — แตกจาก <code>await_shop</code></h3>
+<div class="flow">
+  <div class="lbl">โครง chain เดียวกันทุก boost · ต่างแค่ template + พิกัด</div>
+  <div class="row">
+    <div class="nd vi"><div class="t">probe_X</div><div class="d">มี banner?</div></div>
+    <div class="ar">ไม่มี →</div>
+    <div class="nd am"><div class="t">buy_X</div><div class="d">2 tap</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">picker</div><div class="d">Multi-Buy</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">wait_roll</div><div class="d">roll เอง</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">start_run</div><div class="d">มายัง?</div></div>
+    <div class="ar">ไม่ ↺</div>
+    <div class="nd rd"><div class="t">retry_buy</div><div class="d">—</div></div>
+  </div>
+  <div class="var">   probe เจอ ─────────────────────────────────────────→ <i>check_heart ตรง</i></div>
+  <div class="var">   coin หมดกลาง roll → insufficient_coins → <b>Cancel(770,685)</b> → force_play</div>
+</div>
+<div class="scroll">
+<table>
+<thead><tr><th>--boost</th><th>banner template</th><th>buy taps</th><th>Multi-Buy</th></tr></thead>
+<tbody>
+<tr><td class="mono">magnet</td><td class="mono">magneticaura_banner</td><td class="mono">(810,875) → (1645,340)</td><td class="mono">(950,880)</td></tr>
+<tr><td class="mono">speed</td><td class="mono">speedbase17_banner</td><td class="mono">(810,875) → (1645,340)</td><td class="mono">(953,899)</td></tr>
+<tr><td class="mono">doublecoins</td><td class="mono">doublecoins_banner</td><td class="mono">(755,875) → (1678,305)</td><td class="mono">(953,899)</td></tr>
+<tr><td class="mono">none</td><td class="no">—</td><td class="no">ข้าม chain</td><td class="no">—</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>② QUIT — แตกจาก <code>running</code></h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd am"><div class="t">check_box</div><div class="d">boxcounter [?] xN</div></div>
+    <div class="ar">เจอ →</div>
+    <div class="nd vi"><div class="t">นับ +1</div><div class="d">ครั้งแรกของ run</div></div>
+    <div class="ar">ถึงโควตา →</div>
+    <div class="nd rd"><div class="t">quit_run</div><div class="d">บีบออก pause</div></div>
+  </div>
+  <div class="var">   ยังไม่ถึง → <i>check_shop_after_run</i> (เล่นต่อ) · ไม่เจอ → hop ต่อ</div>
+</div>
+<div class="scroll">
+<table>
+<thead><tr><th>Config</th><th>ควิทเมื่อ</th></tr></thead>
+<tbody>
+<tr><td class="mono">boxrun_default</td><td>กล่องแรก</td></tr>
+<tr><td class="mono">magnet · speed · relay · coinrun</td><td class="no">ไม่ควิท — เล่นจนตาย</td></tr>
+<tr><td class="mono">toggle</td><td><code>--quit-after-boxes N</code> · นับ <b>run ที่ได้กล่อง</b> ไม่ใช่จำนวนกล่อง (<code>BoxQuitRunner</code> ฝั่ง Python)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="note rd">marker <b>ค้างตลอด run</b> + <code>check_box</code> ถูกเดินผ่านทุก ~4 hop → เคยนับกล่องเดียวเป็น 4 ครั้งใน 10 วิ. flag <code>_box_counted_this_run</code> รีเซ็ตตอน <code>run_result</code>.</div>
+
+<h3>③ ROUTINE + RELIC — เฉพาะ toggle family</h3>
+<div class="flow">
+  <div class="lbl">lives errand · ทุก 25–35 นาที</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">home</div><div class="d">ครบเวลา</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">lives_* ×14</div><div class="d">ส่ง life</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">home</div><div class="d">farm ต่อ</div></div>
+  </div>
+  <div class="lbl">session reset · ทุก 1.5–3 ชม.</div>
+  <div class="row">
+    <div class="nd rd"><div class="t">force-stop</div><div class="d">—</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">relaunch</div><div class="d">—</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">pidof ×3</div><div class="d">ยืนยันรอด</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">lives errand</div><div class="d">รันทุกครั้งหลัง reset</div></div>
+  </div>
+  <div class="lbl">relic mode · badge "Get!" โผล่</div>
+  <div class="row">
+    <div class="nd am"><div class="t">relic badge</div><div class="d">—</div></div>
+    <div class="ar">claim →</div>
+    <div class="nd gn"><div class="t">เก็บ → farm ต่อ</div><div class="d">—</div></div>
+    <div class="ar">hoard →</div>
+    <div class="nd ac"><div class="t">ไม่เก็บ → farm ต่อ</div><div class="d">default</div></div>
+    <div class="ar">stop →</div>
+    <div class="nd rd"><div class="t">เก็บ → ออกโปรแกรม</div><div class="d">—</div></div>
+  </div>
+  <div class="lbl">warm-up burst · เฉพาะ Jump=n + Slide=n</div>
+  <div class="row">
+    <div class="nd rd"><div class="t">run ไม่มี input เลย</div><div class="d">เกมไม่นับ run</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">10 tap สลับ J/S</div><div class="d">ครั้งเดียวต่อ run</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">hop ปกติต่อ</div><div class="d">—</div></div>
+  </div>
+</div>
+
+<div class="scroll">
+<table>
+<thead><tr><th>Config</th><th>① Boost</th><th>② Quit</th><th>③ Lives / Reset</th><th>Relic</th><th class="mono">states</th></tr></thead>
+<tbody>
+<tr><td class="mono">boxrun_default</td><td>speed +17%</td><td>ที่กล่องแรก</td><td class="no">✗</td><td class="no">✗</td><td class="mono">47</td></tr>
+<tr><td class="mono">boxrun_speed</td><td>speed +17%</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">52</td></tr>
+<tr><td class="mono">boxrun_magnet</td><td>Magnetic Aura</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">52</td></tr>
+<tr><td class="mono">boxrun_relay</td><td>Magnetic Aura</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">52</td></tr>
+<tr><td class="mono">coinrun</td><td>Double Coins</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">54</td></tr>
+<tr><td class="mono">boxrun_toggle</td><td class="yes">เลือกตอนรัน</td><td class="yes">เลือกตอนรัน</td><td class="yes">✓ 25–35 น. · reset 1.5–3 ชม.</td><td class="yes">3 โหมด</td><td class="mono">75</td></tr>
+<tr><td class="mono">xpstat</td><td class="no">none</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">45</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>boxrun_toggle</code> = superset — มีครบทั้ง 3 จุดแล้วเลือกเปิด/ปิดผ่าน flag ตอนรัน จึงมี 75 state (มากกว่าตัวอื่น ~23 state ที่เป็น lives chain + relic chain).</p>
+
+<h2 id="s5"><span class="n">05</span> Flow utility — 4 ตัวที่ไม่ใช่ box-farm</h2>
+
+<div class="flow">
+  <div class="lbl">giftdraw · 13 states — precondition: popup Gift Draw เปิดอยู่แล้ว</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">gift_draw</div><div class="d">tap Draw</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">pick_box</div><div class="d">กล่องเหลือง</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">reward</div><div class="d">tap Confirm</div></div>
+    <div class="ar">↻</div>
+    <div class="nd am"><div class="t">rescue</div><div class="d">treasure popup ซ้อน</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">done</div><div class="d">Draw หมด → ปิด</div></div>
+  </div>
+
+  <div class="lbl">sendlife (Friends tab) · 16 states — เลื่อน list เอง</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">scan icon</div><div class="d">tap_template</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">confirm_dialog</div><div class="d">"Send a free Life?"</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">message_sent</div><div class="d">popup ที่ 2</div></div>
+    <div class="ar">↻</div>
+    <div class="nd am"><div class="t">scroll_list</div><div class="d">ไม่เจอ icon → swipe</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">stop</div><div class="d">2 scan ว่างติดกัน</div></div>
+  </div>
+
+  <div class="lbl">sendlife_mailbox · 3 states — flow สั้นสุดในรีโป</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">quick_banner</div><div class="d">tap แบนเนอร์เขียว</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">confirm</div><div class="d">"(+3 Gift Points)"</div></div>
+    <div class="ar">↻ dialog เด้งเองต่อคนถัดไป</div>
+    <div class="nd"><div class="t">done</div><div class="d">dialog ไม่เด้งแล้ว</div></div>
+  </div>
+
+  <div class="lbl">addfriend · 15 states — Refresh ก่อนเสมอ แล้วเดิน 4 แถวคงที่</div>
+  <div class="row">
+    <div class="nd am"><div class="t">entry</div><div class="d">home → Friends → Find</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">do_refresh</div><div class="d">(538,226) ได้ batch เขียวใหม่</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">req_row1..4</div><div class="d">y = 367/529/691/853</div></div>
+    <div class="ar">↻ ไม่มีเงื่อนไขจบ</div>
+    <div class="nd rd"><div class="t">cycle cap</div><div class="d">จาก .bat เท่านั้น</div></div>
+  </div>
+</div>
+
+<h3>ทำไม addfriend ใช้พิกัดคงที่ ไม่ใช่ <code>tap_template</code></h3>
+<div class="flow">
+  <div class="lbl">ถ้าใช้ tap_template</div>
+  <div class="row">
+    <div class="nd am"><div class="t">scan ปุ่มเขียว</div><div class="d">—</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">กด</div><div class="d">friend list เต็ม</div></div>
+    <div class="ar">→</div>
+    <div class="nd rd"><div class="t">ปุ่มยังเขียว</div><div class="d">—</div></div>
+    <div class="ar">↺ วนคนเดิม</div>
+    <div class="nd rd"><div class="t">ค้างตลอดไป</div><div class="d">—</div></div>
+  </div>
+  <div class="lbl">ที่ใช้จริง — Refresh ก่อน แล้วเดิน 4 แถวคงที่</div>
+  <div class="row">
+    <div class="nd ac"><div class="t">Refresh</div><div class="d">batch เขียวล้วน</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">y=367</div><div class="d">กด 1 ครั้ง</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">y=529</div><div class="d">กด 1 ครั้ง</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">y=691</div><div class="d">กด 1 ครั้ง</div></div>
+    <div class="ar">→</div>
+    <div class="nd gn"><div class="t">y=853</div><div class="d">กด 1 ครั้ง</div></div>
+    <div class="ar">↺</div>
+    <div class="nd ac"><div class="t">Refresh</div><div class="d">batch ใหม่</div></div>
+  </div>
+  <div class="var">   เต็มก็ผ่านเลย (= ข้าม) · <b>ปุ่มดำที่ส่งแล้วไม่ใช่ no-op</b> — เปิดหน้า Friend's Info</div>
+</div>
+
+<h3>sendlife 2 ตัว ≠ ตัวเดียวกัน</h3>
+<div class="flow">
+  <div class="lbl">sendlife · Friends tab บน home · 16 states</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">scan icon</div><div class="d">—</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">confirm</div><div class="d">—</div></div>
+    <div class="ar">→</div>
+    <div class="nd vi"><div class="t">"Message sent!"</div><div class="d">popup คั่น</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">swipe เอง</div><div class="d">เมื่อไม่เจอ icon</div></div>
+  </div>
+  <div class="lbl">sendlife_mailbox · Mailbox → Lives tab · 3 states</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">tap banner</div><div class="d">ครั้งเดียว</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">confirm</div><div class="d">—</div></div>
+    <div class="ar">↺ dialog เด้งเอง</div>
+    <div class="nd gn"><div class="t">คนถัดไป</div><div class="d">ไม่มี popup คั่น · ไม่ต้อง scroll</div></div>
+  </div>
+  <div class="var">   live-verified 55+ ส่งติดกัน · marker ครอปแค่ <i>"(+3 Gift Points)"</i> ไม่เอาชื่อคน</div>
+</div>
+
+<h2 id="s6"><span class="n">06</span> เลือกตัวไหนดี</h2>
+
+<h3>Boost spend risk — ใครเผาเหรียญบ้าง</h3>
+<p>เกณฑ์เลือกที่มักลืม: บอทส่วนใหญ่ <b>ซื้อ boost ทุก run</b> ผ่าน Multi-Buy auto-roll ซึ่ง roll จนกว่าจะได้ boost ที่ปักไว้ — เหรียญหมดกลาง roll ก็มี (<code>insufficient_coins</code> → Cancel → เล่นต่อแบบไม่มี boost).</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Config</th><th>เผาเหรียญ?</th><th>เผายังไง</th></tr></thead>
+<tbody>
+<tr><td class="mono">boxrun_magnet · boxrun_relay · boxrun_magnet_hoard</td><td><span class="tag t-hot">ทุก run</span></td><td>Magnetic Aura ผ่าน Multi-Buy auto-roll</td></tr>
+<tr><td class="mono">boxrun_speed · boxrun_default</td><td><span class="tag t-hot">ทุก run</span></td><td>+17% base speed ผ่าน Multi-Buy auto-roll</td></tr>
+<tr><td class="mono">coinrun</td><td><span class="tag t-warn">เกือบทุก run</span></td><td>Double Coins — แต่ <code>probe_dc_owned</code> ข้ามถ้าติดอยู่แล้ว (โดยหลักการเป้าหมายคือ<b>ได้เหรียญคืน</b>)</td></tr>
+<tr><td class="mono">boxrun_toggle</td><td><span class="tag t-warn">แล้วแต่ flag</span></td><td><code>--boost none</code> = ไม่เผาเลย</td></tr>
+<tr><td class="mono">run_boxrun_noboost_claim</td><td><span class="tag t-ok">ไม่เผา</span></td><td>preset ปัก Boost=none</td></tr>
+<tr><td class="mono">xpstat</td><td><span class="tag t-ok">ไม่เผา</span></td><td>ถอด buy chain ออกทั้งชุด — coin คงที่โดยตั้งใจ</td></tr>
+<tr><td class="mono">sendlife · sendlife_mailbox · addfriend · giftdraw</td><td><span class="tag t-ok">ไม่เผา</span></td><td>ไม่แตะ shop เลย</td></tr>
+</tbody>
+</table>
+</div>
+<div class="note"><b>ทิ้งไว้ข้ามคืนแล้วเหรียญหาย</b> = ปกติของ magnet/speed/relay preset. อยาก farm กล่องโดยไม่แตะเหรียญ → <code>run_boxrun_noboost_claim.bat</code> หรือ <code>boxrun_toggle.bat</code> ตอบ boost = <code>none</code>.</div>
+
+<h3>เลือกจากเป้าหมาย</h3>
+<div class="flow">
+  <div class="row">
+    <div class="nd vi"><div class="t">อยากได้อะไร?</div><div class="d">—</div></div>
+    <div class="ar">กล่อง · ทิ้งข้ามคืน →</div>
+    <div class="nd gn"><div class="t">boxrun_magnet_hoard</div><div class="d">magnet · hoard · anti-detect ครบ</div></div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
+    <div class="ar">กล่อง · ไม่เผาเหรียญ →</div>
+    <div class="nd ac"><div class="t">run_boxrun_noboost_claim</div><div class="d">boost=none · claim relic</div></div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
+    <div class="ar">เหรียญ →</div>
+    <div class="nd am"><div class="t">coinrun</div><div class="d">Double Coins + coin guard</div></div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
+    <div class="ar">relay ถี่ขึ้น →</div>
+    <div class="nd vi"><div class="t">boxrun_relay</div><div class="d">relay ×2/hop</div></div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
+    <div class="ar">คุมทุก knob เอง →</div>
+    <div class="nd am"><div class="t">boxrun_toggle</div><div class="d">ตอบ 8 คำถาม</div></div>
+  </div>
+</div>
+<div class="note rd"><b>⚠ <code>boxrun_default</code> ชื่อหลอก</b> — ไม่ใช่ "ไม่ทำอะไร": มัน<b>ซื้อ speed +17%</b> และ<b>ควิททันทีที่กล่องแรก</b>. คนละพฤติกรรมกับ <code>boxrun_speed</code> ที่เล่นจนตาย (ต่างกัน 5 state).</div>
+<div class="note">3 preset บน <code>boxrun_toggle.json</code> ได้ anti-detection เท่ากันหมด (pacing สุ่ม · session reset · lives errand) — ต่างแค่ argv. <code>boxrun_relay</code> ปุ่ม relay ไม่มี template + เป็น no-op ตอนไม่มีคู่ → tap เกินเสียแค่ ~120ms.</div>
+
+<h2 id="s7"><span class="n">07</span> Pacing / anti-detection</h2>
+<div class="scroll">
+<table>
+<thead><tr><th>Config</th><th class="mono">poll_ms</th><th class="mono">threshold</th><th>idle ระหว่างเกม</th><th>session reset</th><th>periodic routine</th></tr></thead>
+<tbody>
+<tr><td class="mono">boxrun_toggle</td><td class="mono"><span class="yes">[500, 750]</span></td><td class="mono">0.82</td><td class="yes">[5, 15]s</td><td class="yes">[5400, 10800]s</td><td class="yes">✓ lives</td></tr>
+<tr><td class="mono">sendlife_mailbox</td><td class="mono"><span class="yes">[350, 600]</span></td><td class="mono">0.85</td><td class="no">—</td><td class="no">—</td><td class="no">✗</td></tr>
+<tr><td class="mono">boxrun_default / speed / magnet / relay</td><td class="mono">600</td><td class="mono">0.82</td><td class="no">—</td><td class="no">—</td><td class="no">✗</td></tr>
+<tr><td class="mono">coinrun / xpstat</td><td class="mono">600</td><td class="mono">0.82</td><td class="no">—</td><td class="no">—</td><td class="no">✗</td></tr>
+<tr><td class="mono">sendlife</td><td class="mono">400</td><td class="mono">0.85</td><td class="no">—</td><td class="no">—</td><td class="no">✗</td></tr>
+<tr><td class="mono">addfriend / giftdraw</td><td class="mono">600</td><td class="mono">0.85</td><td class="no">—</td><td class="no">—</td><td class="no">✗</td></tr>
+</tbody>
+</table>
+</div>
+<p>ค่า <code>[min, max]</code> = สุ่มใหม่ทุกครั้ง (ไม่ใช่สุ่มครั้งเดียวตอนโหลด). ทุก config ได้ spatial jitter ต่อ tap ฟรีจาก engine (<code>src/act.py _jitter</code>) ไม่ว่า pacing จะ fix หรือ random.</p>
+<div class="note"><b>ยังไม่ได้ live-verify ทั่วถึง</b> — pacing/session-reset/lives-errand เปิดใช้ใน <code>boxrun_toggle.json</code> ตัวเดียว config อื่นยัง fixed pacing จนกว่าจะพิสูจน์ (ดู <code>docs/HANDOFF.md</code>).</p></div>
+
+<div class="note ac"><b>Precondition ร่วมของ box-farm ทุกตัว</b>: ต้อง <b>เลือก episode ไว้บน home แล้ว</b> — บอทแตะแค่ <code>Play!</code> ไม่เดิน episode selection. สลับด้วย <code>tools/switch_episode.py --episode N</code>. และ <b>ห้ามแตะ emulator ระหว่างบอทรัน</b> — หน้าจอเปลี่ยนกลางคัน = tap ลงบนอะไรก็ตามที่อยู่ตรงนั้น.</div>
+
+<h2 id="s8"><span class="n">08</span> กลไกร่วม — ของที่ทุกบอทมีเหมือนกัน</h2>
+<p>คอลัมน์ <b>อยู่ที่</b> บอกว่าเป็นของ engine (ได้ฟรี ไม่ต้องเขียนใน JSON) หรือเป็น chain ที่ copy อยู่ในทุก config.</p>
+<div class="scroll">
+<table>
+<thead><tr><th>กลไก</th><th>ทำอะไร</th><th>อยู่ที่</th></tr></thead>
+<tbody>
+<tr>
+  <td><b>Popup recovery chain</b></td>
+  <td><code>home</code> absent = มี popup บัง Play! → เดิน probe chain ปิดทีละตัว (connectionlost → enterleague → inactive → settings → fortunebakery → prevresults → dailycheckin → treasure → sendlife → congrats → levelup → news) แล้วกลับ <code>home</code>. ทุก close มี <code>verify</code> — จับ marker ซ้ำแล้ว tap ใหม่ ไม่ใช่ tap แล้วเดาว่าปิด</td>
+  <td class="mono">ทุก config</td>
+</tr>
+<tr>
+  <td><b>Guard chain (mid-run)</b></td>
+  <td>ระหว่าง run มี popup โผล่ทับ → <code>guard_not_*</code> จับแล้วปิด ไม่ให้ run พัง. <b>active box-farm ทั้ง 7 config มีครบ 6 ตัวเป๊ะกันหมด</b>: <code>guard_not_home</code> · <code>guard_not_shop</code> · <code>guard_not_sendlife</code> · <code>guard_not_levelup</code> · <code>guard_not_inactive</code> · <code>guard_not_news</code>. utility bot (sendlife / addfriend / giftdraw) ไม่มี — เป็น menu loop ไม่ต้องกัน popup กลาง run</td>
+  <td class="mono">box-farm ทุกตัว</td>
+</tr>
+<tr>
+  <td><b>Login recovery</b></td>
+  <td><code>inactive</code> / connection-lost → restart เกม → <code>recover_login</code> → <code>recover_pick</code> re-auth</td>
+  <td class="mono">ทุก config</td>
+</tr>
+<tr>
+  <td><b>Livelock detector</b></td>
+  <td>state เดิม หรือ ping-pong ระหว่าง state เกิน ~100 poll โดยไม่มี action → snap จอเก็บเข้า <code>unknown_screens/</code> + ยิง Discord alert</td>
+  <td class="mono">engine</td>
+</tr>
+<tr>
+  <td><b><code>match_timeout</code> escape</b></td>
+  <td>marker ค้าง match เกินกำหนด → หลุดออก (กัน <code>mb_open</code> วนเปิดกล่องไม่จบ)</td>
+  <td class="mono">engine + config</td>
+</tr>
+<tr>
+  <td><b>adb retry + tolerance</b></td>
+  <td>adb สะดุด = เสีย 1 cycle ไม่ใช่ตายทั้ง run; ต้องพลาด 5 รอบติดถึงยอมหยุด</td>
+  <td class="mono">engine</td>
+</tr>
+<tr>
+  <td><b>Stale-frame goto-cycle fix</b></td>
+  <td>goto chain ล้วน (ไม่มี tap/wait) เคยหมุนบน frame cached ตัวเดียวตลอดไป — engine บังคับ re-grab + poll-sleep เมื่อ chain วนกลับมา state เดิม</td>
+  <td class="mono">engine</td>
+</tr>
+<tr>
+  <td><b>Load-time validation</b></td>
+  <td>เช็ค goto target / ไฟล์ template / ช่วงค่า ตอน startup. กับดัก <code>on_absent</code>-goto-ตัวเอง + <code>timeout_ms</code> (เคยทำ engine crash กลาง farm) ถูก <b>ปฏิเสธตั้งแต่ load</b></td>
+  <td class="mono">engine</td>
+</tr>
+<tr>
+  <td><b>Spatial jitter ต่อ tap</b></td>
+  <td>ทุก tap เลื่อนพิกัด ±5–10px + หน่วงสุ่ม แม้ config จะตั้ง pacing แบบ fix</td>
+  <td class="mono">src/act.py</td>
+</tr>
+<tr>
+  <td><b>Shared action types</b></td>
+  <td><code>relay_tap</code> / <code>faststart_tap</code> / <code>close_popup</code> — แก้ที่ <code>Actor</code> ที่เดียว ทุก config ที่เรียก action นั้นเปลี่ยนตามทันที ไม่ต้องแก้ JSON 13 ไฟล์</td>
+  <td class="mono">src/act.py</td>
+</tr>
+<tr>
+  <td><b>Human pacing</b> <span class="tag t-warn">toggle เท่านั้น</span></td>
+  <td>poll/wait jitter เป็นช่วง + idle ระหว่างเกม + session reset 1.5–3 ชม.</td>
+  <td class="mono">boxrun_toggle</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="s9"><span class="n">09</span> Archived — 5 config ที่ถอดออกจาก active set</h2>
+<p>ย้ายไป <code>config/cookierun/_archive/</code> เมื่อ 2026-07-31. <b>ยังใช้ได้จริง</b> (lint clean + live-tested) — ถอดออกเพื่อลด active set เฉย ๆ. reactivate = ย้าย JSON กลับขึ้น <code>config/cookierun/</code> ไม่ต้องแก้อะไรอีก engine หาเจอเองจาก path. <code>_archive/launchers/</code> เก็บ <code>.bat</code> เดิมไว้ 3 ตัว, <code>_archive/tools/</code> เก็บ <code>run_boxrun_speed_quit2.py</code>.</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Config</th><th class="mono">states</th><th>Boost</th><th>In-run</th><th>Quit</th><th>ทำไม archive</th></tr></thead>
+<tbody>
+<tr><td class="mono">boxrun_speed_quit2</td><td class="mono">49</td><td>speed +17%</td><td><span class="tag t-ok">jump hops</span></td><td>หลัง 2 กล่อง</td><td><code>boxrun_speed</code> + <code>--quit-after-boxes</code> แทนได้</td></tr>
+<tr><td class="mono">boxrun_speed_noquit</td><td class="mono">49</td><td>speed +17%</td><td><span class="tag t-ok">jump hops</span> · ไม่ relay</td><td class="no">ไม่ควิท</td><td>long-run variant ใช้น้อย</td></tr>
+<tr><td class="mono">boxrun_passive</td><td class="mono">38</td><td class="no">none</td><td><span class="tag t-warn">guard loop</span></td><td>box target</td><td>toggle ครอบได้ (jump/slide/relay = n)</td></tr>
+<tr><td class="mono">boxrun_passive_3boost</td><td class="mono">37</td><td>3 tiles (HP + clock + ×2)</td><td><span class="tag t-warn">guard loop</span></td><td>box target</td><td>3-boost setup เฉพาะกิจ (เดิมชื่อ <code>magnet_v2</code>)</td></tr>
+<tr><td class="mono">boxrun_magnet_quit3</td><td class="mono">39</td><td>Magnetic Aura</td><td><span class="tag t-warn">guard loop</span></td><td>3 กล่อง</td><td>ผูก ep6 box-counter · ใช้ <code>boxrun_magnet</code> แทน</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>guard loop — โครง in-run แบบที่ 2 ที่ active set ไม่มีแล้ว</h3>
+<div class="flow">
+  <div class="lbl">jump hops (active ทุกตัว) — ยิง input เอง</div>
+  <div class="row">
+    <div class="nd gn"><div class="t">running</div><div class="d">—</div></div>
+    <div class="ar">→</div>
+    <div class="nd"><div class="t">jump_2 → jump_3 → jump_4</div><div class="d">J → S → J ตาบอด</div></div>
+    <div class="ar">↻</div>
+    <div class="nd am"><div class="t">check_box</div><div class="d">—</div></div>
+  </div>
+  <div class="lbl">guard loop (archived 3 ตัว) — <b>ไม่มี jump state เลย</b></div>
+  <div class="row">
+    <div class="nd rd"><div class="t">running absent</div><div class="d">จอไม่ใช่ in-run แล้ว?</div></div>
+    <div class="ar">→</div>
+    <div class="nd am"><div class="t">guard chain</div><div class="d">home? shop? sendlife? inactive?</div></div>
+    <div class="ar">→</div>
+    <div class="nd ac"><div class="t">check_box</div><div class="d">พึ่ง auto-play ล้วน</div></div>
+  </div>
+</div>
+<p>ยืนยันจาก config จริง: <code>boxrun_passive</code> / <code>boxrun_passive_3boost</code> / <code>boxrun_magnet_quit3</code> <b>ไม่มี state ชื่อ <code>jump_*</code> เลยสักตัว</b> — ปล่อยให้ auto-play ของเกมวิ่งเอง บอททำแค่เฝ้า popup + นับกล่อง จึงมี state น้อยกว่า (37–39 vs 47–52).</p>
+<div class="note"><b><code>boxrun_magnet_quit3</code> ไม่ episode-agnostic</b> — มันอ่าน box-counter ของ ep6 โดยเฉพาะ, episode อื่น counter อาจไม่ match. ต่างจาก active config ทุกตัวที่เล่น episode ไหนก็ได้ (แตะแค่ Play!).</div>
+
+<h2 id="s10"><span class="n">10</span> Popup coverage — กฎที่ <code>lint</code> จับให้ไม่ได้</h2>
+<p>popup ที่ไม่มีใครปิด = เสีย session ทั้งยวง จนกว่า livelock warning จะยิงแล้วมีคนมาดู. แต่ <b>มี probe state อย่างเดียวไม่พอ</b> — ขึ้นกับว่า popup นั้นบัง Play! หรือเปล่า.</p>
+
+<h3>popup มี 2 ชนิด — ต่างกันที่ Play! ยังเห็นมั้ย</h3>
+<div class="shots">
+  <figure>
+    <div class="hd"><span class="tag t-hot">ชนิดอันตราย</span> Play! ยังเห็น</div>
+    <div class="img s-popup_visible"></div>
+    <figcaption><b>Enter League</b> — dialog อยู่กลางจอ แต่ปุ่ม <b>Play! อยู่มุมล่างขวา ไม่ถูกบัง</b> (<code>home_play_marker</code> ยัง match <b>1.00</b> ทะลุ dialog). loop จึงไม่มีทางเข้า <code>on_absent</code> → <b>probe chain เอื้อมไม่ถึงเลย</b> → บอทกด Play ลง dialog ตลอดไป. ต้องมี <code>verify_no_*</code> gate ใน pre-Play chain เท่านั้นถึงจะจับได้.</figcaption>
+  </figure>
+  <figure>
+    <div class="hd"><span class="tag t-ok">ชนิดง่าย</span> Play! ถูกบัง</div>
+    <div class="img s-popup_covers"></div>
+    <figcaption><b>Connection Lost</b> — คลุมทั้งจอ Play! หายไป (<code>home_play_marker</code> เหลือ <b>0.36</b>). <code>home</code> จึงตกลง <code>on_absent</code> → เดิน probe chain → <code>probe_connectionlost</code> จัดการ. <b>ไม่ต้องมี gate</b>. (มุมขวาบนเห็น <code>[?] x3</code> — box counter ที่ <code>check_box</code> อ่าน)</figcaption>
+  </figure>
+</div>
+
+<div class="note rd"><b>ทดสอบว่า popup เป็นชนิดไหน</b> — เอา <code>home_play_marker.png</code> ไป match กับ capture ของ popup นั้น. ได้ ~1.00 = ชนิดอันตราย ต้องเพิ่ม gate · ได้ &lt;0.40 = probe chain พอ. <b><code>tools/lint_config.py</code> จับ gate ที่ขาดไม่ได้</b> — state ยัง reachable ทั้งสองทาง ไม่มี orphan ให้เตือน ต้องเช็คด้วยมือทุกครั้งที่เจอ popup ใหม่.</div>
+
+<h3>4 gate ที่มีอยู่ (ทุก box-farm config เหมือนกันหมด)</h3>
+<div class="scroll">
+<table>
+<thead><tr><th>Gate</th><th>Marker</th><th>popup</th></tr></thead>
+<tbody>
+<tr><td class="mono">verify_no_popup</td><td class="mono">inactive_marker.png</td><td>Inactive → restart</td></tr>
+<tr><td class="mono">verify_no_sendlife</td><td class="mono">sendlife_marker.png</td><td>Send &lt;friend&gt; a Life?</td></tr>
+<tr><td class="mono">verify_no_prevresults</td><td class="mono">prevresults_marker.png</td><td>Previous Results</td></tr>
+<tr><td class="mono">verify_no_enterleague</td><td class="mono">enterleague_marker.png</td><td>Enter League</td></tr>
+</tbody>
+</table>
+</div>
+<p><b>วิธีเพิ่ม gate ใหม่</b>: ใส่ <code>detect</code> · <code>on_match</code> = <code>close_popup</code> + <code>verify</code> แล้ว <code>goto: home</code> · แล้ว<b>ย้าย action list ของ <code>on_absent</code> จาก gate ก่อนหน้า</b> (ซึ่งคือ tap Play จริง ๆ) มาไว้ที่ gate ใหม่. gate ต่อกันแบบ fallthrough ทีละชั้น.</p>
+
+<h3>Handled — 14 popup</h3>
+<p>แต่ละตัวมี probe state ที่ <code>detect</code> เป็น marker ของ popup เอง และปิดผ่าน <code>close_popup</code> (tap ซ้ำจนกว่า marker จะหาย ไม่ใช่ tap แล้วเดา).</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Popup</th><th>Marker</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>Daily Check-in</td><td class="mono">dailycheckin_marker</td><td>วันละครั้งตอน launch</td></tr>
+<tr><td>Power+ Treasure Rewards</td><td class="mono">treasurereward_marker</td><td>ต่อคิวหลัง check-in ทันที</td></tr>
+<tr><td>Congratulations</td><td class="mono">congrats_marker</td><td>ตั๋ว level-up</td></tr>
+<tr><td>Level Up</td><td class="mono">levelup_marker</td><td>คนละตัวกับ Congratulations</td></tr>
+<tr><td>Send &lt;friend&gt; a Life?</td><td class="mono">sendlife_marker</td><td><span class="tag t-hot">Cancel เท่านั้น</span> ห้าม Confirm</td></tr>
+<tr><td>Gift Draw</td><td class="mono">giftdraw_marker</td><td><span class="tag t-hot">X เท่านั้น</span> ห้าม auto-consume draw</td></tr>
+<tr><td>Ranking Rewards</td><td class="mono">rankingrewards_marker</td><td>popup ตามฤดูกาล จาก tap หลง</td></tr>
+<tr><td>Friend's Info</td><td class="mono">friendinfo_marker</td><td>X สองชั้น ชั้นซ้ายปิดตาบอด (2 tap)</td></tr>
+<tr><td>Game Settings</td><td class="mono">gamesettings_marker</td><td>user เปิดเองได้ทุกเมื่อ</td></tr>
+<tr><td>Fortune Bakery</td><td class="mono">fortunebakery_marker</td><td>พิกัด X ยังไม่ CV-verified</td></tr>
+<tr><td>Previous Results</td><td class="mono">prevresults_marker</td><td>หลัง run ที่ถูกตัดกลางคัน</td></tr>
+<tr><td>Not enough Coins</td><td class="mono">nocoins_marker</td><td><span class="tag t-hot">Cancel</span> — Confirm จ่ายเพชร</td></tr>
+<tr><td>Mystery Box</td><td class="mono">mysterybox_marker</td><td><code>mb_open</code> self-loop + <code>match_timeout_ms</code></td></tr>
+<tr><td>Inactive → restart</td><td class="mono">inactive_marker</td><td>confirm แล้ว<b>เกม restart ตัวเอง</b></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Missing — 10 popup ที่ยัง stall loop ได้</h3>
+<p>ยังไม่มี marker เลยสักตัว. template ของโปรเจกต์อื่นมี แต่ crop ที่ <b>1280×720</b> ส่วน netrunner รัน <b>1920×1080</b> — <code>matchTemplate</code> เป็น single-scale ใช้ข้าม resolution <b>ไม่ได้</b> ก๊อปมาตรง ๆ ไม่ได้ ใช้ดูเป็นตัวอย่างว่าควร crop ตรงไหนเท่านั้น.</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Popup</th><th>วิธี handle</th><th>Priority</th></tr></thead>
+<tbody>
+<tr><td>Connection Lost</td><td><b>ไม่ใช่การปิด</b> — ปุ่ม reload มักพากลับมาจอตายเดิม ต้อง cycle process: action <code>restart_app</code> → <code>recover_login</code>. วางไว้<b>หัว chain</b> เพราะไม่มีอะไรเดินต่อได้ตอนเน็ตหลุด</td><td><span class="tag t-hot">high</span></td></tr>
+<tr><td>Party Run</td><td>X มุมขวาบน แล้วกลับ home</td><td><span class="tag t-hot">high</span> — ตามหลัง announcement</td></tr>
+<tr><td>Overtake / Break Score</td><td>confirm · กลุ่ม POST_GAME</td><td><span class="tag t-warn">medium</span></td></tr>
+<tr><td>Enter League</td><td>confirm กลางจอ ฟรี</td><td><span class="tag t-warn">medium</span> — ต้นฤดูกาล</td></tr>
+<tr><td>League Results</td><td>confirm กลางจอ ฟรี</td><td><span class="tag t-warn">medium</span> — ท้ายฤดูกาล</td></tr>
+<tr><td>Too Many Treasures</td><td>confirm</td><td><span class="tag t-warn">medium</span></td></tr>
+<tr><td>Relic Complete</td><td>เปิดมัน</td><td><span class="tag t-no">low</span></td></tr>
+<tr><td>Relic Claim</td><td>claim → ปิด → <b>รอ 10–15 วิ</b> ให้ cutscene จบ</td><td><span class="tag t-no">low</span></td></tr>
+<tr><td>Daily New</td><td>X</td><td><span class="tag t-no">low</span></td></tr>
+<tr><td>Daily Check-in Boost Set</td><td>confirm · ต่อท้าย daily chain</td><td><span class="tag t-no">low</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note ac"><b>ไม่ต้องนั่งเฝ้ารอ popup</b> — loop ที่ค้างจะ snap จอเก็บเข้า <code>unknown_screens/&lt;ts&gt;_&lt;state&gt;.png</code> + ยิง Discord เอง (ตั้ง <code>DISCORD_WEBHOOK_URL</code> ใน <code>.env</code>). รัน unattended สองสามวัน ภาพส่วนใหญ่ในลิสต์ข้างบนจะมาเอง.</div>
+
+<div class="note"><b>probe ใหม่ไปวางตรงไหน</b> — chain เป็น fallthrough แต่ละ probe ส่งต่อตัวถัดไปเมื่อ absent. แทรกระหว่าง <code>probe_fortunebakery</code> กับ <code>probe_prevresults</code> เว้นแต่ popup นั้นโผล่ได้<b>ระหว่าง run</b> ซึ่งต้องมีฝาแฝด <code>guard_not_*</code> ฝั่ง in-run ด้วย (ดู <code>guard_not_sendlife</code> / <code>guard_not_levelup</code> เป็นแบบ). <b>Connection Lost เป็นข้อยกเว้น</b> — อยู่หัว chain เสมอ.</div>
+
+<footer>
+  gen จาก <code>launchers/*.bat</code> + <code>config/cookierun/*.json</code> + <code>config/cookierun/_archive/</code> + <code>docs/RUN.md</code> + <code>docs/popup-coverage.md</code> + <code>docs/HANDOFF.md</code> + <code>docs/plans/06_PLAN_in-run-jump-dodge.html</code> · state count/gate นับจาก JSON จริงทุกตัว · marker + capture เป็นไฟล์จริงใน <code>templates/cookierun/</code> และ <code>docs/captures/</code> · 2026-08-02
+  <br>แทนที่ <code>docs/flow/FLOW_bots.html</code> และ <code>docs/reports/bot-comparison.html</code> (ลบแล้ว — state count/episode/active-set ของทั้งคู่ stale)
+</footer>
+</div>
+
+<script>
+(function(){
+  var b=document.getElementById('tg'),r=document.documentElement;
+  function cur(){var a=r.getAttribute('data-theme');if(a)return a;
+    return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  function paint(){b.textContent=cur()==='dark'?'☀ Light':'☾ Dark';}
+  b.addEventListener('click',function(){r.setAttribute('data-theme',cur()==='dark'?'light':'dark');paint();});
+  paint();
+})();
+</script>
