@@ -24,7 +24,7 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "Bridge between tapping Play! on home and acting in the boost shop (Play! shows THROUGH the shop fade above threshold — see coinrun.json for the double-tap loop this prevents). Shop up -> probe_magnet (run_toggle.py redirects straight to check_heart when the magnet flag is off). Absent -> one settle-retry (~1.2s via absent_wait_ms), then fall through to running.",
+      "_note": "Bridge between tapping Play! on home and acting in the boost shop (Play! shows THROUGH the shop fade above threshold — see coinrun.json for the double-tap loop this prevents). Shop up -> probe_magnet (run_toggle.py redirects straight to check_heart when the magnet flag is off). Absent -> one settle-retry (~1.2s via absent_wait_ms), then fall through to running. Fast Start spam moved here from the removed after_play gate (2026-08-02): reaching this state at all means we already left home, so spamming (985,515) cannot hit the leaderboard.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -32,11 +32,19 @@
           "state": "probe_magnet"
         }
       ],
-      "absent_retries": 1,
+      "absent_retries": 4,
       "absent_wait_ms": 1200,
-      "on_absent": {
-        "goto": "running"
-      },
+      "on_absent": [
+        {
+          "type": "faststart_tap",
+          "taps": 14,
+          "gap_ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
       "timeout_ms": 8000,
       "boost_role": "gate",
       "boost_skip_goto": "check_heart"
@@ -123,7 +131,7 @@
       "timeout_ms": 8000
     },
     "boost_shop": {
-      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_magnet to ensure Magnetic Aura is equipped before Play (run_toggle.py redirects straight to check_heart when the magnet flag is off).",
+      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_magnet to ensure Magnetic Aura is equipped before Play (run_toggle.py redirects straight to check_heart when the magnet flag is off). absent_retries added 2026-08-02 (see await_shop's note) — this state had zero grace before, so a single slow-rendering frame here skipped the buy chain with no retry at all.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -131,6 +139,8 @@
           "state": "probe_magnet"
         }
       ],
+      "absent_retries": 4,
+      "absent_wait_ms": 1200,
       "on_absent": {
         "goto": "running"
       },
@@ -818,27 +828,6 @@
       },
       "timeout_ms": 15000
     },
-    "after_play": {
-      "_note": "Gate between Play and the Fast Start spam. home_play still visible -> Play missed (home was mid-fade) -> back to home to retap (spamming now would hit the leaderboard). home gone -> loading into a run or shop -> safe to spam 985,515 across the prompt window, then await_shop sorts shop vs direct-run. Ported from boxrun_magnet.",
-      "detect": "home/home_play_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "home"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "faststart_tap",
-          "taps": 14,
-          "gap_ms": 400
-        },
-        {
-          "type": "goto",
-          "state": "await_shop"
-        }
-      ]
-    },
     "probe_connectionlost": {
       "_note": "Connection Lost — server drop popup, can appear anywhere (head of the probe chain since nothing else works while offline). Text: 'Connection lost! Tap Confirm to restart the game and reload your data.' Not a dismiss: Confirm (960,700) actually restarts the client, so we hand off to restart_app (cycles the process the same way session_reset does) then the existing recover_login chain re-auths. Absent -> probe_inactive (rest of the popup chain).",
       "detect": "home/connectionlost_marker.png",
@@ -1101,7 +1090,7 @@
       "timeout_ms": 6000
     },
     "probe_relic": {
-      "_note": "Fifth (last) Play-tap gate, and the relic-claim entry. The \"Get!\" badge sits on the episode banner (relic_get_marker, cropped to the badge ALONE — the x/y fragment counter beside it differs per episode, so including it would only match one episode). Present -> tap it via tap_template, NOT a fixed coord: the badge rides the episode banner, whose width follows the episode NAME, so it sits at (792,125) on Episode 6 (\"Plum Blossom Palace\") but (1346,106) on Episode 7 (\"Land of Enlightenment\") — 554px apart. The hardcoded tap opened the Relic screen on ep6 and silently missed on ep7, leaving relic_claim to time out against a screen that never opened (score pinned at 0.23, not drifting, which is what gave the miss away). Absent -> the real Play tap (the original verify_no_enterleague.on_absent body, moved here unchanged). tools/run_toggle.py's --relic flag rewrites on_match to skip straight to the Play tap when the user wants to hoard relics instead of claiming them. Marker scores: badge present=1.000, home without it=0.463, in-run=0.357. tap_template verified live on Episode 1 (Escape from the Oven, a third banner width again): the Relic screen opened on the first poll, 1/1 attempts, versus 1/3 with the ep6 coord hardcoded.",
+      "_note": "Fifth (last) Play-tap gate, and the relic-claim entry. The \"Get!\" badge sits on the episode banner (relic_get_marker, cropped to the badge ALONE — the x/y fragment counter beside it differs per episode, so including it would only match one episode). Present -> tap it via tap_template, NOT a fixed coord: the badge rides the episode banner, whose width follows the episode NAME, so it sits at (792,125) on Episode 6 (\"Plum Blossom Palace\") but (1346,106) on Episode 7 (\"Land of Enlightenment\") — 554px apart. The hardcoded tap opened the Relic screen on ep6 and silently missed on ep7, leaving relic_claim to time out against a screen that never opened (score pinned at 0.23, not drifting, which is what gave the miss away). Absent -> the real Play tap (the original verify_no_enterleague.on_absent body, moved here unchanged). tools/run_toggle.py's --relic flag rewrites on_match to skip straight to the Play tap when the user wants to hoard relics instead of claiming them. Marker scores: badge present=1.000, home without it=0.463, in-run=0.357. tap_template verified live on Episode 1 (Escape from the Oven, a third banner width again): the Relic screen opened on the first poll, 1/1 attempts, versus 1/3 with the ep6 coord hardcoded. PLAY TAP + NO after_play GATE (2026-08-02): on_absent taps Play and hands STRAIGHT to await_shop. It used to route through after_play, which re-read home_play and treated a match as 'the Play tap missed' — but the Play! button shows THROUGH the boost-shop fade at ~0.87, so after_play sent it back to home, which tapped Play a SECOND time and closed the shop. Every toggle-family preset (magnet_hoard, noboost_claim, speed) therefore never saw the shop and never bought a boost: await_shop scored 0.4-0.6 and fell through to running. boxrun_magnet dropped after_play for exactly this reason and its note says so; toggle kept it. The Fast Start spam that after_play carried now lives on await_shop's absent path (the direct-run case), which is where boxrun_magnet puts it too.",
       "detect": "relic/relic_get_marker.png",
       "on_match": [
         {
@@ -1125,11 +1114,11 @@
         },
         {
           "type": "wait",
-          "ms": 2500
+          "ms": 3000
         },
         {
           "type": "goto",
-          "state": "after_play"
+          "state": "await_shop"
         }
       ],
       "timeout_ms": 6000

@@ -125,9 +125,137 @@
       "boost_skip_goto": "check_heart"
     },
     "picker": {
-      "_note": "'Pick desired Boosts!' popup. Magnetic Aura stays PRE-TICKED — DO NOT tap any row (each toggles). Tap Multi-Buy ONCE — game AUTO-ROLLS, spending coins, until Magnetic Aura lands, then stops. Hand to wait_roll. ABSENT -> picker never opened -> settle-retry then retry_buy.",
+      "_note": "'Pick desired Boosts!' popup. Magnetic Aura stays PRE-TICKED — DO NOT tap any row (each toggles). Tap Multi-Buy ONCE — game AUTO-ROLLS, spending coins, until Magnetic Aura lands, then stops. Hand to wait_roll. ABSENT -> picker never opened -> settle-retry then retry_buy. TICK GUARD (2026-08-02): the rows are toggles and the game REMEMBERS ticks across sessions, so 'the boost we want is pre-ticked' is only true until something else changes it — another bot config, a --boost run through run_toggle.py, or a manual tap. Found live with '+17% base speed' ticked and Magnetic Aura/Double Coins NOT, which would make Multi-Buy roll for the wrong boost, start_run's banner check fail, and retry_buy re-roll until the coins ran out. The prelude below now clears every other row and ticks ours before Multi-Buy, mirroring what src/boost.py's apply_boost injects for the toggle family. Each tap is `optional` + roi-scoped: 'template absent' means the row is already in the wanted state, so it is a no-op, not an error.",
       "detect": "boxrun/picker_marker.png",
       "on_match": [
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            232,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            968,
+            232,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            306,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            968,
+            306,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            381,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            968,
+            381,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            455,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            968,
+            455,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            529,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            603,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_unticked.png",
+          "roi": [
+            968,
+            529,
+            60,
+            60
+          ],
+          "optional": true
+        },
+        {
+          "type": "wait",
+          "ms": [
+            510,
+            720
+          ]
+        },
         {
           "type": "tap_xy",
           "x": 950,

@@ -49,19 +49,25 @@ PICK = {
 PROFILES: dict[str, dict] = {
     "magnet": {
         "label": "Magnetic Aura",
-        "banner": "magneticaura_banner.png",
+        "banner": "boxrun/magneticaura_banner.png",
         "buy_taps": [(810, 875), (1645, 340)],
         "multibuy": (950, 880),
     },
     "speed": {
         "label": "+17% base speed",
-        "banner": "speedbase17_banner.png",
-        "buy_taps": [(1649, 337)],
+        "banner": "boxrun/speedbase17_banner.png",
+        # The shop opens on the HP-Upgrade view, where the pink Multi toggle
+        # does not exist — (1649,337) lands on HP "Upgrade" there and the
+        # Random Boost panel never opens, so the picker never appears and the
+        # chain loops on retry_buy, re-rolling until the coins run out (seen
+        # live 2026-08-02, 8 stacks burned). The Random Boost cell has to be
+        # tapped first, exactly like magnet; the profile used to omit it.
+        "buy_taps": [(810, 875), (1645, 340)],
         "multibuy": (953, 899),
     },
     "doublecoins": {
         "label": "Double Coins",
-        "banner": "doublecoins_banner.png",
+        "banner": "boxrun/doublecoins_banner.png",
         "buy_taps": [(755, 875), (1678, 305)],
         "multibuy": (953, 899),
     },
@@ -105,8 +111,8 @@ _PICK_ROI_PAD = 30
 
 #: The radio disc in each state, cropped from a live picker. Matching one inside
 #: a single row's roi is how a row's tick state is read.
-UNTICKED_TEMPLATE = "pick_unticked.png"
-TICKED_TEMPLATE = "pick_ticked.png"
+UNTICKED_TEMPLATE = "giftdraw/pick_unticked.png"
+TICKED_TEMPLATE = "giftdraw/pick_ticked.png"
 
 
 def _roi(x: int, y: int) -> list[int]:
@@ -205,9 +211,10 @@ def apply_boost(cfg: Config, choice: str) -> None:
             if action.get("type") == "tap_xy":
                 nxt = next(taps, None)
                 if nxt is None:
-                    # This profile needs fewer taps than the baseline: the speed
-                    # chain reaches Multi directly instead of opening the Random
-                    # Boost cell first.
+                    # This profile needs fewer taps than the baseline chain.
+                    # No shipped profile does today — speed used to, on the
+                    # claim that it reached Multi directly, which was wrong for
+                    # a shop that opens on HP-Upgrade (see its buy_taps note).
                     drop_next_wait = True
                     continue
                 action = {**action, "x": nxt[0], "y": nxt[1]}

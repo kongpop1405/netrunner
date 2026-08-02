@@ -320,18 +320,28 @@ Double-click **`launchers/boxrun_toggle.bat`** — asks 7 questions (Fast Start 
 
 **Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
 
+### Why no toggle-family preset ever bought a boost (fixed 2026-08-02)
+
+Reported as "`boxrun_speed` never buys speed", then "`boxrun_magnet_hoard` never buys magnet either" — same three bugs underneath, all of them in shared code, so every `--boost` value and every preset built on `boxrun_toggle.json` was affected. `boxrun_magnet.json` (its own config, not toggle-based) was never affected.
+
+1. **The `after_play` gate double-tapped Play and closed the shop.** `probe_relic` taps Play, then handed to `after_play`, which re-read `home_play_marker` and treated a match as "the tap missed, go back to home and retap". But Play! shows *through* the boost-shop fade at ~0.87 — so it always looked like a miss, home tapped Play a second time, and the second tap dismissed the shop. `await_shop` then scored 0.4-0.6 and fell through to `running`. `boxrun_magnet` had already removed `after_play` for exactly this reason and says so in its `home` note; toggle kept it. Now `probe_relic` goes straight to `await_shop`, and the Fast Start spam `after_play` used to carry moved to `await_shop`'s absent path (the direct-run case) — the same shape `boxrun_magnet` uses. `after_play` is deleted, not just bypassed.
+2. **Every `PROFILES` banner path was missing its `boxrun/` prefix.** `apply_boost` wrote `detect: "magneticaura_banner.png"`, but the file is `templates/cookierun/boxrun/magneticaura_banner.png`. Had the chain ever been reached, it would have crashed with `PerceiveError: template not found` rather than silently skipping — which is why bug 1 hid this one completely. All three profiles were wrong the same way.
+3. **The picker's tick templates were missing their `giftdraw/` prefix.** Same class again: `pick_ticked.png` / `pick_unticked.png` live in `templates/cookierun/giftdraw/`. This one *did* surface live, as a fatal after 5 retries, once bug 1 was fixed and the picker was finally reached.
+
+Verified end-to-end afterwards with `--boost magnet` on a clean home: `home → Play → await_shop 0.89 → probe_magnet → buy_magnet (808,878 → 1647,340) → picker 1.00 → untick speed (997,413) → tick magnet (998,557) → Multi-Buy (948,880) → wait_roll → start_run → check_heart → running`. The `PICK` row coordinates were spot-checked against a live picker at the same time: every row reads its tick state correctly (matched row 0.99, others 0.98-1.00 unticked).
+
 ### Boost choice (`--boost`, default `magnet`)
 
 The buy chain's *shape* is identical for every boost — `probe_magnet → buy_magnet → picker → wait_roll → start_run → retry_buy` — so one skeleton plus a profile covers all three instead of a config file each. `_BOOST_PROFILES` in `tools/run_toggle.py` holds what actually differs, each value lifted from the config that proved it live:
 
 | `--boost` | banner template | buy taps | Multi-Buy | from |
 |-----------|-----------------|----------|-----------|------|
-| `magnet` | `magneticaura_banner.png` | (810,875) → (1645,340) | (950,880) | `boxrun_magnet` |
-| `speed` | `speedbase17_banner.png` | (1649,337) | (953,899) | `boxrun_default` |
-| `doublecoins` | `doublecoins_banner.png` | (755,875) → (1678,305) | (953,899) | `coinrun` |
+| `magnet` | `boxrun/magneticaura_banner.png` | (810,875) → (1645,340) | (950,880) | `boxrun_magnet` |
+| `speed` | `boxrun/speedbase17_banner.png` | (810,875) → (1645,340) | (953,899) | `boxrun_default`, corrected 2026-08-02 |
+| `doublecoins` | `boxrun/doublecoins_banner.png` | (755,875) → (1678,305) | (953,899) | `coinrun` |
 | `none` | — | — | — | skips the buy chain entirely |
 
-Magnet and Double Coins open on the HP-Upgrade view and need the Random Boost cell tapped before the Multi toggle; the `+17% base speed` chain reaches Multi directly, so `_apply_boost` drops the extra tap **and** the wait that was there to let its screen settle. `none` takes the same path the old `--magnet n` did: `await_shop`/`boost_shop` route straight to `check_heart`.
+All three open on the HP-Upgrade view and need the Random Boost cell tapped before the Multi toggle. `speed` used to be listed as reaching Multi directly with a single tap — it does not on a shop that opens on HP-Upgrade, where that tap hits HP `Upgrade` and the picker never opens (see the section above). `_apply_boost` still supports a profile with fewer taps than the baseline chain, but no shipped profile uses that path today. `none` takes the same path the old `--magnet n` did: `await_shop`/`boost_shop` route straight to `check_heart`.
 
 `--boost` replaces the old `--magnet y/n`.
 
@@ -363,6 +373,44 @@ python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --rela
 Double-click **`launchers/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, Relay=n, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-typing the same 7 answers each launch.
 
 **Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
+
+## Box Farm — Magnet/hoard preset (`launchers/boxrun_magnet_hoard.bat`)
+
+Double-click **`launchers/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, Relay=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-typing the same 7 answers each launch.
+
+**Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
+
+## Box Farm — Speed (`launchers/boxrun_speed.bat`) — live-verified 2026-08-02
+
+Double-click **`launchers/boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` directly (unlimited cycles, `Ctrl+C` to stop). Same Mystery Box farm loop as `boxrun_magnet`, with the Magnetic Aura buy chain swapped for **+17% base speed**: `probe_speed`/`start_run` read `speedbase17_banner.png`, `buy_speed` opens the picker, `picker` Multi-Buys at (953,899).
+
+**Precondition**: any episode selected on home before starting — the bot only taps `Play!`.
+
+The one config-level fix this needed:
+
+- **`buy_speed` needs the Random Boost cell tap first, contrary to `src/boost.py`.** The `speed` profile there had `buy_taps: [(1649,337)]` — Multi directly, no cell tap — and `_apply_boost` even dropped the extra tap for it. That is only correct when the shop is *already* on the Random Boost view. This account's shop opens on **HP Upgrade**, where (1649,337) lands on HP `Upgrade` instead: the Random Boost panel never appears, `picker` never matches, and `start_run` times out into `retry_buy` → `buy_speed` forever, re-rolling every ~16s (watched it burn 8 speed stacks, 728→720, before it was killed). So `buy_speed` taps **(810,875) → (1645,340)**, the same two-step magnet uses. `src/boost.py`'s profile was corrected to match — see the toggle-family section below.
+
+(An earlier note here blamed `boxrun_toggle`'s Play tap coordinate for the missing purchases. That was wrong — (1431,963) sits inside the Play button. The real cause was the `after_play` gate, fixed separately; see below.)
+
+Verified end-to-end on a clean home: `home → Play(1652,972) → await_shop 1.00 → probe_speed → buy_speed → picker 1.00 → Multi-Buy → wait_roll (Stop button 1.00 while the game auto-rolls) → speedbase17_banner **1.000** on the shop panel`.
+
+CV scores for `speedbase17_banner.png` (2026-08-02, 1920x1080): equipped **1.000**, shop without it 0.348, home 0.377 — clean separation, no threshold change needed.
+
+⚠️ If you ever point this at an account whose shop opens on the Random Boost view instead, `buy_speed`'s first tap becomes a no-op on an already-correct panel — harmless, but the `src/boost.py` profile would then be the right shape and this config the redundant one.
+
+Manual equivalent:
+
+```powershell
+python main.py --config config/cookierun/boxrun_speed.json
+```
+
+## Box Farm — Relay preset (`launchers/boxrun_relay.bat`)
+
+Double-click **`launchers/boxrun_relay.bat`** — runs `config/cookierun/boxrun_relay.json` directly (not through `run_toggle.py`), unlimited cycles, `Ctrl+C` to stop. A copy of `boxrun_magnet.json` with exactly one change: **`relay_tap` fires twice per hop instead of once** (`"taps": 2` on all four call sites — `jump_2`, `jump_3`, `jump_4`, `guard_not_inactive`), for a higher Cookie Relay Boost trigger rate. Repeat taps are paced by `Act.relay_gap_s` (0.12s). Everything else — states, coords, Magnetic Aura buy chain, guard chain — is unchanged from `boxrun_magnet`; see that config's `_note` fields for the reasoning behind each state.
+
+The relay button has no template and is a no-op when no partner is ready, so extra taps cost nothing but the ~120ms gap; `relay_taps` in `src/act.py` is the equivalent global knob for every other bot.
+
+**Precondition**: same as `boxrun_magnet.bat` — any episode selected on home before starting.
 
 ## Preconditions (cookierun run-grind)
 

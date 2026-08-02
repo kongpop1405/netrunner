@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run OvenBreak (com.devsisters.crg) run-grind with Multi-Buy Double Coins. All coords verified live @1920x1080. INVARIANT: never Play without Double Coins equipped — the only exception is an empty wallet (nocoins -> insufficient_coins -> force_play). Every path to Play must first observe either the doublecoins_banner or the 'Not enough Coins!' popup. Loop: home->Play->boost_shop->probe_dc_owned(skip buy if banner already up)->buy_boost->Multi->picker->Multi-Buy->wait_roll->start_run: banner up = Play, banner absent = retry_buy -> buy again.",
+  "_comment": "boxrun_relay — clone of boxrun_magnet with the ONE change: relay_tap fires 2x per hop instead of 1x (taps=2, gap_ms default 120 from act.py relay_gap_s) on all 4 relay_tap call sites (jump_2/jump_3/jump_4/guard_not_inactive) to raise Cookie Relay Boost trigger frequency. Everything else — states, coords, boost chain, guard chain — unchanged from boxrun_magnet, see that file's _note fields for rationale. Mystery Box farm, Magnetic Aura boost, jump-hop run, play to death (no early quit). Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. PRECONDITION: Episode 6 selected on home BEFORE starting (bot only taps Play!). BOOST: Magnetic Aura Random Boost equipped every run (probe_magnet checks the red-gold banner; buy_magnet taps the Random Boost slot 810,875 -> Multi 1645,340 -> picker with Magnetic Aura PRE-TICKED -> Multi-Buy 950,880 -> auto-roll). Fast Start prompt tapped at run start (faststart_btn tap_template + faststart_check). Boxes collected mid-run are opened on the Mystery Box screen after Result. Loop: home->Play->await_shop->probe_magnet->buy_magnet->start_run->check_heart->Play->await_faststart->faststart_check->run(J->J->S->J till death)->run_result->mystery_box->reveal->home.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -7,7 +7,7 @@
   "start_state": "home",
   "states": {
     "home": {
-      "_note": "Main menu, detected by the 'Play!' button (home/home_play_marker.png). The OLD marker cropped the 'Episode 1' banner text, which SILENTLY BROKE the whole bot once the account advanced past Episode 1 — the banner text changes per episode, so home stopped matching (score ~0.43 vs the 0.82 threshold), every loop fell through to `running`, and `running`'s blind relay tap at (960,540) landed on a leaderboard friend row, opening the Friend's Info popup stack the bot then got stuck behind. 'Play!' is episode-independent (score 1.000 across episodes; popups/modals score 0.24-0.32). Play! visible = nothing covers it, so tap it directly. Absent -> either a modal covers it or we're elsewhere: hand off to probe_sendlife, the head of the modal-peeling chain (NEVER blind-tap from here). The 4500ms wait after the tap covers the boost-shop load: at 3000ms the shop screen was often still fading in with Play! underneath (score ~0.87, over the 0.82 threshold), so guard_not_home read it as 'still on home' and bounced back here for a wasted second tap.",
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home/home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). Play! at (1650,970) -> await_shop. No home-spam and no after_play gate: after_play misread the Play! button showing THROUGH the shop fade (~0.87) as a missed tap and double-tapped Play, which closed the shop. Fast Start is spammed later (await_shop absent = direct run, or check_heart = shop path) — always AFTER we have left home, so it can never hit the leaderboard.",
       "detect": "home/home_play_marker.png",
       "on_match": [
         {
@@ -21,44 +21,32 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "Bridge between tapping Play! on home and acting in the boost shop. The shop fades in over a variable time, and while it fades the Play! button shows THROUGH it above the 0.82 threshold — so if home went straight to boost_shop, an early miss sent us to running -> guard_not_home (sees Play!) -> home -> tap Play AGAIN. Measured on a full day of logs that second-tap loop fired ~11.7 times PER run (home-Play taps 2521 vs boost-shop Play 216), wasting ~25s/run and risking a stray tap landing on a shop cell. Here we wait for the shop to actually settle: on_match = shop is up, proceed to the coin guard. Absent = still fading (or we were never in the shop): peel a retry via await_shop_2 instead of bouncing back to home. The wait+re-check replaces blind reliance on one fixed 4500ms sleep.",
+      "_note": "After Play, poll for the boost shop. It settles to 1.00 within ~1s WHEN Play was tapped on a stable home; if home was still fading the tap can miss, so retry 6x/700ms. Shop present -> probe_magnet. Absent after retries = direct run (boost still equipped, no shop) -> spam the Fast Start spot (985,515) across the prompt window (safe now: we are off home) -> running.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "probe_dc_owned"
+          "state": "probe_magnet"
         }
       ],
+      "absent_retries": 6,
+      "absent_wait_ms": 700,
       "on_absent": [
         {
-          "type": "wait",
-          "ms": 1200
+          "type": "faststart_tap",
+          "taps": 14,
+          "gap_ms": 400
         },
         {
           "type": "goto",
-          "state": "await_shop_2"
+          "state": "running"
         }
       ],
-      "timeout_ms": 8000,
       "boost_role": "gate",
       "boost_skip_goto": "check_heart"
     },
-    "await_shop_2": {
-      "_note": "Second (final) shop-settle re-check. Shop up -> coin guard. Still absent after this second wait -> we are genuinely not in the shop (bot started mid-run, or a run auto-started), so fall through to running and let the guard chain sort out where we actually are. Only ONE bounce back into the running/guard machinery, not an unbounded loop.",
-      "detect": "boxrun/boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "probe_dc_owned"
-        }
-      ],
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000
-    },
     "probe_dailycheckin": {
-      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the bot stalls (falls through to boost_shop and never recovers home). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run=0.232 — no false-positive). Present -> tap the green OK button (965,985) -> probe_treasurereward (a second launch popup often queues behind it). Absent -> fall to probe_treasurereward too. Shared with boxrun_default.json; same template, same coords.",
+      "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
       "detect": "home/dailycheckin_marker.png",
       "on_match": [
         {
@@ -79,7 +67,7 @@
       "timeout_ms": 8000
     },
     "probe_treasurereward": {
-      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch and also covers Play!. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Shared with boxrun_default.json.",
+      "_note": "The 'Power+ Treasure Rewards' popup stacks right after Daily Check-in at launch (Choco Dip Sticks / Crystal Crown etc.), also covering Play!. Same stall class as the check-in: no dismiss -> bot loses home. Detected by the unique 'Power+ Treasure Rewards' title (marker self=1.000, in-run=0.31, vs dailycheckin=0.40 — no cross-match). Present -> tap Confirm (960,850) -> home. Absent -> fall to probe_sendlife. Reached from BOTH the check-in dismiss (popups queue) and directly when only this one shows.",
       "detect": "friends/treasurereward_marker.png",
       "on_match": [
         {
@@ -100,7 +88,7 @@
       "timeout_ms": 8000
     },
     "probe_sendlife": {
-      "_note": "Reached whenever Play! is not visible and no launch popup was on screen. A 'Send <friend> a free Life? (+N Gift Points)' dialog pops over home when a stray in-run tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left) to dismiss; NEVER Confirm (1189,687 — green) since we don't want to burn gift interactions. Detected by the unique 'Gift Points' text. Dismissed -> back to home to re-check Play!. Absent -> not this modal; try the boost shop next (we may simply be in it).",
+      "_note": "Reached whenever Play! is not visible and no Daily Check-in popup was on screen. 'Send <friend> a free Life?' dialog pops over home when a stray tap lands on a leaderboard friend row. Tap Cancel (727,688 — gray, left); NEVER Confirm (1189,687). Detected by the unique 'Gift Points' text. Dismissed -> home. Absent -> try the boost shop next.",
       "detect": "sendlife/sendlife_marker.png",
       "on_match": [
         {
@@ -121,12 +109,12 @@
       "timeout_ms": 8000
     },
     "boost_shop": {
-      "_note": "boost shop open. BEFORE buying anything, route through probe_dc_owned: if the Double Coins banner is already up (boost equipped from a previous multi-buy — e.g. bot restarted after a roll landed but before the run consumed it), buying again just burns coins. Only when the banner is absent do we proceed to buy_boost.",
+      "_note": "Boost shop open (entry point for guard/probe re-routing). Route to probe_magnet to ensure Magnetic Aura is equipped before Play.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "probe_dc_owned"
+          "state": "probe_magnet"
         }
       ],
       "on_absent": {
@@ -136,59 +124,21 @@
       "boost_role": "gate",
       "boost_skip_goto": "check_heart"
     },
-    "probe_dc_owned": {
-      "_note": "COIN GUARD: Multi-Buy must fire ONLY when Double Coins is NOT already equipped. boxrun/doublecoins_banner.png (same template start_run uses) shows on the boost-shop right panel whenever the boost is active. Present -> skip the whole buy flow, go straight to the Play gate. Absent -> buy_boost opens the Multi picker as before. RETRY GRACE (3x800ms): the equipped-boost banner takes ~1-2s to render after the shop opens, so detecting with no grace read the still-fading panel, thought the boost was absent, and re-bought/re-rolled every cycle — burning coins. Same fix as boxrun_magnet probe_magnet.",
-      "detect": "boxrun/doublecoins_banner.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "check_heart"
-        }
-      ],
-      "on_absent": {
-        "goto": "buy_boost"
-      },
-      "timeout_ms": 8000,
-      "absent_retries": 3,
-      "absent_wait_ms": 800
-    },
-    "buy_boost": {
-      "_note": "No Double Coins equipped (probe_dc_owned confirmed banner absent). Tap the Random Boost gift box cell to make the right panel show Random Boost + Multi, then open the Multi picker.",
-      "detect": "boxrun/boostshop_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 755,
-          "y": 875
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "tap_xy",
-          "x": 1678,
-          "y": 305
-        },
-        {
-          "type": "wait",
-          "ms": 1500
-        },
-        {
-          "type": "goto",
-          "state": "picker"
-        }
-      ],
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000,
-      "boost_role": "buy"
-    },
     "picker": {
-      "_note": "Pick desired Boosts popup. Double Coins stays pre-ticked by default — DO NOT tap it (the row is a toggle; tapping un-ticks it). Tap Multi-Buy ONCE — the game then AUTO-ROLLS by itself, repeatedly, until the ticked boost (Double Coins) lands, then stops on its own. A 'Stop'/progress animation plays the whole time. We must NOT tap Stop or anything else during it, and must NOT re-open Multi/re-buy — the game is already rolling. Hand off to wait_roll to sit still until the roll UI is gone. ABSENT means the picker never opened (the Multi tap missed, or the popup was still animating in past the 1500ms wait) — the old config sent that straight to wait_roll, whose marker is also absent (nothing is rolling), so the bot fell all the way through check_boost_result -> start_run -> Play with NO boost at all. Observed live 2026-07-12 01:13:13-01:13:20: buy cell + Multi tapped, no Multi-Buy tap ever logged, Play tapped 5s later. Now: settle-and-recheck via picker_2 (same pattern as await_shop/await_shop_2) instead of assuming a roll happened. TICK GUARD (2026-08-02): the rows are toggles and the game REMEMBERS ticks across sessions, so 'the boost we want is pre-ticked' is only true until something else changes it — another bot config, a --boost run through run_toggle.py, or a manual tap. Found live with '+17% base speed' ticked and Magnetic Aura/Double Coins NOT, which would make Multi-Buy roll for the wrong boost, start_run's banner check fail, and retry_buy re-roll until the coins ran out. The prelude below now clears every other row and ticks ours before Multi-Buy, mirroring what src/boost.py's apply_boost injects for the toggle family. Each tap is `optional` + roi-scoped: 'template absent' means the row is already in the wanted state, so it is a no-op, not an error.",
+      "_note": "'Pick desired Boosts!' popup. Magnetic Aura stays PRE-TICKED — DO NOT tap any row (each toggles). Tap Multi-Buy ONCE — game AUTO-ROLLS, spending coins, until Magnetic Aura lands, then stops. Hand to wait_roll. ABSENT -> picker never opened -> settle-retry then retry_buy. TICK GUARD (2026-08-02): the rows are toggles and the game REMEMBERS ticks across sessions, so 'the boost we want is pre-ticked' is only true until something else changes it — another bot config, a --boost run through run_toggle.py, or a manual tap. Found live with '+17% base speed' ticked and Magnetic Aura/Double Coins NOT, which would make Multi-Buy roll for the wrong boost, start_run's banner check fail, and retry_buy re-roll until the coins ran out. The prelude below now clears every other row and ticks ours before Multi-Buy, mirroring what src/boost.py's apply_boost injects for the toggle family. Each tap is `optional` + roi-scoped: 'template absent' means the row is already in the wanted state, so it is a no-op, not an error.",
       "detect": "boxrun/picker_marker.png",
       "on_match": [
+        {
+          "type": "tap_template",
+          "template": "giftdraw/pick_ticked.png",
+          "roi": [
+            395,
+            232,
+            60,
+            60
+          ],
+          "optional": true
+        },
         {
           "type": "tap_template",
           "template": "giftdraw/pick_ticked.png",
@@ -271,17 +221,6 @@
           "template": "giftdraw/pick_ticked.png",
           "roi": [
             395,
-            529,
-            60,
-            60
-          ],
-          "optional": true
-        },
-        {
-          "type": "tap_template",
-          "template": "giftdraw/pick_ticked.png",
-          "roi": [
-            968,
             529,
             60,
             60
@@ -303,8 +242,8 @@
           "type": "tap_template",
           "template": "giftdraw/pick_unticked.png",
           "roi": [
-            395,
-            232,
+            968,
+            529,
             60,
             60
           ],
@@ -319,8 +258,8 @@
         },
         {
           "type": "tap_xy",
-          "x": 953,
-          "y": 899
+          "x": 950,
+          "y": 880
         },
         {
           "type": "wait",
@@ -331,44 +270,16 @@
           "state": "wait_roll"
         }
       ],
-      "on_absent": [
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "goto",
-          "state": "picker_2"
-        }
-      ],
-      "timeout_ms": 10000,
-      "boost_role": "picker"
-    },
-    "picker_2": {
-      "_note": "Second (final) picker-settle re-check. Popup finally up -> tap Multi-Buy and roll as normal. Still absent -> the picker genuinely never opened, so NO roll is in flight: do NOT fall through to Play (that was the bug). Go to retry_buy, which re-checks coins and re-opens the buy flow.",
-      "detect": "boxrun/picker_marker.png",
-      "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 953,
-          "y": 899
-        },
-        {
-          "type": "wait",
-          "ms": 1500
-        },
-        {
-          "type": "goto",
-          "state": "wait_roll"
-        }
-      ],
+      "absent_retries": 1,
+      "absent_wait_ms": 1200,
       "on_absent": {
         "goto": "retry_buy"
       },
-      "timeout_ms": 10000
+      "timeout_ms": 10000,
+      "boost_role": "picker"
     },
     "wait_roll": {
-      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until the chosen boost lands, showing a Stop button (rollstop_marker) the WHOLE time. Self-loop while Stop is present so we never cut the roll short. FIX: the old multibuy_marker was the GREEN Multi-Buy button that starts the roll — it vanishes the instant the roll begins, so wait_roll exited immediately, start_run read a still-rolling (boost-absent) banner, and the loop re-bought forever, draining coins. rollstop_marker (the Stop button, shown throughout the roll) is the correct signal. Stop gone -> roll finished -> read the banner in start_run. Shared with boxrun_magnet. absent is a goto to a DIFFERENT state (start_run) so self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
+      "_note": "The self-rolling Multi-Buy is in progress: the game keeps re-rolling and spending coins until Magnetic Aura lands, showing a Stop button (rollstop_marker, self=1.000; settled/Play frame=0.37) the whole time. Do NOTHING — no taps — just self-loop while the Stop button is present so we never cut the roll short. The ep3 multibuy_marker did NOT match ep6 roll UI, so wait_roll exited instantly, start_run read a still-rolling (Magnetic-Aura-absent) banner, and the loop re-bought forever. Stop gone -> roll finished -> read the banner in start_run. absent (Stop gone) is a goto to a DIFFERENT state (start_run) so the self-loop + timeout is safe. match_timeout_ms 90000 bounds a roll UI stuck matched forever — the state's timeout_ms only ever fired on the absent path.",
       "detect": "boxrun/rollstop_marker.png",
       "on_match": [
         {
@@ -387,7 +298,7 @@
       "match_timeout_ms": 90000
     },
     "insufficient_coins": {
-      "_note": "SAFETY: 'Not enough Coins!' popup (auto-buy ran the balance dry). Tap Cancel (770,685) — NEVER Confirm (1150,685), which spends gems. Then Play! with whatever boost we have (or none).",
+      "_note": "SAFETY: 'Not enough Coins!' popup. Tap Cancel (770,685) — NEVER Confirm (1150,685), which spends gems. Then Play! with whatever boost we have (or none).",
       "detect": "boxrun/nocoins_marker.png",
       "on_match": [
         {
@@ -408,7 +319,7 @@
       "timeout_ms": 6000
     },
     "force_play": {
-      "_note": "Coins exhausted — stop chasing Double Coins, Play! with whatever boost we have. Still route through check_heart so we don't try to run on empty hearts.",
+      "_note": "Coins exhausted — stop chasing the speed boost, Play! with whatever we have. Still route through check_heart so we don't run on empty hearts.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -422,8 +333,8 @@
       "timeout_ms": 8000
     },
     "start_run": {
-      "_note": "HARD RULE: never Play without Double Coins. This state is the enforcement point. Reached only AFTER wait_roll confirmed multibuy_marker is gone, so no roll is in flight and it is safe to act. Banner present -> the roll landed Double Coins -> check_heart -> Play. Banner ABSENT -> the roll ended on some OTHER boost (or the picker never opened at all) -> we do NOT own Double Coins -> retry_buy, which buys again until we do. Previously BOTH branches went to check_heart, making the detect meaningless: any non-DC outcome silently Played with the wrong boost — the bug this file was changed to fix. The only sanctioned way to Play without Double Coins is the nocoins escape (insufficient_coins -> force_play).",
-      "detect": "boxrun/doublecoins_banner.png",
+      "_note": "SPEED ENFORCEMENT: reached only AFTER wait_roll confirmed the roll UI is gone. Pill present -> the roll landed Magnetic Aura -> check_heart -> Play. Pill ABSENT -> the roll never landed it (or the picker never opened) -> retry_buy, which buys again until we do. The only sanctioned Play-without-Magnetic Aura path is the nocoins escape (insufficient_coins -> force_play). RETRY GRACE (4x800ms): after Multi-Buy the roll animation + banner render take ~2-3s; checking instantly read a still-fading banner (0.6) and looped back into buy_magnet, re-rolling and burning coins. Same class of fix as probe_magnet.",
+      "detect": "boxrun/magneticaura_banner.png",
       "on_match": [
         {
           "type": "goto",
@@ -434,10 +345,12 @@
         "goto": "retry_buy"
       },
       "timeout_ms": 8000,
+      "absent_retries": 4,
+      "absent_wait_ms": 800,
       "boost_role": "probe"
     },
     "retry_buy": {
-      "_note": "Re-buy gate: we ended up without Double Coins (wrong boost rolled, or the picker never opened) and must buy again. Check the wallet FIRST so we never spin re-opening the shop on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play with whatever we have — the ONLY sanctioned Play-without-DC path). No popup -> coins remain, so loop back into buy_boost. Termination is natural rather than a retry counter: the FSM has no state variables, so counting rounds would need a chain of retry_1..retry_N states; instead each buy drains coins until the game itself raises nocoins, which ends the loop. A genuinely stuck loop still trips the engine's livelock warning (100 identical polls -> Discord alert).",
+      "_note": "Re-buy gate: we ended up without the +17% speed boost and must roll again. Check the wallet FIRST so we never spin on an empty balance: 'Not enough Coins!' up -> insufficient_coins (Cancel, then force_play — the ONLY sanctioned Play-without-speed path). No popup -> coins remain, loop back into buy_speed. Termination is natural (each roll drains coins until the game raises nocoins); a genuinely stuck loop trips the engine's 100-poll livelock warning.",
       "detect": "boxrun/nocoins_marker.png",
       "on_match": [
         {
@@ -446,12 +359,12 @@
         }
       ],
       "on_absent": {
-        "goto": "buy_boost"
+        "goto": "buy_magnet"
       },
       "timeout_ms": 8000
     },
     "check_heart": {
-      "_note": "SINGLE Play gate, reached from probe_dc_owned/start_run/force_play (all BOOST-SHOP context, Play at 1365,931). boxrun/heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts @1920x1080 — hearts deplete right-to-left, so the leftmost heart is gray ONLY at 0 hearts; the '|' anchor pins the match to slot 1 (gray hearts in other slots can't false-positive). CV verified: 0 hearts score=1.000; 1-3 hearts score=0.749-0.762 (under 0.82 threshold — thinner margin than other templates, don't raise match_threshold above ~0.9 without re-checking this one). Present -> hearts exhausted -> do NOT play; wait 30s and self-loop until a heart regenerates (timeout_ms must exceed the ~10-20 min regen: 25 min). HARD RULE: never buy hearts with gems/coins (the green heart 'Buy' button in the boost shop is off-limits — do not add a tap for it). Absent -> >=1 heart -> tap Play, start the run.",
+      "_note": "SINGLE Play gate. heart_empty present -> wait 30s self-loop until a heart regenerates. Absent (>=1 heart) -> tap Play, then SPAM-TAP the Fast Start button spot (985,515) every ~400ms from the load screen through the whole prompt window and into the run. Blind spam instead of detect+tap: the prompt appears ~5.6s after Play and lingers only ~2s, so a fixed cadence of taps across 0-8s can never miss it, and taps that land before/after the prompt are harmless (empty run area). Ends at running.",
       "detect": "boxrun/heart_empty.png",
       "on_match": [
         {
@@ -471,7 +384,12 @@
         },
         {
           "type": "wait",
-          "ms": 6000
+          "ms": 1500
+        },
+        {
+          "type": "faststart_tap",
+          "taps": 18,
+          "gap_ms": 400
         },
         {
           "type": "goto",
@@ -481,7 +399,7 @@
       "timeout_ms": 1500000
     },
     "running": {
-      "_note": "In-run (auto-play). Result popup up -> run over. Not up -> we might still be running, but we might equally be sitting on home or in the shop, so DON'T tap yet: hand off to the guard chain, which only lets the jump/relay taps fire once it has ruled out every static screen those taps could damage. (Previously this state's on_absent fired jump + tap(960,540) unconditionally; with the home marker broken that tap kept landing on the home leaderboard and opening friend popups.)",
+      "_note": "In-run (auto-play). Result popup up -> run over. Not up -> we MIGHT still be running, but could equally be on home or in the shop, so DON'T tap yet: hand off to the guard chain.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -495,7 +413,7 @@
       "timeout_ms": 300000
     },
     "guard_not_home": {
-      "_note": "Guard 1/2 before any in-run tap: is the Play! button on screen? If so we're on home, not running — go handle home instead of tapping the leaderboard.",
+      "_note": "Guard 1/2 before any in-run tap: Play! on screen -> we're on home, not running.",
       "detect": "home/home_play_marker.png",
       "on_match": [
         {
@@ -509,7 +427,7 @@
       "timeout_ms": 8000
     },
     "guard_not_shop": {
-      "_note": "Guard 2/2: are we in the boost shop? If so resume the buy loop rather than tapping. Only when neither Play! nor the shop is visible do we accept 'we are mid-run' and fire the jump + Cookie Relay Boost taps — a random point in the left jump zone (~238,940), ~35% of the time a quick double-jump, plus the relay icon at mid-screen (~960,540). The two zones don't overlap, so both are safe to fire together once we know we're actually in a run. The guards ran on the SAME capture as `running`, so reaching here costs nothing extra; the jump is the first thing that invalidates the frame. Hand off to the fast-jump chain (jump_2..jump_4) instead of straight back to the probe chain: measured on 10,204 real jumps, routing every single jump through check_shop_after_run + the 6 probe states cost a second full capture (~850ms) and stretched the median jump gap to 3s — longer than the ~1.5-2s a pit stays on screen, so the bot was missing pits structurally. The probes only ever fired on 0.8% of cycles (84 popups all day), so they do not need to run every cycle. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
+      "_note": "Guard 2/2: in the boost shop -> resume via boost_shop. Neither Play! nor shop visible -> guard_not_sendlife (rule out a Send-Life/Level-Up popup before assuming genuinely mid-run and jumping blind).",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -565,7 +483,7 @@
       "timeout_ms": 6000
     },
     "jump_2": {
-      "_note": "Fast-jump hop 2/4. One capture per hop, and that capture is spent on the single question that matters mid-run: has the result popup appeared? If not, jump again immediately. NO relay tap here — the relay icon sits at screen centre (960,540) and, when the run has actually ended without us noticing, that tap lands on the home leaderboard and opens the Friend's Info popup stack. Firing it once per four jumps instead of once per jump cuts that exposure ~4x while still triggering the boost (10,297 relay taps all day for one boost each run is wild overkill). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Hop 2/4 — jump. One capture per hop, spent on the only mid-run question: result popup up? If not, jump again. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -582,7 +500,8 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
+          "type": "relay_tap",
+          "taps": 2
         },
         {
           "type": "goto",
@@ -592,7 +511,7 @@
       "timeout_ms": 20000
     },
     "jump_3": {
-      "_note": "Fast-jump hop 3/4. Same contract as jump_2. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Hop 3/4 — the SLIDE hop of the J->J->S->J anti-collision cycle. Overhead bars are the one obstacle class a jump can never clear; one slide per 4-hop cycle (~every 3-4s) sweeps them without giving up much pit coverage. Slide zone = the 'Slide' button bottom-right (~1671,937), press-and-hold via act.py (default ~550ms clears a typical low bar). Same detect contract: result up -> run over. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -602,14 +521,15 @@
       ],
       "on_absent": [
         {
-          "type": "jump",
-          "cx": 238,
-          "cy": 940,
+          "type": "slide",
+          "cx": 1671,
+          "cy": 937,
           "rx": 175,
           "ry": 55
         },
         {
-          "type": "relay_tap"
+          "type": "relay_tap",
+          "taps": 2
         },
         {
           "type": "goto",
@@ -619,7 +539,7 @@
       "timeout_ms": 20000
     },
     "jump_4": {
-      "_note": "Fast-jump hop 4/4 — last hop before we pay for a housekeeping pass. Falls through to check_shop_after_run, which re-checks home and then walks the whole probe chain (levelup / ranking / giftdraw / friendinfo / congrats). Popups do not expire on their own, so sweeping them once every 4 jumps (~4-5s) clears them just as reliably as sweeping every jump did, at a quarter of the capture cost. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Hop 4/4 — jump, last hop before a housekeeping pass through the probe chain (popups don't expire on their own; sweeping every ~4 hops clears them at a quarter of the capture cost). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -636,7 +556,8 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
+          "type": "relay_tap",
+          "taps": 2
         },
         {
           "type": "goto",
@@ -646,7 +567,7 @@
       "timeout_ms": 20000
     },
     "check_shop_after_run": {
-      "_note": "Result popup not up yet — either still running, home is back, or we entered mid-boost_shop. Try home; on timeout fall through to boost_shop so a wrong entry point self-recovers instead of spinning forever.",
+      "_note": "Result popup not up yet — still running, home is back, or we're in the shop. Try home; absent -> walk the probe chain.",
       "detect": "home/home_play_marker.png",
       "on_match": [
         {
@@ -660,7 +581,7 @@
       "timeout_ms": 15000
     },
     "probe_boostshop": {
-      "_note": "Recovery probe: are we actually sitting in the boost shop (e.g. process started there, or run ended straight into shop)? If so, resume the buy loop; else check for a level-up popup.",
+      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to probe_speed.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -674,7 +595,7 @@
       "timeout_ms": 15000
     },
     "probe_congrats": {
-      "_note": "Level-up 'Congratulations!' popup (free reward, e.g. Treasure Ticket) appears over home after enough XP. Confirm (956,846) collects it — this Confirm is safe/free, unlike the nocoins Confirm. Then back to waiting.",
+      "_note": "Level-up 'Congratulations!' popup (free reward). Confirm (956,846) is safe/free.",
       "detect": "boxrun/congrats_marker.png",
       "on_match": [
         {
@@ -695,7 +616,7 @@
       "timeout_ms": 15000
     },
     "probe_levelup": {
-      "_note": "A separate 'Level Up' popup (gems/coins/score-bonus reward, distinct screen from the Congratulations ticket popup) can also appear after a run. Confirm (959,969) is safe/free — collects the reward.",
+      "_note": "Separate 'Level Up' popup (gems/coins/score-bonus, distinct from the Congratulations ticket popup). Confirm (959,969) is safe/free.",
       "detect": "boxrun/levelup_marker.png",
       "on_match": [
         {
@@ -716,7 +637,7 @@
       "timeout_ms": 15000
     },
     "probe_rankingrewards": {
-      "_note": "SAFETY NET: a stray in-run relay tap (~960,540) can hit the leaderboard and open the gold 'Ranking Rewards' season-reward popup over home, which the probe chain otherwise can't clear (home_marker fails behind it) -> loop spins to max_cycles. Detected by the gold 'Ranking Rewards' title ribbon. Tap its single X (1672,135 — CV verified) to close; free/safe, no currency. Then back to home.",
+      "_note": "SAFETY NET: gold 'Ranking Rewards' season popup opened by a stray leaderboard tap. X at (1672,135), free/safe.",
       "detect": "boxrun/rankingrewards_marker.png",
       "on_match": [
         {
@@ -737,7 +658,7 @@
       "timeout_ms": 15000
     },
     "probe_giftdraw": {
-      "_note": "SAFETY NET: 'Gift Draw' popup (100 Gift Points -> free gift box) can appear over home, e.g. after collecting enough points from daily login/send-life/invite. Detected by the teal 'Gift Draw' banner. Tap the X close (1685,170 — CV verified on the banner crop) rather than Draw, since we don't want to auto-spend/auto-consume the gift draw as part of the farm loop. Then back to home.",
+      "_note": "SAFETY NET: 'Gift Draw' popup over home. Tap X (1685,170) — never Draw; the farm loop must not auto-consume gift draws.",
       "detect": "giftdraw/giftdraw_marker.png",
       "on_match": [
         {
@@ -758,7 +679,7 @@
       "timeout_ms": 15000
     },
     "probe_friendinfo": {
-      "_note": "SAFETY NET: a stray tap can occasionally land on a leaderboard row and open a 'Friend's Info/Cookie/Treasure' popup family — all share the same teal 'Friend's ___' ribbon, detected by matching just the word 'Friend's' (generic X-corner crops kept false-positiving on unrelated popups, e.g. the Event Rewards screen, since round X-close buttons look alike everywhere). Can stack 2 layers: an inner light-gray X (1552,117, closes the top Cookie/Treasure layer) and an outer dark-gray X (1633,107, closes the underlying Info layer). CV verified both centers @1920x1080 — the old 1651,105 landed ~18px RIGHT of the outer X (off the button), so taps did nothing and this state spun forever. Tap BOTH X's each pass, then self-loop until the ribbon is gone (peels one layer per pass regardless of how many are stacked).",
+      "_note": "SAFETY NET: 'Friend's ___' popup family (can stack 2 layers). Tap inner X (1552,117) then outer X (1633,107) each pass, self-loop until the ribbon is gone.",
       "detect": "friends/friendinfo_marker.png",
       "on_match": [
         {
@@ -790,7 +711,7 @@
       "timeout_ms": 15000
     },
     "run_result": {
-      "_note": "Result popup after a run. Tap OK (702,940) — NOT 'Show Off' (blue, opens social share). After OK a Mystery Box popup sometimes appears -> mystery_box handles it.",
+      "_note": "Result popup after a run. Tap OK (702,940) — NOT 'Show Off'. After OK the Mystery Box screen appears on runs that collected a '?' box — the whole point of this bot — handled by mystery_box.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -813,7 +734,7 @@
       "timeout_ms": 8000
     },
     "mystery_box": {
-      "_note": "After Result-OK we either land on home, or a 'Mystery Box' screen blocks it (only on runs whose Result showed a box icon). Detect the BOX screen positively rather than inferring it from 'home is absent': the old version blind-tapped the screen centre (960,540) whenever home didn't match, and since the old home marker was episode-specific it stopped matching entirely — so every Result landed a tap on the home leaderboard, opening a friend popup. Box present -> tap it open (960,540 is the closed box) and go read the reward. Box absent -> we're on home (or a modal over it); let the home state / probe chain sort it out.",
+      "_note": "After Result-OK we either land on home, or the 'Mystery Box' screen blocks it. Detect the BOX screen positively. Present -> tap the closed box (960,540) and read the reward. Absent -> home (or a modal; home's probe chain handles it).",
       "detect": "boxrun/mysterybox_marker.png",
       "on_match": [
         {
@@ -827,7 +748,7 @@
       "timeout_ms": 20000
     },
     "mystery_box_recheck": {
-      "_note": "After collecting the box: Play! visible -> home is clear, continue. Not visible -> something still covers it; go through probe_sendlife (the modal-peeling chain) rather than `running`, whose on_absent blind-taps the screen centre and would hit the leaderboard.",
+      "_note": "After collecting the box: Play! visible -> home is clear, continue the loop. Not visible -> something still covers it; go through probe_sendlife, never blind-tap.",
       "detect": "home/home_play_marker.png",
       "on_match": [
         {
@@ -839,6 +760,56 @@
         "goto": "probe_inactive"
       },
       "timeout_ms": 15000
+    },
+    "probe_magnet": {
+      "_note": "MAGNET GUARD: run must play with Magnetic Aura equipped. magneticaura_banner (red-gold pill above Play) shows whenever equipped — but the shop panel takes ~1-2s to render it after Play, so detect with a 3-retry grace (absent_wait_ms 800) before concluding it is absent; without this probe fired on the still-fading shop (banner 0.32-0.70), thought it was unequipped, and re-rolled every cycle, burning coins. Present -> check_heart. Absent after retries -> buy_magnet.",
+      "detect": "boxrun/magneticaura_banner.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": {
+        "goto": "buy_magnet"
+      },
+      "timeout_ms": 8000,
+      "absent_retries": 3,
+      "absent_wait_ms": 800,
+      "boost_role": "probe"
+    },
+    "buy_magnet": {
+      "_note": "No Magnetic Aura equipped. The shop opens on the HP-Upgrade view where no Multi toggle exists, so FIRST tap the Random Boost slot (810,875 — the mystery-box tile, bottom-right of the boost grid) to switch the right panel to Random Boost, THEN tap the pink Multi toggle (1645,340) to open the picker. Magnetic Aura opens ALREADY TICKED (only checked row) so do NOT tap any boost row. Hand to picker. Coords verified live ep6.",
+      "detect": "boxrun/boostshop_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 810,
+          "y": 875
+        },
+        {
+          "type": "wait",
+          "ms": 1200
+        },
+        {
+          "type": "tap_xy",
+          "x": 1645,
+          "y": 340
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "picker"
+        }
+      ],
+      "on_absent": {
+        "goto": "running"
+      },
+      "timeout_ms": 8000,
+      "boost_role": "buy"
     },
     "probe_connectionlost": {
       "_note": "Connection Lost — server drop popup, can appear anywhere (head of the probe chain since nothing else works while offline). Text: 'Connection lost! Tap Confirm to restart the game and reload your data.' Not a dismiss: Confirm (960,700) actually restarts the client, so we hand off to restart_app (cycles the process the same way session_reset does) then the existing recover_login chain re-auths. Absent -> probe_inactive (rest of the popup chain).",
@@ -956,7 +927,8 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
+          "type": "relay_tap",
+          "taps": 2
         },
         {
           "type": "goto",
@@ -1093,8 +1065,8 @@
       "on_absent": [
         {
           "type": "tap_xy",
-          "x": 1431,
-          "y": 963
+          "x": 1650,
+          "y": 970
         },
         {
           "type": "wait",

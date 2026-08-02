@@ -53,14 +53,33 @@ class TestApplyBoost:
         assert _taps(cfg, "buy") == [tuple(t) for t in p["buy_taps"]]
         assert _taps(cfg, "picker") == [p["multibuy"]]
 
-    def test_shorter_profile_drops_the_extra_tap_and_its_wait(self):
-        """The speed chain reaches Multi directly — the baseline's first tap and
-        the wait that existed to settle it must both go."""
+    def test_shorter_profile_drops_the_extra_tap_and_its_wait(self, monkeypatch):
+        """A profile with fewer taps than the baseline chain drops the leftover tap
+        AND the wait that existed to settle it — a stray wait would stall the buy.
+
+        No shipped profile is shorter today: 'speed' was, on the claim that it
+        reached the Multi toggle directly, which is wrong on a shop that opens on
+        HP-Upgrade (see PROFILES['speed']). The code path stays supported, so the
+        test drives it through a synthetic profile instead of a real one."""
+        monkeypatch.setitem(boost.PROFILES, "_single_tap", {
+            "label": "single tap", "banner": "boxrun/x_banner.png",
+            "buy_taps": [(1649, 337)], "multibuy": (953, 899),
+        })
+        # CHOICES is a tuple built from PROFILES at import time, so it does not
+        # pick the new key up on its own.
+        monkeypatch.setattr(boost, "CHOICES", (*boost.PROFILES, "none"))
         cfg = _cfg()
-        boost.apply_boost(cfg, "speed")
-        assert _taps(cfg, "buy") == [tuple(boost.PROFILES["speed"]["buy_taps"][0])]
+        boost.apply_boost(cfg, "_single_tap")
+        assert _taps(cfg, "buy") == [(1649, 337)]
         waits = [a for a in cfg.states["buy"]["on_match"] if a.get("type") == "wait"]
         assert len(waits) == 1
+
+    def test_speed_taps_the_random_boost_cell_first(self):
+        """The shop opens on HP-Upgrade, where the Multi toggle does not exist —
+        speed needs the same two-step cell tap magnet uses, not a direct one."""
+        cfg = _cfg()
+        boost.apply_boost(cfg, "speed")
+        assert _taps(cfg, "buy") == [(810, 875), (1645, 340)]
 
     def test_none_routes_past_the_chain(self):
         cfg = _cfg()

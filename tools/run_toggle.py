@@ -29,8 +29,10 @@ from src.perceive import PerceiveError, find_named, read_counter
 
 CONFIG_PATH = "config/cookierun/boxrun_toggle.json"
 
-# (cx, cy) of the Fast Start spam tap — must match check_heart/after_play in
+# (cx, cy) of the Fast Start spam tap — must match check_heart/await_shop in
 # boxrun_toggle.json exactly, since we strip these actions out by (x, y) match.
+# (Was check_heart/after_play until after_play was removed on 2026-08-02 — its
+# double Play tap was closing the boost shop before any boost could be bought.)
 _FASTSTART_XY = (985, 515)
 
 # (x, y) of the real Play tap at the end of home's guard chain — must match

@@ -65,12 +65,14 @@ def test_boost_buy_taps_match_the_profile(states, choice):
     assert _taps(states["picker"]["on_match"]) == [profile["multibuy"]]
 
 
-def test_speed_drops_the_random_boost_cell_and_its_wait(states):
-    """The +17% speed chain reaches Multi directly (boxrun_default), so the baseline's
-    first tap AND the wait that let its screen settle must both go — a leftover
-    wait would just stall the buy for no reason."""
+def test_speed_keeps_the_random_boost_cell_tap(states):
+    """+17% speed was assumed to reach the Multi toggle directly, so its profile
+    carried a single tap and the baseline's first tap was dropped. On a shop that
+    opens on HP-Upgrade that tap lands on HP 'Upgrade', the picker never opens and
+    the chain re-rolls until the coins are gone (seen live 2026-08-02). It takes
+    the same two-step cell tap as magnet."""
     rt._apply_boost(states, "speed")
-    assert _types(states["buy_magnet"]["on_match"]) == ["tap_xy", "wait", "goto"]
+    assert _types(states["buy_magnet"]["on_match"]) == ["tap_xy", "wait", "tap_xy", "wait", "goto"]
 
 
 def test_boost_none_skips_the_buy_chain(states):
