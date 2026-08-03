@@ -5,6 +5,7 @@
 - งานสำเร็จหรือคืบหน้าระหว่างทาง (live-test ผ่าน, bug fix verify แล้ว, feature เสร็จบางส่วน) → **รายงานให้ user ทราบทันที** ไม่ต้องรอจบ session
 - Commit เป็นระยะตามงานที่เสร็จจริง (ไม่รวบทุกอย่างเป็น 1 commit ท้าย session) — 1 commit = 1 fix/feature ที่ verify แล้ว
 - **Stage เฉพาะไฟล์ของ scope งานตัวเองเท่านั้น** — ถ้า repo มี unrelated changes ค้างอยู่ (จาก branch/session อื่นที่ปนเข้ามาในดัชนี) ห้าม `git add -A`/`git add .` เหมารวม ใช้ `git add <path เฉพาะไฟล์ของงานนี้>` เสมอ ปล่อยไฟล์อื่นไว้ตามเดิมให้ session ที่เป็นเจ้าของจัดการเอง
+- **`git status --short` หลัง stage ทุกครั้งก่อน commit** — ระบุไฟล์ตรง ๆ ก็ยังกวาดของคนอื่นได้ ถ้าไฟล์นั้นมี diff จากงานอื่นปนอยู่. พลาดมาแล้ว: `git add docs/RUN.md` เข้า commit ที่เป็น docs ล้วน แต่ diff ของมันคือเอกสารของ boost fix คนละก้อน — ต้อง `git restore --staged` ออก. เช็ค `git diff --cached --stat` ว่าทุกไฟล์ที่ staged เป็นของ scope นี้จริงก่อนเขียน message
 
 ## แก้/เพิ่ม CLI flag ใน tools/*.py — ต้องเช็ค caller ทุกตัวด้วยเสมอ
 
@@ -14,6 +15,21 @@
 - เช็คแต่ละ `.bat` ว่า flag ใหม่ต้อง (a) เพิ่ม prompt ให้ user เลือก หรือ (b) ปล่อยเป็น default เงียบๆ ตาม CLI default ก็พอ — ถามถ้าไม่ชัด
 - พลาดมาแล้ว: เพิ่ม `--relic-mode` เข้า `run_toggle.py` แล้วไม่ได้แก้ `launchers/boxrun_toggle.bat` — user รัน `.bat` ไม่เห็น prompt relic เลยเพราะ `.bat` เขียนก่อน flag นี้มีอยู่ และไม่ได้ pass flag นี้ไปให้ python เลย
 - Launcher คนละตัวที่ไม่ได้เรียก script ที่แก้ (เช่น `boxrun_magnet.bat`/`boxrun_default.bat` ไม่เรียก `run_toggle.py`) — ไม่ต้องแตะ
+
+## ย้าย `.bat` ข้ามชั้นโฟลเดอร์ — ต้องแก้ `cd` แล้ว smoke test ทุกกลุ่ม
+
+ทุก launcher เริ่มด้วย `cd /d "%~dp0.."` เพื่อไต่จากที่อยู่ของตัวเองขึ้นไป repo root. `%~dp0` คือ path ของ `.bat` **ตัวมันเอง** ดังนั้นย้ายไฟล์ลง/ขึ้นชั้น = จำนวน `..` ต้องเปลี่ยนตาม:
+
+| ไฟล์อยู่ที่ | `cd` ที่ถูก |
+|---|---|
+| `launchers/` | `cd /d "%~dp0.."` |
+| `launchers/<sub>/` | `cd /d "%~dp0..\.."` |
+
+- **พังเงียบ ไม่มีอะไรจับได้** — `cd` ผิดทำให้ไปโผล่ `launchers/` แทน repo root แล้วหา `config/` ไม่เจอ. `lint_config.py` อ่านแต่ JSON ไม่เห็น `.bat`, unit test ไม่แตะ launcher เลย — เจอตอน user ดับเบิลคลิกจริงเท่านั้น
+- **Smoke test หลังย้ายทุกครั้ง** อย่างน้อย 1 ตัวต่อโฟลเดอร์: copy `.bat` เป็น stub ที่แทนบรรทัด `%PY% ...` ด้วย `echo CWD=%CD% && if exist config\cookierun (echo OK) else (echo BROKEN)` แล้วรันจากตำแหน่งจริง — CWD ต้องเป็น repo root
+  - **Stub ต้องข้าม input validation ด้วย** — launcher ที่มี `set /p` + `findstr` validate (เช่น `giftdraw.bat`) จะ `exit /b 1` ก่อนถึงบรรทัดที่ stub ถ้าปล่อยตัวแปรว่าง ให้ replace `set /p` ด้วยค่าที่ผ่าน validate ไม่ใช่ลบทิ้ง
+- **ย้ายกลับขึ้นราก = ต้องแก้ `cd` กลับด้วย** ทุกครั้ง — README ใน `launchers/utility/` กับ `launchers/archive/` เขียนกฎนี้ไว้แล้ว อัพเดตด้วยถ้าโครงเปลี่ยน
+- Doc ที่อ้าง path launcher (`docs/RUN.md`, `docs/flow/COMPARE_bots.html`) ต้องแก้ในคอมมิตเดียวกัน — ดู section COMPARE_bots ด้านล่าง
 
 ## Branching
 
@@ -104,6 +120,93 @@ Marker ที่ crop จาก text บรรทัดเดียว **อา�
 
 - **แก้แบบยั่งยืน**: หา element ที่ "คงที่ทุก variant" ของ popup เดียวกันมา crop แทน — ในเคสนี้คือ Cancel+Confirm button row (ไม่มีชื่อ ไม่มี conditional text ติด, score 1.000 ทั้ง 2 variant)
 - **ก่อนเชื่อ marker ว่าใช้ได้จริง**: อย่า verify กับ snap เดียว — ต้องเจอ instance ที่ต่างกันจริง (คนละชื่อ, คนละเนื้อหา optional) อย่างน้อย 2-3 แบบ แล้ว verify score ทุกแบบ ไม่ใช่แค่แบบแรกที่เจอ
+
+## State ที่มีแต่ `goto` = frame ค้าง — chain ที่รอ UI ชั่วคราวจะไม่มีวันเห็น
+
+Engine re-grab frame ใหม่เมื่อมี action จริงเกิดขึ้น (tap/wait) — **hop state ที่เหลือแต่ `goto` ล้วนจะวนบน frame เดิมที่ cache ไว้** จนกว่า pure-goto chain จะ revisit ครบทุก state (`src/fsm.py`, stale-frame goto-cycle guard). ผลคือ chain ที่รอ UI โผล่สั้น ๆ ไม่มีวันเห็นมัน
+
+- เจอจริง 2026-08-04: `--jump n --slide n` ตัด action ออกจาก `jump_2`/`jump_3`/`jump_4`/`guard_not_inactive` จนเหลือแต่ goto → relay prompt (โผล่ ~2-3 วิ) เห็นแต่ frame ก่อนหน้า prompt ตลอด relay chain ไม่เคย fire เลย
+- **`launchers/boxrun_toggle.bat` จึงตรึง `JUMPSLIDE=y`** ห้ามเปลี่ยนเป็น `n` — comment ในไฟล์อธิบายไว้แล้ว
+- กฎทั่วไป: **ก่อนตัด action ออกจาก state ต้องเช็คว่า state นั้นยังเหลือสิ่งที่ทำให้ frame refresh มั้ย** ถ้าไม่เหลือ chain อื่นที่พึ่ง frame สดจะพังเงียบ ๆ ตามไปด้วย — ไม่มี error ให้เห็น มีแต่ "ไม่เคย match"
+- ตรงข้ามกับ warm-up burst: `jump=n + slide=n` ยัง trigger burst ได้ (ยิง tap จริง) แต่ burst ยิงครั้งเดียวตอนต้น run ไม่ช่วย frame refresh ที่ hop หลังจากนั้น
+
+## Blind action (ไม่มี template verify) — ต้องพิสูจน์ว่าปุ่มมีจริงก่อนเชื่อ
+
+Action ที่ยิงพิกัดตายตัวโดยไม่ detect อะไรก่อน (`relay_tap`, `faststart_tap`, `tap_xy` ใน `on_absent`) **ไม่มีทางรายงานว่าตัวเองพัง** — log เขียน `act: tap (x,y)` เหมือนกันหมดไม่ว่าจะโดนปุ่มหรือโดนอากาศ. พลาดจริง 2026-08-03: `relay_tap(960,540)` อยู่ในทุก config มานาน แต่จุดนั้นเป็น **พื้นหลังเรียบล้วน** (texture 0.00% · std 2.5) — ไม่มีปุ่ม Cookie Relay ตรงนั้นเลย ทุก tap เป็น no-op เปล่ามาตลอด
+
+- **วัดก่อนเชื่อ** — crop รอบพิกัดจาก snap จริงแล้ววัด: ปุ่มจริงมี texture (Canny edge density) สูง + สีอิ่ม, ที่ว่างได้ ~0% และ std ต่ำ. เทียบกับพิกัดที่รู้ว่าถูก (เช่นปุ่ม pause) เป็น control
+- **หา UI ที่ "โผล่ ๆ หาย ๆ"** ด้วยการ sample หลายเฟรมแล้ววัด stillness (diff ระหว่างเฟรมติดกัน) — UI control นิ่งใกล้ 0, gameplay churn สูง (25+). ถ้าไม่มี cell ไหนนิ่งเลย = ไม่มีปุ่มในจอนั้นจริง
+- **`_note` ที่บอกว่า "verified" อาจ verify คนละอย่าง** — ของจริงเคยมี note ว่า "(490,955) misread from a partner-count BADGE → restored (960,540) as originally verified" ทั้งที่**ผิดทั้งคู่** พิกัดหนึ่งเป็น indicator อีกพิกัดเป็นที่ว่าง
+- **Prompt ที่โผล่สั้น ๆ ต้อง poll ถี่ระดับ hop** ไม่ใช่รอบละครั้ง (relay window ~2-3 วิ) และ **ทุก stage ต้องเข้าถึงตรงได้** เผื่อ stage ก่อนหน้าถูกกดไปแล้วโดยบังเอิญ (faststart spam กด Continue ให้เองบ่อย)
+- **สอง stage ที่ข้อความเหมือนกัน ห้าม crop ข้อความ** — relay stage 1/2 ใช้ประโยคเดียวกันเป๊ะ crop text ได้ margin ≤0.05 (แยกไม่ออก) ต้อง crop **ปุ่มที่มีเฉพาะ stage นั้น** แทน (margin 0.65)
+
+## Template path ที่ inject ตอนรัน — `lint_config.py` ไม่เห็น
+
+`lint_config.py` อ่านแค่ JSON บน disk. Path ที่ `src/boost.py` (หรือ tool อื่น) **เขียนทับ `detect` ตอนรัน** ไม่เคยถูกตรวจ — พลาดจริง 2026-08-02: `PROFILES[*]["banner"]` เก็บชื่อไฟล์เปล่าไม่มี `boxrun/` และ tick template ขาด `giftdraw/` พังพร้อมกัน **ทั้ง 3 boost** โดย lint ผ่านหมด
+
+- Config ทุกไฟล์อาจ path ถูก 100% แต่ยังพังได้ ถ้าโค้ดเขียน `detect`/`template` ทับตอนรัน
+- **เช็คด้วยการ resolve จริง** — `TemplateStore.get()` ทุก path ที่ code ยิงเข้าไป ไม่ใช่แค่ที่อยู่ใน JSON:
+  ```python
+  for k, p in boostmod.PROFILES.items():
+      if p.get('banner'): store.get(p['banner'])   # raises if missing
+  ```
+- อาการเวลาพัง = `PerceiveError: template not found` **กลาง run** ไม่ใช่ตอน load — ถ้ามี bug อื่นบังไม่ให้ไปถึง chain นั้น จะไม่มีใครเห็นเลย
+
+## Bug ซ้อนกัน — แก้ทีละชั้นแล้ว live-test ซ้ำทุกชั้น
+
+Bug ตัวแรกที่ทำให้ "ไปไม่ถึง" code path จะ **บัง bug ที่อยู่ข้างในทั้งหมด**. เจอจริง: `after_play` กด Play ซ้ำจนปิด shop → ไม่เคยเข้า buy chain → path bug (ข้อบน) กับ tick bug ไม่มีใครเห็นเลย ทั้งที่มีอยู่ทั้งคู่
+
+- อย่าสรุปว่า "แก้เสร็จ" หลังแก้ชั้นเดียว — **รัน live ใหม่ทุกครั้งหลังแก้แต่ละชั้น** จนกว่าจะเห็น flow ที่ต้องการทำงานครบจริงบนจอ
+- **หลักฐานที่ไม่ครอบคลุมช่วงเวลาที่เกิดเหตุ = ไม่ใช่หลักฐาน** — พลาด 3 รอบใน session เดียวเพราะสรุปจาก log/sample ที่ข้ามช่วงที่เหตุการณ์เกิด (poller sample 1.2s แล้วหยุดทันทีที่เห็น result marker → ข้าม relay prompt ที่โผล่ก่อนหน้านั้นพอดี)
+- **User เห็นจอจริง เรามองผ่าน log** — ถ้า user ยืนยันว่าเห็นอะไรที่ log ไม่มี ให้เชื่อ user แล้วไปหาว่าทำไมเครื่องมือเราจับไม่ได้ อย่ายืนยันข้อสรุปเดิมจากหลักฐานชุดเดิม
+
+## Config เดี่ยว ≠ toggle family — `apply_boost` ไม่ได้ inject ให้
+
+Config ที่รันตรงผ่าน `main.py` (`boxrun_magnet` · `boxrun_speed` · `boxrun_relay` · `coinrun`) **ไม่มีใครเรียก `src/boost.py::apply_boost`** — สิ่งที่ toggle family ได้มาฟรีจาก `run_toggle.py` config เดี่ยวไม่ได้ ต้องเขียนลง JSON เอง
+
+- เจอจริง: picker tick logic ถูก inject ให้เฉพาะ toggle family ส่วน config เดี่ยวพึ่งสมมติฐาน "boost ที่ต้องการติ๊กไว้อยู่แล้ว" — **แต่เกมจำ tick ข้าม session** พอ toggle run เปลี่ยน tick ไป config เดี่ยวก็ roll ผิดตัวแล้ววน `retry_buy` เผาเหรียญ
+- แก้ bug ใน `src/boost.py` แล้ว **ต้องเช็คว่า config เดี่ยวได้ fix ตามด้วยหรือเปล่า** — ปกติไม่ได้ ต้อง patch JSON แยก (gen action จาก `boost.PICK`/`_toggle_action` แทน hardcode ซ้ำ)
+- flag ของ `run_toggle.py` ที่ผูกกับโครงสร้าง config (`_strip_relay`, `_strip_faststart`) **ต้องแก้ตามเมื่อโครงเปลี่ยน** ไม่งั้น flag กลายเป็น no-op เงียบ ๆ (`--relay n` เคยลบ `relay_tap` — พอเปลี่ยนเป็น relay chain ต้องเปลี่ยนเป็น re-point goto แทน)
+
+## Doc เขียนว่าอะไร ≠ ของจริง — รัน tool เช็คก่อนเชื่อ
+
+Doc ในรีโปนี้ (`docs/HANDOFF.md`, `docs/RUN.md`, plan HTML) เขียนสถานะไว้ ณ วันที่เขียน แล้วโค้ดเดินต่อโดยไม่มีใครกลับมาอัพเดต — **ห้ามอ้าง claim ใน doc เป็นสถานะปัจจุบันโดยไม่ verify**:
+
+- `HANDOFF.md` เขียนว่า "lint 0 orphan" แต่ `python tools/lint_config.py config/cookierun/*.json` รายงาน **3 unreachable ทุก box-farm config** (`recover_unknown`, `recover_unknown_probe`, `recover_unknown_restart`) — ทางกู้ "เจอจอไม่รู้จัก → restart" จึงไม่เคยทำงาน และไม่มีอะไรใน `src/` dispatch มันด้วย
+- state count / active-config list ใน doc เก่าผิดได้ถึง 2 เท่า เพราะเขียนมือ — **นับจาก JSON จริงเสมอ** (`json.load` แล้ว `len(d['states'])`) อย่าลอกตัวเลขจาก doc ก่อนหน้า
+- เขียน doc ใหม่ที่มีตัวเลข → gen ตัวเลขจาก source ตอนเขียน + เขียน footer บอกว่า derive จากไฟล์ไหน ให้รอบหน้า regen ได้
+
+## แก้บอทเสร็จ → อัพเดต `docs/flow/COMPARE_bots.html` เสมอ
+
+`docs/flow/COMPARE_bots.html` คือเอกสารเทียบบอททุกตัว (launcher → config → state count → boost → flow → known bug). **ทุกครั้งที่แก้ config / launcher / `src/` ที่กระทบพฤติกรรมบอท ต้องอัพเดตไฟล์นี้ให้ตรงในคอมมิตเดียวกัน** — ไม่ใช่ "ไว้ทีหลัง" เพราะกลายเป็นแหล่งข้อมูลผิดที่คนอ่านเชื่อทันที (เจอมาแล้ว: doc บอก `boxrun_relay` ต่างจาก magnet ที่ relay ×2 ทั้งที่ blind tap นั้นถูกลบไปแล้ว, state count ค้างที่ 52 ทั้งที่จริง 60)
+
+ต้องเช็คทุกจุดที่ผูกกับสิ่งที่แก้:
+
+- **state count** — regen จาก JSON จริง (`len(json.load(f)['states'])`) ห้ามพิมพ์มือ ห้ามลอกของเดิม
+- **ตาราง launcher §01** — flag ที่ `.bat` ส่งจริง (`--boost` / `--relay` / `--relic-mode` / cycle cap) ต้องตรง argv ในไฟล์
+- **flow diagram §03** — ชื่อ state + ลำดับ goto ต้องตรง chain จริง (เพิ่ม/ลบ state = แก้ทั้งชั้นย่อและชั้นเต็ม)
+- **§04 สายพันธุ์** — ถ้าแก้จน config ที่เคย "ต่างจุดเดียว" กลายเป็นเหมือนกัน ต้องเปลี่ยน node เป็นสีแดง + บอกว่าซ้ำใคร
+- **claim ที่กลายเป็นเท็จ** — `grep` หาพิกัด/ชื่อ state/ชื่อ template ที่แก้ไป แล้วไล่แก้ทุกที่ที่อ้างถึง (รวม note box ที่อธิบาย "ทำไม" ด้วย ไม่ใช่แค่ตาราง)
+- **บั๊กที่เพิ่งแก้** — เพิ่มลง section "bug ที่แก้แล้ว" พร้อม **หลักฐาน live-verify** (score ที่วัดได้ / log line จริง) ไม่ใช่แค่ "แก้แล้ว"
+
+**Verify ก่อนจบ**: serve ผ่าน `python -m http.server` แล้วเปิด browser ดูจริง (`file:` ถูกบล็อกใน playwright) — เช็คว่า HTML ไม่พัง + CSS class ที่ใช้มีจริงในไฟล์ (คลาสที่ไม่มีจะ render เป็นกล่องเปล่า ไม่ error ให้เห็น) แล้ว kill server ทิ้ง
+
+## `verify_no_*` gate — `lint_config.py` จับที่ขาดไม่ได้
+
+Popup มี 2 ชนิด ต่างกันที่ **Play! ยังเห็นมั้ย** — ตัดสินว่าต้องเพิ่ม gate หรือไม่:
+
+- **บัง Play!** (เช่น Connection Lost — `home_play_marker` เหลือ ~0.36) → `home` ตกลง `on_absent` เอง → probe chain จัดการได้ **ไม่ต้องมี gate**
+- **ไม่บัง Play!** (เช่น Enter League — dialog กลางจอ ปุ่ม Play อยู่มุมล่างขวา `home_play_marker` ยัง match ~1.00 ทะลุ dialog) → `home` ไม่มีวันเข้า `on_absent` → **probe state ที่ควรจัดการเอื้อมไม่ถึงเลย** บอทกด Play ลง dialog ตลอดไป → ต้องมี `verify_no_*` gate ใน pre-Play chain
+- **`lint_config.py` เตือนไม่ได้** — state ยัง reachable ทั้ง 2 ทาง ไม่มี orphan ให้จับ. ต้องเช็คมือทุกครั้งที่เจอ popup ใหม่: match `home_play_marker.png` กับ capture ของ popup นั้น — ได้ ~1.00 = ต้องเพิ่ม gate, ได้ <0.40 = probe chain พอ
+- Gate ต่อกันแบบ fallthrough และ **Play tap จริงอยู่ที่ `on_absent` ของ gate ตัวสุดท้าย** ไม่ใช่ state แยก — เพิ่ม gate ใหม่ = ย้าย action นั้นไปไว้ที่ตัวใหม่
+
+## แก้ behavior — ต้องเช็ค test ที่ assert ของเดิมด้วย
+
+Test ที่ hardcode ค่าของ profile/config ตัวใดตัวหนึ่งจะ fail เมื่อ fix เปลี่ยนค่านั้น — **fail แบบนี้ไม่ใช่ regression แต่เป็น test ล้าสมัย ต้องแก้พร้อม fix ไม่ใช่ข้าม**:
+
+- พลาดมาแล้ว: fix ให้ `speed` tap Random Boost cell ก่อน (2 tap) แต่ `test_speed_drops_the_random_boost_cell_and_its_wait` + `test_shorter_profile_drops_the_extra_tap_and_its_wait` assert ว่า speed = 1 tap
+- ถ้า test นั้นคุม **กลไก** ที่ยังต้องมีอยู่ (เช่น "profile สั้นกว่า baseline ต้องตัด tap + wait ที่เหลือ") → เขียนใหม่ให้ใช้ **synthetic profile** ผ่าน `monkeypatch` แทนผูกกับ shipped profile ตัวจริง — กลไกยังถูกคุม แต่ไม่พังทุกครั้งที่ค่าจริงเปลี่ยน
+- `CHOICES` ใน `src/boost.py` เป็น tuple ที่ build จาก `PROFILES` ตอน import — patch `PROFILES` อย่างเดียวไม่พอ ต้อง `monkeypatch.setattr(boost, "CHOICES", ...)` ด้วย
 
 ## ทุก fix ต้อง live-verify ก่อน commit
 

@@ -51,11 +51,16 @@ if not defined BOOST (
     goto askboost
 )
 
-rem Jump/Slide prompt hidden for now - both run actions default off.
-rem Re-enable by uncommenting the two lines below.
-set "JUMPSLIDE=n"
-rem set /p "JUMPSLIDE=Jump + Slide? [n]: "
-rem if "%JUMPSLIDE%"=="" set "JUMPSLIDE=n"
+rem Jump/Slide prompt hidden for now - both run actions default ON.
+rem Do NOT set this to n: with no jump/slide the hop states carry only a goto,
+rem and the engine then keeps matching on the SAME cached frame until a pure-goto
+rem chain has revisited every state (src/fsm.py). The Cookie Relay prompt only
+rem lasts ~2-3s, so the relay chain would only ever see a stale pre-prompt frame
+rem and never fire. Verified 2026-08-04.
+rem Re-enable the prompt by uncommenting the two lines below.
+set "JUMPSLIDE=y"
+rem set /p "JUMPSLIDE=Jump + Slide? [y]: "
+rem if "%JUMPSLIDE%"=="" set "JUMPSLIDE=y"
 set "JUMP=%JUMPSLIDE%"
 set "SLIDE=%JUMPSLIDE%"
 
