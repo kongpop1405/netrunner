@@ -203,7 +203,8 @@
     <a href="#s7">07 pacing</a>
     <a href="#s8">08 กลไกร่วม</a>
     <a href="#s9">09 archived</a>
-    <a href="#s10">10 popup coverage</a>
+    <a href="#s10">10 ✅ bug ที่แก้แล้ว</a>
+    <a href="#s11">11 popup coverage</a>
   </nav>
   <p class="lead">ทุกบอทใช้ engine ตัวเดียว (<code>src/fsm.py</code> — capture → perceive → act loop) ความต่างอยู่ที่ <b>config JSON</b> ล้วน. launcher <code>.bat</code> แค่เลือก config + ถาม flag แล้วเรียก <code>main.py</code> หรือ <code>tools/run_toggle.py</code>.</p>
 </header>
@@ -230,42 +231,42 @@
 <tbody>
 <tr>
   <td class="mono">boxrun_default.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">main.py</td><td class="mono">boxrun_default</td><td class="mono">47</td>
+  <td class="mono">main.py</td><td class="mono">boxrun_default</td><td class="mono">55</td>
   <td><span class="tag t-warn">speed +17%</span></td><td>quit ทันทีที่ได้กล่อง</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
   <td class="mono">boxrun_speed.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">main.py</td><td class="mono">boxrun_speed</td><td class="mono">52</td>
+  <td class="mono">main.py</td><td class="mono">boxrun_speed</td><td class="mono">60</td>
   <td><span class="tag t-warn">speed +17%</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
   <td class="mono">boxrun_magnet.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">main.py</td><td class="mono">boxrun_magnet</td><td class="mono">52</td>
+  <td class="mono">main.py</td><td class="mono">boxrun_magnet</td><td class="mono">60</td>
   <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
   <td class="mono">boxrun_relay.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">main.py</td><td class="mono">boxrun_relay</td><td class="mono">52</td>
-  <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · <b>relay ×2/hop</b></td><td class="no">∞</td><td class="no">—</td>
+  <td class="mono">main.py</td><td class="mono">boxrun_relay</td><td class="mono">60</td>
+  <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · <b style="color:var(--rd)">ซ้ำ magnet ทุกอย่าง</b></td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
   <td class="mono">boxrun_toggle.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">75</td>
+  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">83</td>
   <td>เลือกตอนรัน</td><td>เลือกตอนรัน (<code>--quit-after-boxes</code>)</td><td class="no">∞</td><td><span class="tag t-warn">8 ข้อ</span></td>
 </tr>
 <tr>
   <td class="mono">boxrun_magnet_hoard.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">75</td>
+  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">83</td>
   <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · relic=hoard</td><td class="no">∞</td><td class="no">— (preset)</td>
 </tr>
 <tr>
   <td class="mono">run_boxrun_noboost_claim.bat</td><td><span class="tag t-box">box-farm</span></td>
-  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">75</td>
-  <td><span class="tag t-no">none</span></td><td>เล่นจนตาย · relic=claim</td><td class="no">∞</td><td class="no">— (preset)</td>
+  <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">83</td>
+  <td><span class="tag t-no">none</span></td><td>เล่นจนตาย · relic=claim · <b>relay=y</b></td><td class="no">∞</td><td class="no">— (preset)</td>
 </tr>
 <tr>
   <td class="mono">coinrun.bat</td><td><span class="tag t-box">coin</span></td>
-  <td class="mono">main.py</td><td class="mono">coinrun</td><td class="mono">54</td>
+  <td class="mono">main.py</td><td class="mono">coinrun</td><td class="mono">62</td>
   <td><span class="tag t-ok">Double Coins</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
@@ -297,9 +298,10 @@
 </table>
 </div>
 
+<div class="note ac"><b>Relay default = y ตั้งแต่ 2026-08-03</b> — ทั้ง prompt ของ <code>boxrun_toggle.bat</code> และ preset <code>run_boxrun_noboost_claim.bat</code> เปลี่ยนจาก <code>n</code> เป็น <code>y</code> เพราะ relay เลิกเป็น blind no-op tap แล้ว (ดู §10). <code>boxrun_magnet_hoard.bat</code> ส่ง <code>--relay y</code> อยู่ก่อนแล้ว.</div>
 <div class="note ac"><b>3 launcher นั่งบน config เดียวกัน</b> — <code>boxrun_toggle.bat</code> / <code>boxrun_magnet_hoard.bat</code> / <code>run_boxrun_noboost_claim.bat</code> ใช้ <code>boxrun_toggle.json</code> ทั้งหมด ต่างกันแค่ argv ที่ส่งเข้า <code>run_toggle.py</code>. สองตัวหลัง = preset ไม่ต้องตอบ 8 คำถามซ้ำ.</div>
 
-<div class="note rd"><b>⚠ xpstat = test account เท่านั้น — ห้ามชี้ที่ main</b>. config ปักไว้ที่ <code>127.0.0.1:5559</code> (<code>cr-idfarm</code>) — <b>ห้ามเปลี่ยนไป 5557 (main account)</b>. เป็น copy ของ <code>coinrun</code> ที่ถอด buy chain ออกทั้งชุด (<code>probe_dc_owned</code>/<code>buy_boost</code>/<code>picker</code>/<code>wait_roll</code>/<code>check_boost_result</code>/<code>insufficient_coins</code>/<code>force_play</code>/<code>start_run</code>/<code>retry_buy</code>) — ไม่ซื้ออะไรเลย coin จึงคงที่ ตัวแปรเดียวคือ XP/run. relay tap (960,540) ก็ถอดออกด้วย — เป็นตัวการอันดับ 1 ที่ทำให้ tap หลุดไปโดนกระดาน leaderboard.</div>
+<div class="note rd"><b>⚠ xpstat = test account เท่านั้น — ห้ามชี้ที่ main</b>. config ปักไว้ที่ <code>127.0.0.1:5559</code> (<code>cr-idfarm</code>) — <b>ห้ามเปลี่ยนไป 5557 (main account)</b>. เป็น copy ของ <code>coinrun</code> ที่ถอด buy chain ออกทั้งชุด (<code>probe_dc_owned</code>/<code>buy_boost</code>/<code>picker</code>/<code>wait_roll</code>/<code>check_boost_result</code>/<code>insufficient_coins</code>/<code>force_play</code>/<code>start_run</code>/<code>retry_buy</code>) — ไม่ซื้ออะไรเลย coin จึงคงที่ ตัวแปรเดียวคือ XP/run. relay chain ก็ไม่ใส่ให้ — ไม่ใช่เพราะอันตราย (พิสูจน์แล้ว 2026-08-03 ว่าพิกัดเดิม 960,540 เป็นที่ว่าง ไม่เคยโดนอะไรเลย) แต่เพราะ xpstat ต้องการตัวแปรเดียวคือ XP/run — relay สลับตัวละครกลางคันจะทำให้ตัวเลขเทียบไม่ได้.</div>
 
 <p>อยากได้ graph ต่อ state แบบเต็มของ config ไหน — <code>tools/lint_config.py</code> gen ให้ได้ (BFS-layered, orphan state โชว์สีแดง):</p>
 <div class="scroll" style="border:0"><table style="min-width:0"><tbody><tr><td class="mono" style="border:0;padding:0">python tools/lint_config.py --svg docs/graphs config/cookierun/&lt;name&gt;.json</td></tr></tbody></table></div>
@@ -401,13 +403,13 @@
 <h3>D · วิ่ง — hop 4 จังหวะ</h3>
 <div class="flow">
   <div class="row">
-    <div class="nd am"><div class="t">guard_not_inactive</div><div class="d">J + relay</div></div>
+    <div class="nd am"><div class="t">guard_not_inactive</div><div class="d">J → relay chain</div></div>
     <div class="ar">→</div>
-    <div class="nd"><div class="t">jump_2</div><div class="d">J + relay</div></div>
+    <div class="nd"><div class="t">jump_2</div><div class="d">J → relay chain</div></div>
     <div class="ar">→</div>
-    <div class="nd"><div class="t">jump_3</div><div class="d">S + relay</div></div>
+    <div class="nd"><div class="t">jump_3</div><div class="d">S → relay chain</div></div>
     <div class="ar">→</div>
-    <div class="nd"><div class="t">jump_4</div><div class="d">J + relay</div></div>
+    <div class="nd"><div class="t">jump_4</div><div class="d">J → relay chain</div></div>
     <div class="ar">↺ ทุกก้าวเช็ค</div>
     <div class="nd vi"><div class="t">result_marker</div><div class="d">เจอ = ตายแล้ว → E</div></div>
   </div>
@@ -584,25 +586,25 @@
   <div class="sn am"><div class="nm">guard_not_inactive</div>
     <div class="det">home/inactive_marker.png</div>
     <div class="br y"><i>เจอ</i><span>close(953,690) → recover_login</span></div>
-    <div class="br n"><i>ไม่</i><span><b>jump</b> + relay → jump_2</span></div>
+    <div class="br n"><i>ไม่</i><span><b>jump</b> → relay_stage1_jump_2 → jump_2</span></div>
   </div>
   <div class="var">   ↓</div>
   <div class="sn"><div class="nm">jump_2 <em>to 20s</em></div>
     <div class="det">boxrun/result_marker.png</div>
     <div class="br y"><i>เจอ</i><span>→ run_result <b>(E)</b></span></div>
-    <div class="br n"><i>ไม่</i><span><b>jump</b>(238,940) + relay → jump_3</span></div>
+    <div class="br n"><i>ไม่</i><span><b>jump</b>(238,940) → relay_stage1_jump_3 → jump_3</span></div>
   </div>
   <div class="var">   ↓</div>
   <div class="sn"><div class="nm">jump_3 <em>to 20s</em></div>
     <div class="det">boxrun/result_marker.png</div>
     <div class="br y"><i>เจอ</i><span>→ run_result <b>(E)</b></span></div>
-    <div class="br n"><i>ไม่</i><span><b>slide</b>(1671,937) + relay → jump_4</span></div>
+    <div class="br n"><i>ไม่</i><span><b>slide</b>(1671,937) → relay_stage1_jump_4 → jump_4</span></div>
   </div>
   <div class="var">   ↓</div>
   <div class="sn"><div class="nm">jump_4 <em>to 20s</em></div>
     <div class="det">boxrun/result_marker.png</div>
     <div class="br y"><i>เจอ</i><span>→ run_result <b>(E)</b></span></div>
-    <div class="br n"><i>ไม่</i><span><b>jump</b> + relay → check_shop_after_run</span></div>
+    <div class="br n"><i>ไม่</i><span><b>jump</b> → relay_stage1_check_shop_after_run → check_shop_after_run</span></div>
   </div>
   <div class="var">   ↓ วนกลับ guard chain ทุก 4 hop</div>
 </div>
@@ -743,12 +745,12 @@
   <div class="row" style="margin-top:9px">
     <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
     <div class="ar">boost magnet→speed →</div>
-    <div class="nd am"><div class="t">boxrun_speed</div><div class="d">52 · เท่ากันเป๊ะ</div></div>
+    <div class="nd am"><div class="t">boxrun_speed</div><div class="d">60 · เท่ากันเป๊ะ</div></div>
   </div>
   <div class="row" style="margin-top:9px">
     <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
-    <div class="ar">relay_tap taps:1→2 →</div>
-    <div class="nd vi"><div class="t">boxrun_relay</div><div class="d">52 · ต่างจุดเดียว</div></div>
+    <div class="ar" style="color:var(--rd)">เดิม relay_tap ×2 —<br>ตอนนี้ไม่ต่างแล้ว →</div>
+    <div class="nd rd"><div class="t">boxrun_relay</div><div class="d">60 · ซ้ำ magnet</div></div>
   </div>
   <div class="row" style="margin-top:9px">
     <div class="nd rd"><div class="t">boxrun_magnet</div><div class="d">baseline</div></div>
@@ -871,7 +873,7 @@
 <tr><td class="mono">boxrun_magnet</td><td>Magnetic Aura</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">52</td></tr>
 <tr><td class="mono">boxrun_relay</td><td>Magnetic Aura</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">52</td></tr>
 <tr><td class="mono">coinrun</td><td>Double Coins</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">54</td></tr>
-<tr><td class="mono">boxrun_toggle</td><td class="yes">เลือกตอนรัน</td><td class="yes">เลือกตอนรัน</td><td class="yes">✓ 25–35 น. · reset 1.5–3 ชม.</td><td class="yes">3 โหมด</td><td class="mono">75</td></tr>
+<tr><td class="mono">boxrun_toggle</td><td class="yes">เลือกตอนรัน</td><td class="yes">เลือกตอนรัน</td><td class="yes">✓ 25–35 น. · reset 1.5–3 ชม.</td><td class="yes">3 โหมด</td><td class="mono">83</td></tr>
 <tr><td class="mono">xpstat</td><td class="no">none</td><td class="no">เล่นจนตาย</td><td class="no">✗</td><td class="no">✗</td><td class="mono">45</td></tr>
 </tbody>
 </table>
@@ -1019,8 +1021,8 @@
   </div>
   <div class="row" style="margin-top:8px">
     <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
-    <div class="ar">relay ถี่ขึ้น →</div>
-    <div class="nd vi"><div class="t">boxrun_relay</div><div class="d">relay ×2/hop</div></div>
+    <div class="ar" style="color:var(--rd)">เดิม relay ถี่ขึ้น —<br>ยกเลิกแล้ว →</div>
+    <div class="nd rd"><div class="t">boxrun_relay</div><div class="d">= boxrun_magnet</div></div>
   </div>
   <div class="row" style="margin-top:8px">
     <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
@@ -1029,7 +1031,7 @@
   </div>
 </div>
 <div class="note rd"><b>⚠ <code>boxrun_default</code> ชื่อหลอก</b> — ไม่ใช่ "ไม่ทำอะไร": มัน<b>ซื้อ speed +17%</b> และ<b>ควิททันทีที่กล่องแรก</b>. คนละพฤติกรรมกับ <code>boxrun_speed</code> ที่เล่นจนตาย (ต่างกัน 5 state).</div>
-<div class="note">3 preset บน <code>boxrun_toggle.json</code> ได้ anti-detection เท่ากันหมด (pacing สุ่ม · session reset · lives errand) — ต่างแค่ argv. <code>boxrun_relay</code> ปุ่ม relay ไม่มี template + เป็น no-op ตอนไม่มีคู่ → tap เกินเสียแค่ ~120ms.</div>
+<div class="note">3 preset บน <code>boxrun_toggle.json</code> ได้ anti-detection เท่ากันหมด (pacing สุ่ม · session reset · lives errand) — ต่างแค่ argv. <code>boxrun_relay</code> เคยกด relay ถี่ ×2 — แต่พิสูจน์แล้ว (2026-08-03) ว่าพิกัดเดิม (960,540) ไม่มีปุ่มอยู่จริง ทุก tap เป็น no-op เปล่า ๆ ตอนนี้ทุก config ใช้ relay chain แบบ detect ก่อนกดแทน → <code>boxrun_relay</code> ไม่ต่างจาก <code>boxrun_magnet</code> อีกแล้ว</div>
 
 <h2 id="s7"><span class="n">07</span> Pacing / anti-detection</h2>
 <div class="scroll">
@@ -1152,7 +1154,42 @@
 <p>ยืนยันจาก config จริง: <code>boxrun_passive</code> / <code>boxrun_passive_3boost</code> / <code>boxrun_magnet_quit3</code> <b>ไม่มี state ชื่อ <code>jump_*</code> เลยสักตัว</b> — ปล่อยให้ auto-play ของเกมวิ่งเอง บอททำแค่เฝ้า popup + นับกล่อง จึงมี state น้อยกว่า (37–39 vs 47–52).</p>
 <div class="note"><b><code>boxrun_magnet_quit3</code> ไม่ episode-agnostic</b> — มันอ่าน box-counter ของ ep6 โดยเฉพาะ, episode อื่น counter อาจไม่ match. ต่างจาก active config ทุกตัวที่เล่น episode ไหนก็ได้ (แตะแค่ Play!).</div>
 
-<h2 id="s10"><span class="n">10</span> Popup coverage — กฎที่ <code>lint</code> จับให้ไม่ได้</h2>
+<h2 id="s10"><span class="n">10</span> ✅ 2026-08-03 — bug ที่แก้แล้ว (live-verified)</h2>
+<p>รอบนี้เจอ 3 กลุ่มบั๊กที่ทำให้ <b>ฟีเจอร์ที่ doc บอกว่ามี ไม่เคยทำงานจริงเลย</b> ทุกตัวอยู่ในโค้ดที่ใช้ร่วมกัน จึงพังพร้อมกันทุก config ที่เรียกใช้.</p>
+
+<h3>① Cookie Relay — พิกัดเดิมไม่มีปุ่มอยู่จริง</h3>
+<p>ทุก config เคยมี blind <code>relay_tap</code> ที่ <code>(960,540)</code> ยิงทุก hop. วัดจากเฟรมจริง: จุดนั้น <b>texture 0.00% · std 2.5</b> = พื้นหลังเรียบล้วน. สแกน 78 เฟรมจาก 3 run ไม่เจอ UI element ที่โผล่ ๆ หาย ๆ เลย (stillness ดีสุด 25.9 — ปุ่มจริงต้องใกล้ 0). badge นับคู่ที่มุมล่าง (<code>~521,1009</code>) เป็น <b>indicator ไม่ใช่ปุ่ม</b> — กดแล้วเลขไม่ลด (เคยมีคนเข้าใจผิดว่าเป็นปุ่มแล้ว revert กลับมา 960,540 — <b>ผิดทั้งคู่</b>).</p>
+<p>ของจริงคือ <b>prompt 2 ขั้น โผล่ตอนตายเท่านั้น</b> window ~2–3 วิ:</p>
+<table>
+<tr><th>ขั้น</th><th>จอ</th><th>กดตรงไหน</th><th>template</th></tr>
+<tr><td class="mono">1</td><td><code>Tap to activate Cookie Relay Boost!</code> + <b>Continue</b> / Quit</td>
+  <td class="mono">(946,433) = Continue<br><span class="no">ห้ามโดน Quit (946,636) — จบ run</span></td>
+  <td class="mono">relay_prompt_marker.png<br><span class="mono">self 1.000 · อื่น ≤0.35</span></td></tr>
+<tr><td class="mono">2</td><td>text เดิม + การ์ดคุกกี้ relay</td><td class="mono">(980,515) = การ์ด</td>
+  <td class="mono">relay_prompt2_marker.png<br><span class="mono">self 1.000 · stage-1 0.367</span></td></tr>
+</table>
+<div class="note"><b>ทำไม stage 1 ต้อง detect ที่ "ปุ่ม Continue" ไม่ใช่ข้อความ</b> — สองขั้นใช้ประโยคเดียวกันเป๊ะ. crop ข้อความได้ 1.000 ทั้งคู่ (margin ≤0.05 แยกไม่ออก) ส่วน crop ปุ่มได้ margin <b>0.65</b>.</div>
+<p>ตอนนี้ทุก hop (<code>guard_not_inactive</code> · <code>jump_2</code> · <code>jump_3</code> · <code>jump_4</code>) เดินผ่าน <code>relay_stage1_X → relay_stage2_X → X</code> — เช็คถี่ระดับ hop เพราะ window สั้น. <b>stage 2 เข้าถึงตรงได้</b> โดยตั้งใจ: กว่า FSM จะเดินผ่าน guard chain มาถึง Continue มักโดนกดไปแล้ว (จาก faststart spam หรือ hop tap) เหลือแค่การ์ด — ซึ่งเป็นสิ่งที่เกิดจริงใน live test.</p>
+<div class="note ac"><b>Live-verified:</b> 2 run · กดการ์ด relay สำเร็จ 2 ครั้ง (<code>relay_prompt2_marker</code> 0.98 และ 0.84 → <code>tap (977,517)</code> / <code>tap (981,514)</code>) · 0 error.</div>
+<div class="note rd"><b><code>boxrun_relay</code> หมดเหตุผลแล้ว</b> — มันคือ magnet ที่กด blind tap ×2 ซึ่งตอนนี้ถูกลบทิ้งไปแล้ว จึงเหมือน <code>boxrun_magnet</code> ทุกประการ.</div>
+
+<h3>② toggle family ไม่เคยซื้อ boost เลย — 3 บั๊กซ้อน</h3>
+<p>เริ่มจากรายงาน "<code>boxrun_speed</code> ไม่ซื้อ speed" แล้วตามด้วย "<code>boxrun_magnet_hoard</code> ก็ไม่ซื้อแม่เหล็ก" — สาเหตุเดียวกันทั้งคู่ กระทบทุก <code>--boost</code> และทุก preset ที่สร้างบน <code>boxrun_toggle.json</code>. (<code>boxrun_magnet</code> ที่เป็น config ของตัวเองไม่โดน)</p>
+<table>
+<tr><th>#</th><th>บั๊ก</th><th>ทำไมถึงซ่อนอยู่ได้นาน</th></tr>
+<tr><td class="mono">1</td><td><code>after_play</code> gate กด Play ซ้ำจนปิด shop — Play! โผล่ทะลุ shop fade ที่ ~0.87 gate เลยคิดว่า "กดพลาด" ส่งกลับ home แล้วกดใหม่ tap ที่สองปิด shop</td><td>บั๊กนี้บังบั๊ก #2 ไว้ทั้งหมด เพราะไปไม่ถึง chain</td></tr>
+<tr><td class="mono">2</td><td><code>PROFILES</code> ใน <code>src/boost.py</code> เก็บ banner path <b>ขาด <code>boxrun/</code></b> ทั้ง 3 ตัว</td><td>ถ้าไปถึงจะ crash <code>PerceiveError</code> ไม่ใช่เงียบ ๆ</td></tr>
+<tr><td class="mono">3</td><td>tick template ขาด <code>giftdraw/</code></td><td>โผล่หลังแก้ #1 แล้วถึง picker จริง แล้ว fatal</td></tr>
+</table>
+<div class="note ac"><b>Live-verified (<code>--boost magnet</code>):</b> <code>home → Play → await_shop 0.89 → probe_magnet → buy_magnet (808,878 → 1647,340) → picker 1.00 → untick speed (997,413) → tick magnet (998,557) → Multi-Buy (948,880) → wait_roll → start_run → check_heart → running</code></div>
+
+<h3>③ speed profile — เดินไป Multi ตรง ๆ ไม่ได้</h3>
+<p><code>src/boost.py</code> เคยระบุว่า speed มี <code>buy_taps: [(1649,337)]</code> คือแตะ Multi ตรงเลยไม่ต้องกด Random Boost cell ก่อน — จริงเฉพาะตอน shop เปิดค้างที่หน้า Random Boost อยู่แล้ว. บัญชีนี้ shop เปิดที่ <b>HP Upgrade</b> เสมอ → (1649,337) ไปโดนปุ่ม HP <code>Upgrade</code> → panel ไม่เปลี่ยน → picker ไม่มา → <code>start_run</code> timeout → <code>retry_buy</code> → วนซื้อใหม่ทุก ~16 วิ (<b>เผา speed stack ไป 8 ใบ 728→720</b> ก่อนโดนสั่งหยุด). แก้เป็น <code>(810,875) → (1645,340)</code> เหมือน magnet.</p>
+
+<h3>④ picker tick — เกมจำ tick ข้าม session</h3>
+<p>config เดี่ยว (<code>boxrun_magnet</code> · <code>boxrun_speed</code> · <code>boxrun_relay</code> · <code>coinrun</code>) เคยพึ่งสมมติฐาน "boost ที่ต้องการติ๊กไว้อยู่แล้ว". เจอจริงตอน audit: <b>speed ติ๊กค้าง ส่วน magnet/doublecoins ไม่ติ๊ก</b> → Multi-Buy จะ roll ผิดตัว → banner check ไม่ผ่าน → <code>retry_buy</code> เผาเหรียญ. ตอนนี้ทุกตัวมี prelude เคลียร์ทุกแถวแล้วติ๊กเฉพาะของตัวเอง (11 <code>tap_template</code> แบบ <code>optional</code> + roi) ตรงกับที่ <code>apply_boost</code> inject ให้ toggle family.</p>
+
+<h2 id="s11"><span class="n">11</span> Popup coverage — กฎที่ <code>lint</code> จับให้ไม่ได้</h2>
 <p>popup ที่ไม่มีใครปิด = เสีย session ทั้งยวง จนกว่า livelock warning จะยิงแล้วมีคนมาดู. แต่ <b>มี probe state อย่างเดียวไม่พอ</b> — ขึ้นกับว่า popup นั้นบัง Play! หรือเปล่า.</p>
 
 <h3>popup มี 2 ชนิด — ต่างกันที่ Play! ยังเห็นมั้ย</h3>
