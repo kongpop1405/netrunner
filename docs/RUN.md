@@ -332,7 +332,7 @@ Boost is picked **by number**, not by name — an out-of-range answer re-asks in
 
 Two prompts are commented out in the `.bat` rather than deleted:
 
-- **Jump + Slide** — merged into one `JUMPSLIDE` variable that feeds both `--jump` and `--slide`, hardcoded to `n`. Uncomment the `set /p "JUMPSLIDE=..."` pair to ask again. (With both off, the warm-up burst below is what keeps runs counting.)
+- **Jump + Slide** — merged into one `JUMPSLIDE` variable that feeds both `--jump` and `--slide`, hardcoded to **`y`**. Uncomment the `set /p "JUMPSLIDE=..."` pair to ask again, but **do not pin it to `n`**: with no jump/slide the hop states carry only a `goto`, and the engine keeps matching against the same cached frame until a pure-goto chain has revisited every state. The Cookie Relay prompt only lasts ~2-3s, so the relay chain would only ever see a stale pre-prompt frame and never fire (verified 2026-08-04). The warm-up burst still fires on `jump=n + slide=n`, but it is a one-shot at run start and does not refresh frames at the later hops.
 - **Idle** — hardcoded to `n` (no idling between games). Uncomment the `set /p "IDLE=..."` pair to ask again.
 
 `tools/run_toggle.py` is unchanged and still takes `--jump`/`--slide`/`--idle` separately, so any combination the launcher no longer asks for is reachable from the command line. Same for `--relic-mode hoard`: the launcher now offers only `claim`/`stop` (hoard and stop overlapped in practice), but the flag still accepts all three.
