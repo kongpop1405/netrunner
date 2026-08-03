@@ -33,53 +33,57 @@ echo   precondition: an episode is selected on home
 echo ============================================
 echo.
 
-set "FASTSTART=n"
-set "BOOST="
-set "JUMP=n"
-set "SLIDE=n"
-
-set /p "FASTSTART=Fast Start tap? (y/n) [y]: "
+set "FASTSTART=y"
+set /p "FASTSTART=Fast Start? [y]: "
 if "%FASTSTART%"=="" set "FASTSTART=y"
 
 :askboost
+set "BOOSTPICK="
+set /p "BOOSTPICK=Boost? 0=none 1=magnet 2=speed 3=coins [0]: "
+if "%BOOSTPICK%"=="" set "BOOSTPICK=0"
 set "BOOST="
-set /p "BOOST=Which boost to buy? (magnet/speed/doublecoins/none) [none]: "
-if "%BOOST%"=="" set "BOOST=none"
-if /i "%BOOST%"=="magnet" goto boostok
-if /i "%BOOST%"=="speed" goto boostok
-if /i "%BOOST%"=="doublecoins" goto boostok
-if /i "%BOOST%"=="none" goto boostok
-echo   [!] pick one of: magnet, speed, doublecoins, none
-goto askboost
-:boostok
+if "%BOOSTPICK%"=="0" set "BOOST=none"
+if "%BOOSTPICK%"=="1" set "BOOST=magnet"
+if "%BOOSTPICK%"=="2" set "BOOST=speed"
+if "%BOOSTPICK%"=="3" set "BOOST=doublecoins"
+if not defined BOOST (
+    echo   [!] pick 0-3
+    goto askboost
+)
 
-set /p "JUMP=Jump over pits? (y/n) [y]: "
-if "%JUMP%"=="" set "JUMP=y"
+rem Jump/Slide prompt hidden for now - both run actions default off.
+rem Re-enable by uncommenting the two lines below.
+set "JUMPSLIDE=n"
+rem set /p "JUMPSLIDE=Jump + Slide? [n]: "
+rem if "%JUMPSLIDE%"=="" set "JUMPSLIDE=n"
+set "JUMP=%JUMPSLIDE%"
+set "SLIDE=%JUMPSLIDE%"
 
-set /p "SLIDE=Slide under bars? (y/n) [y]: "
-if "%SLIDE%"=="" set "SLIDE=y"
-
-set /p "RELAY=Cookie Relay Boost tap? (y/n) [n]: "
-if "%RELAY%"=="" set "RELAY=n"
+set "RELAY=y"
+set /p "RELAY=Relay Boost? [y]: "
+if "%RELAY%"=="" set "RELAY=y"
 
 :askrelic
+set "RELICPICK="
+set /p "RELICPICK=Relic? y=claim n=claim+stop [n]: "
+if "%RELICPICK%"=="" set "RELICPICK=n"
 set "RELICMODE="
-set /p "RELICMODE=Relic mode? (claim/hoard/stop) [hoard]: "
-if "%RELICMODE%"=="" set "RELICMODE=hoard"
-if /i "%RELICMODE%"=="claim" goto relicok
-if /i "%RELICMODE%"=="hoard" goto relicok
-if /i "%RELICMODE%"=="stop" goto relicok
-echo   [!] pick one of: claim, hoard, stop
-goto askrelic
-:relicok
+if /i "%RELICPICK%"=="n" set "RELICMODE=stop"
+if /i "%RELICPICK%"=="y" set "RELICMODE=claim"
+if not defined RELICMODE (
+    echo   [!] pick y or n
+    goto askrelic
+)
 
-set "QUITBOXES="
-set /p "QUITBOXES=Quit a run after how many boxes banked? (0=never quit early) [0]: "
+set "QUITBOXES=0"
+set /p "QUITBOXES=Quit after N boxes? 0=off [0]: "
 if "%QUITBOXES%"=="" set "QUITBOXES=0"
 
-set "IDLE="
-set /p "IDLE=Idle between games? (y=config / n=off / MIN-MAX secs) [n]: "
-if "%IDLE%"=="" set "IDLE=n"
+rem Idle prompt hidden for now - idling between games stays off.
+rem Re-enable by uncommenting the two lines below.
+set "IDLE=n"
+rem set /p "IDLE=Idle? y=config n=off MIN-MAX [n]: "
+rem if "%IDLE%"=="" set "IDLE=n"
 
 echo.
 echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  RelicMode=%RELICMODE%  QuitAfterBoxes=%QUITBOXES%  Idle=%IDLE%
