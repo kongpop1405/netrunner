@@ -252,7 +252,7 @@
 <tr>
   <td class="mono">boxrun_toggle.bat</td><td><span class="tag t-box">box-farm</span></td>
   <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">83</td>
-  <td>เลือกตอนรัน</td><td>เลือกตอนรัน (<code>--quit-after-boxes</code>)</td><td class="no">∞</td><td><span class="tag t-warn">8 ข้อ</span></td>
+  <td>เลือกตอนรัน</td><td>เลือกตอนรัน (<code>--quit-after-boxes</code>)</td><td class="no">∞</td><td><span class="tag t-warn">5 ข้อ</span></td>
 </tr>
 <tr>
   <td class="mono">boxrun_magnet_hoard.bat</td><td><span class="tag t-box">box-farm</span></td>
@@ -299,7 +299,23 @@
 </div>
 
 <div class="note ac"><b>Relay default = y ตั้งแต่ 2026-08-03</b> — ทั้ง prompt ของ <code>boxrun_toggle.bat</code> และ preset <code>run_boxrun_noboost_claim.bat</code> เปลี่ยนจาก <code>n</code> เป็น <code>y</code> เพราะ relay เลิกเป็น blind no-op tap แล้ว (ดู §10). <code>boxrun_magnet_hoard.bat</code> ส่ง <code>--relay y</code> อยู่ก่อนแล้ว.</div>
-<div class="note ac"><b>3 launcher นั่งบน config เดียวกัน</b> — <code>boxrun_toggle.bat</code> / <code>boxrun_magnet_hoard.bat</code> / <code>run_boxrun_noboost_claim.bat</code> ใช้ <code>boxrun_toggle.json</code> ทั้งหมด ต่างกันแค่ argv ที่ส่งเข้า <code>run_toggle.py</code>. สองตัวหลัง = preset ไม่ต้องตอบ 8 คำถามซ้ำ.</div>
+<div class="note ac"><b>3 launcher นั่งบน config เดียวกัน</b> — <code>boxrun_toggle.bat</code> / <code>boxrun_magnet_hoard.bat</code> / <code>run_boxrun_noboost_claim.bat</code> ใช้ <code>boxrun_toggle.json</code> ทั้งหมด ต่างกันแค่ argv ที่ส่งเข้า <code>run_toggle.py</code>. สองตัวหลัง = preset ไม่ต้องตอบคำถามซ้ำ.</div>
+
+<h3 style="margin-top:22px">Prompt ของ <code>boxrun_toggle.bat</code> — 5 ข้อ (ย่อลง 2026-08-03)</h3>
+<div class="scroll">
+<table>
+<thead><tr><th>คำถาม</th><th>ค่า default (กด Enter)</th><th>ส่งเป็น flag</th></tr></thead>
+<tbody>
+<tr><td class="mono">Fast Start? [y]:</td><td class="mono">y</td><td class="mono">--faststart</td></tr>
+<tr><td class="mono">Boost? 0=none 1=magnet 2=speed 3=coins [0]:</td><td class="mono">0 → none</td><td class="mono">--boost</td></tr>
+<tr><td class="mono">Relay Boost? [y]:</td><td class="mono">y</td><td class="mono">--relay</td></tr>
+<tr><td class="mono">Relic? y=claim n=claim+stop [n]:</td><td class="mono">n → stop</td><td class="mono">--relic-mode</td></tr>
+<tr><td class="mono">Quit after N boxes? 0=off [0]:</td><td class="mono">0</td><td class="mono">--quit-after-boxes</td></tr>
+</tbody>
+</table>
+</div>
+<div class="note ac"><b>Boost เลือกด้วยเลข ไม่ใช่ชื่อ</b> — ตอบนอกช่วง 0–3 จะวนถามใหม่ ไม่ตกไปที่ default เงียบ ๆ.</div>
+<div class="note"><b>2 prompt ถูกซ่อน (comment ไว้ ไม่ได้ลบ)</b> — <b>Jump + Slide</b> รวมเป็นตัวแปรเดียว (<code>JUMPSLIDE</code>) ป้อนให้ทั้ง <code>--jump</code> และ <code>--slide</code> ตรึงไว้ที่ <code>n</code>, และ <b>Idle</b> ตรึงที่ <code>n</code>. เอากลับมาถามได้โดย uncomment บรรทัด <code>set /p</code> คู่ของมันใน <code>.bat</code>. ฝั่ง <code>run_toggle.py</code> ไม่ถูกแตะ — <code>--jump</code>/<code>--slide</code>/<code>--idle</code> ยังแยกกันและเรียกจาก command line ได้ครบ. หมายเหตุ: jump=n + slide=n จะ trigger warm-up burst อัตโนมัติ (ดู §10 / <code>docs/RUN.md</code>) ไม่งั้น run จะไม่ถูกเกมนับ.</div>
 
 <div class="note rd"><b>⚠ xpstat = test account เท่านั้น — ห้ามชี้ที่ main</b>. config ปักไว้ที่ <code>127.0.0.1:5559</code> (<code>cr-idfarm</code>) — <b>ห้ามเปลี่ยนไป 5557 (main account)</b>. เป็น copy ของ <code>coinrun</code> ที่ถอด buy chain ออกทั้งชุด (<code>probe_dc_owned</code>/<code>buy_boost</code>/<code>picker</code>/<code>wait_roll</code>/<code>check_boost_result</code>/<code>insufficient_coins</code>/<code>force_play</code>/<code>start_run</code>/<code>retry_buy</code>) — ไม่ซื้ออะไรเลย coin จึงคงที่ ตัวแปรเดียวคือ XP/run. relay chain ก็ไม่ใส่ให้ — ไม่ใช่เพราะอันตราย (พิสูจน์แล้ว 2026-08-03 ว่าพิกัดเดิม 960,540 เป็นที่ว่าง ไม่เคยโดนอะไรเลย) แต่เพราะ xpstat ต้องการตัวแปรเดียวคือ XP/run — relay สลับตัวละครกลางคันจะทำให้ตัวเลขเทียบไม่ได้.</div>
 
@@ -879,6 +895,7 @@
 </table>
 </div>
 <p><code>boxrun_toggle</code> = superset — มีครบทั้ง 3 จุดแล้วเลือกเปิด/ปิดผ่าน flag ตอนรัน จึงมี 75 state (มากกว่าตัวอื่น ~23 state ที่เป็น lives chain + relic chain).</p>
+<div class="note ac"><b>Relic 3 โหมดนี้อยู่ที่ระดับ CLI</b> — <code>--relic-mode claim|hoard|stop</code> ยังรับครบ. แต่ prompt ใน <code>boxrun_toggle.bat</code> เหลือ 2 ตัวเลือก (<code>y</code>→<code>claim</code> · <code>n</code>→<code>stop</code>, default <code>n</code>) เพราะ hoard กับ stop ซ้ำซ้อนกันในมุมคนกดใช้ — อยากได้ <code>hoard</code> ต้องเรียก <code>run_toggle.py</code> ตรงหรือใช้ preset <code>boxrun_magnet_hoard.bat</code>.</div>
 
 <h2 id="s5"><span class="n">05</span> Flow utility — 4 ตัวที่ไม่ใช่ box-farm</h2>
 
@@ -1027,7 +1044,7 @@
   <div class="row" style="margin-top:8px">
     <div class="nd" style="visibility:hidden"><div class="t">—</div></div>
     <div class="ar">คุมทุก knob เอง →</div>
-    <div class="nd am"><div class="t">boxrun_toggle</div><div class="d">ตอบ 8 คำถาม</div></div>
+    <div class="nd am"><div class="t">boxrun_toggle</div><div class="d">ตอบ 5 คำถาม</div></div>
   </div>
 </div>
 <div class="note rd"><b>⚠ <code>boxrun_default</code> ชื่อหลอก</b> — ไม่ใช่ "ไม่ทำอะไร": มัน<b>ซื้อ speed +17%</b> และ<b>ควิททันทีที่กล่องแรก</b>. คนละพฤติกรรมกับ <code>boxrun_speed</code> ที่เล่นจนตาย (ต่างกัน 5 state).</div>

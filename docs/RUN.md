@@ -316,9 +316,47 @@ them via flags (relay/jump/slide off, `--quit-after-boxes N`).
 
 ## Box Farm — Toggle (`launchers/boxrun_toggle.bat`)
 
-Double-click **`launchers/boxrun_toggle.bat`** — asks 7 questions (Fast Start tap? Which boost to buy? Jump? Slide? Cookie Relay Boost tap? Relic mode? Quit after how many boxes banked?), then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+Double-click **`launchers/boxrun_toggle.bat`** — asks 5 questions, then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+
+The prompts (shortened 2026-08-03 — Enter accepts the bracketed default on every line):
+
+| prompt | default | passed as |
+|--------|---------|-----------|
+| `Fast Start? [y]:` | `y` | `--faststart` |
+| `Boost? 0=none 1=magnet 2=speed 3=coins [0]:` | `0` = none | `--boost` |
+| `Relay Boost? [y]:` | `y` | `--relay` |
+| `Relic? y=claim n=claim+stop [n]:` | `n` = `stop` | `--relic-mode` |
+| `Quit after N boxes? 0=off [0]:` | `0` | `--quit-after-boxes` |
+
+Boost is picked **by number**, not by name — an out-of-range answer re-asks instead of falling through to a default.
+
+Two prompts are commented out in the `.bat` rather than deleted:
+
+- **Jump + Slide** — merged into one `JUMPSLIDE` variable that feeds both `--jump` and `--slide`, hardcoded to `n`. Uncomment the `set /p "JUMPSLIDE=..."` pair to ask again. (With both off, the warm-up burst below is what keeps runs counting.)
+- **Idle** — hardcoded to `n` (no idling between games). Uncomment the `set /p "IDLE=..."` pair to ask again.
+
+`tools/run_toggle.py` is unchanged and still takes `--jump`/`--slide`/`--idle` separately, so any combination the launcher no longer asks for is reachable from the command line. Same for `--relic-mode hoard`: the launcher now offers only `claim`/`stop` (hoard and stop overlapped in practice), but the flag still accepts all three.
 
 **Precondition**: any episode (3/5/6) selected on home before starting — the bot only taps `Play!`, same as the other boxrun bots.
+
+### Cookie Relay — the blind tap never worked (fixed 2026-08-03, live-verified)
+
+Every boxrun/coinrun config carried a blind `relay_tap` at **(960,540)**, fired once per hop. It did nothing, for a simple reason: **there is no relay button on a normal in-run screen.** Measured on live frames, (960,540) has texture 0.00% and std 2.5 — flat gameplay background. A grid scan across 78 mid-run frames from three runs found no intermittent UI element anywhere (best stillness 25.9, where a real control reads near 0), and the partner-count badge at the bottom (avatar + flag, ~521,1009) is an *indicator*, not a button — tapping it mid-run leaves the count unchanged. That badge is also what an earlier fix mistook for the button before reverting to (960,540); both coordinates were wrong.
+
+The real Cookie Relay is a **two-stage prompt that only appears on death**:
+
+| stage | screen | tap | template |
+|-------|--------|-----|----------|
+| 1 | `Tap to activate Cookie Relay Boost!` + **Continue** / Quit | **(946,433)** — Continue. **Never** Quit at (946,636), which ends the run | `boxrun/relay_prompt_marker.png` (the Continue pill: self=1.000, stage-2=0.346, everything else ≤0.35) |
+| 2 | same text + the relay cookie's card | **(980,515)** — the card | `boxrun/relay_prompt2_marker.png` (self=1.000, stage-1=0.367, mid-run=0.256) |
+
+Stage 1 is detected by the **Continue pill**, not the prompt text: both stages show the identical sentence, so a text crop scored 1.000 on stage 2 as well (margin ≤0.05) and could not tell them apart. The pill crop separates them by 0.65.
+
+Each hop state (`guard_not_inactive`, `jump_2`, `jump_3`, `jump_4`) now routes through `relay_stage1_X → relay_stage2_X → X`, polling at hop cadence because the whole window is only ~2-3 seconds. Stage 2 is reachable directly (stage 1 absent) on purpose: by the time the FSM has walked its guard chain, the Continue tap has often already landed — from the Fast Start spam, or a hop tap — and only the card is left. That is exactly what the live runs showed.
+
+**Live-verified:** two runs, relay card tapped twice (`relay_prompt2_marker` 0.98 and 0.84 → `tap (977,517)` / `tap (981,514)`), zero errors. Stage 1 has not yet been caught in the wild for the reason above; its template is verified against the captured prompt frame rather than in-loop.
+
+Applied to `boxrun_magnet`, `boxrun_speed`, `boxrun_relay`, `coinrun`, `boxrun_toggle`. ⚠️ `boxrun_relay`'s entire reason for existing was doubling the old blind tap — with that tap gone it is now identical to `boxrun_magnet`.
 
 ### Why no toggle-family preset ever bought a boost (fixed 2026-08-02)
 
@@ -350,7 +388,7 @@ What each remaining flag strips when answered `n`:
 - **Fast Start (n)** — removes the `faststart_tap` action from `check_heart`/`after_play`'s `on_absent` lists; the Play tap and trailing `goto` stay.
 - **Jump (n)** — drops the `jump` action from `jump_2`/`jump_4`/`guard_not_inactive`'s `on_absent` lists, leaving only the Cookie Relay tap (960,540) + `goto`.
 - **Slide (n)** — drops the `slide` action from `jump_3`'s `on_absent` list.
-- **Relay (n)** — drops the Cookie Relay Boost `tap_xy(960,540)` from `jump_2`/`jump_3`/`jump_4`/`guard_not_inactive`'s `on_absent` lists, independent of the Jump/Slide flags — the relay tap is a per-hop side action, not tied to either obstacle-avoidance action.
+- **Relay (n)** — re-points each hop's `goto` past the two-stage relay chain (`relay_stage1_X` → `X`), so the relay states stay in the config but are never entered. Independent of the Jump/Slide flags. Before 2026-08-03 this instead removed a blind `tap_xy(960,540)`; see the Cookie Relay section below for why that tap never did anything.
 
 ⚠️ Turning off both Jump and Slide means the run has no obstacle avoidance — the runner will hit the first pit/bar and die almost immediately. Useful only for isolated testing (e.g. verifying the Magnet buy chain alone), not for actual farming.
 
@@ -360,7 +398,7 @@ The patching happens in `tools/run_toggle.py` (`_strip_faststart`, `_disable_mag
 
 **Quit after N runs-with-a-box (`--quit-after-boxes`, default 0 = never quit early):** `check_box` detects `boxcounter_marker.png` — the `[?] xN` counter that appears once a box is collected — but there's no OCR reading the actual number N off the counter, so the config alone can't tell "1 box this run" from "3 boxes this run", and `boxcounter_marker` **stays on screen for the rest of that run** once it appears. `check_box` gets revisited every ~4 hops for the rest of the run (housekeeping sweep), so counting every match would count one run's box 4+ times in ~10s instead of once — that was a real bug (`_box_counted_this_run` fixes it). `BoxQuitRunner` (a `Runner` subclass in `run_toggle.py`) now counts **how many runs have had at least one box** — one increment per run, on the first `check_box` match after `run_result` resets the flag — and only lets the `quit_run` goto through once that count reaches `quit_after`; earlier matches are redirected to `check_shop_after_run` so the run keeps going. At the default `0` the counter is never consulted — `check_box`'s own goto to `quit_run` always fires, i.e. runs play to natural death/end instead of quitting early. Note this counts *runs*, not total boxes — a run that nets 3 boxes still only advances the counter by 1.
 
-**Relic mode (`--relic-mode`, default `hoard`):** claims the episode's relic once its "Get!" badge appears (`claim`), leaves it un-claimed to keep farming past the badge (`hoard`), or claims it once and then exits the process entirely once home is confirmed clear (`stop` — for a rest/park session). Mutually exclusive with the older `--relic y/n` (`y`=`claim`, `n`=`hoard`); both flags now default to hoarding instead of auto-claiming. See `docs/plans/done/PLAN_relic-stop-mode.html` for the arm/consume design and live-verify log.
+**Relic mode (`--relic-mode`, default `hoard`):** claims the episode's relic once its "Get!" badge appears (`claim`), leaves it un-claimed to keep farming past the badge (`hoard`), or claims it once and then exits the process entirely once home is confirmed clear (`stop` — for a rest/park session). Mutually exclusive with the older `--relic y/n` (`y`=`claim`, `n`=`hoard`); both flags default to hoarding instead of auto-claiming. `boxrun_toggle.bat` deliberately offers only two of the three — `y`→`claim`, `n`→`stop` — since hoarding and stopping both mean "don't keep farming past the badge" from the launcher's point of view; `hoard` stays available from the command line. See `docs/plans/done/PLAN_relic-stop-mode.html` for the arm/consume design and live-verify log.
 
 Manual equivalent:
 
@@ -370,13 +408,13 @@ python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --rela
 
 ## Box Farm — No-boost/claim preset (`launchers/run_boxrun_noboost_claim.bat`)
 
-Double-click **`launchers/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, Relay=n, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-typing the same 7 answers each launch.
+Double-click **`launchers/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, **Relay=y**, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. (Relay flipped from `n` to `y` on 2026-08-03, once the relay stopped being a blind no-op tap and became the real two-stage prompt chain — see the Cookie Relay section above.) Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-answering the prompts each launch.
 
 **Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
 
 ## Box Farm — Magnet/hoard preset (`launchers/boxrun_magnet_hoard.bat`)
 
-Double-click **`launchers/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, Relay=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-typing the same 7 answers each launch.
+Double-click **`launchers/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, Relay=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-answering the prompts each launch (and `hoard` is no longer offered by `boxrun_toggle.bat` at all).
 
 **Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
 
