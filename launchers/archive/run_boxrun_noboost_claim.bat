@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-cd /d "%~dp0.."
+cd /d "%~dp0..\.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,17 +27,17 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - boxrun bot (magnet, hoard relic)
+echo   NetRunner - boxrun bot (no boost, claim relic)
 echo   Mystery Box farm - fixed preset, no prompts
 echo   precondition: an episode is selected on home
 echo ============================================
 echo.
-echo   Fast Start=y  Boost=magnet  Jump=y  Slide=y  Relay=y  RelicMode=hoard  QuitAfterBoxes=0  Idle=n
+echo   Fast Start=y  Boost=none  Jump=y  Slide=y  Relay=y  RelicMode=claim  QuitAfterBoxes=0  Idle=n
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_toggle.py --faststart y --boost magnet --jump y --slide y --relay y --relic-mode hoard --quit-after-boxes 0 --idle n --launch
+%PY% tools\run_toggle.py --faststart y --boost none --jump y --slide y --relay y --relic-mode claim --quit-after-boxes 0 --idle n --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

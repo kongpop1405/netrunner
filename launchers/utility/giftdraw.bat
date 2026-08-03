@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0.."
+cd /d "%~dp0..\.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,14 +27,31 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - boxrun: speed (+17%% base speed, play to death)
-echo   Mystery Box farm - buys +17%% base speed every run
-echo   precondition: ANY episode selected on home (bot only taps Play)
-echo   unlimited cycles  ^|  stop: Ctrl+C
+echo   NetRunner - Gift Draw box opener
 echo ============================================
 echo.
+echo Precondition: Gift Draw popup must already be open
+echo (home -^> tap the Rewards gift-box icon).
+echo.
 
-%PY% main.py --config config/cookierun/boxrun_speed.json --launch
+set /p BOXES="How many boxes to open? "
+
+echo %BOXES%| findstr /r "^[1-9][0-9]*$" >nul
+if errorlevel 1 (
+    echo Invalid input: "%BOXES%" is not a positive whole number.
+    pause
+    exit /b 1
+)
+
+rem 3 cycles/box happy path; a rare treasure popup routes through the retry
+rem chain + rescue (~8 extra cycles), so budget 4/box + 1 rescue-chain buffer.
+set /a CYCLES=BOXES*4+8
+
+echo.
+echo Opening %BOXES% box(es)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
+echo.
+
+%PY% main.py --config config/cookierun/giftdraw.json --launch --max-cycles %CYCLES%
 set "RC=%ERRORLEVEL%"
 
 echo.

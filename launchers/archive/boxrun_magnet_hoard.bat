@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
-setlocal
-cd /d "%~dp0.."
+setlocal enabledelayedexpansion
+cd /d "%~dp0..\.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,32 +27,17 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - Add Friends (Find tab)
+echo   NetRunner - boxrun bot (magnet, hoard relic)
+echo   Mystery Box farm - fixed preset, no prompts
+echo   precondition: an episode is selected on home
 echo ============================================
 echo.
-echo Entry is automated: works from home (taps the
-echo Friends icon then the Find tab), or from the
-echo Find tab already open.
-echo.
-echo Loop: Request x4 visible -^> Refresh -^> repeat.
+echo   Fast Start=y  Boost=magnet  Jump=y  Slide=y  Relay=y  RelicMode=hoard  QuitAfterBoxes=0  Idle=n
+echo   unlimited cycles  ^|  stop: Ctrl+C
+echo ============================================
 echo.
 
-set /p FRIENDS="How many friend requests to send? "
-
-echo %FRIENDS%| findstr /r "^[1-9][0-9]*$" >nul
-if errorlevel 1 (
-    echo Invalid input: "%FRIENDS%" is not a positive whole number.
-    pause
-    exit /b 1
-)
-
-set /a CYCLES=FRIENDS*5/4+8
-
-echo.
-echo Sending %FRIENDS% request(s)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
-echo.
-
-%PY% main.py --config config/cookierun/addfriend.json --launch --max-cycles %CYCLES%
+%PY% tools\run_toggle.py --faststart y --boost magnet --jump y --slide y --relay y --relic-mode hoard --quit-after-boxes 0 --idle n --launch
 set "RC=%ERRORLEVEL%"
 
 echo.
