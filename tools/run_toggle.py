@@ -404,10 +404,26 @@ def _is_relay(action: dict) -> bool:
 
 
 def _strip_relay(states: dict) -> None:
-    """Drop the Cookie Relay Boost tap from the in-run hop states."""
+    """Skip the Cookie Relay entirely: hops jump straight to where they resume.
+
+    Two shapes to handle. The old one was a blind `relay_tap` action sitting in
+    the hop's own list — that is what `_is_relay` removes, kept for any config
+    still carrying it. The current one is the two-stage relay chain
+    (relay_stage1_X -> relay_stage2_X -> X, added 2026-08-03 once the real
+    prompt was found), where the hop's goto points at relay_stage1_X instead of
+    at X. Turning the relay off there means re-pointing that goto back at X, so
+    the states stay in the config but are never entered.
+    """
     for name in ("jump_2", "jump_3", "jump_4", "guard_not_inactive"):
-        state = states[name]
-        state["on_absent"] = [a for a in state["on_absent"] if not _is_relay(a)]
+        state = states.get(name)
+        if state is None:
+            continue
+        acts = [a for a in state.get("on_absent", []) if not _is_relay(a)]
+        for a in acts:
+            tgt = a.get("state", "") if a.get("type") == "goto" else ""
+            if tgt.startswith("relay_stage1_"):
+                a["state"] = tgt[len("relay_stage1_"):]
+        state["on_absent"] = acts
 
 
 def _yn(v: str) -> bool:
