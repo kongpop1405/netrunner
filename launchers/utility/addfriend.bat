@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0.."
+cd /d "%~dp0..\.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,31 +27,32 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - Gift Draw box opener
+echo   NetRunner - Add Friends (Find tab)
 echo ============================================
 echo.
-echo Precondition: Gift Draw popup must already be open
-echo (home -^> tap the Rewards gift-box icon).
+echo Entry is automated: works from home (taps the
+echo Friends icon then the Find tab), or from the
+echo Find tab already open.
+echo.
+echo Loop: Request x4 visible -^> Refresh -^> repeat.
 echo.
 
-set /p BOXES="How many boxes to open? "
+set /p FRIENDS="How many friend requests to send? "
 
-echo %BOXES%| findstr /r "^[1-9][0-9]*$" >nul
+echo %FRIENDS%| findstr /r "^[1-9][0-9]*$" >nul
 if errorlevel 1 (
-    echo Invalid input: "%BOXES%" is not a positive whole number.
+    echo Invalid input: "%FRIENDS%" is not a positive whole number.
     pause
     exit /b 1
 )
 
-rem 3 cycles/box happy path; a rare treasure popup routes through the retry
-rem chain + rescue (~8 extra cycles), so budget 4/box + 1 rescue-chain buffer.
-set /a CYCLES=BOXES*4+8
+set /a CYCLES=FRIENDS*5/4+8
 
 echo.
-echo Opening %BOXES% box(es)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
+echo Sending %FRIENDS% request(s)  ^(cap %CYCLES% cycles^)  ^|  stop early: Ctrl+C
 echo.
 
-%PY% main.py --config config/cookierun/giftdraw.json --launch --max-cycles %CYCLES%
+%PY% main.py --config config/cookierun/addfriend.json --launch --max-cycles %CYCLES%
 set "RC=%ERRORLEVEL%"
 
 echo.

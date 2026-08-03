@@ -230,12 +230,12 @@
 </tr></thead>
 <tbody>
 <tr>
-  <td class="mono">boxrun_default.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">archive/<wbr>boxrun_default.bat</td><td><span class="tag t-box">box-farm</span></td>
   <td class="mono">main.py</td><td class="mono">boxrun_default</td><td class="mono">55</td>
   <td><span class="tag t-warn">speed +17%</span></td><td>quit ทันทีที่ได้กล่อง</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
-  <td class="mono">boxrun_speed.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">archive/<wbr>boxrun_speed.bat</td><td><span class="tag t-box">box-farm</span></td>
   <td class="mono">main.py</td><td class="mono">boxrun_speed</td><td class="mono">60</td>
   <td><span class="tag t-warn">speed +17%</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
 </tr>
@@ -245,7 +245,7 @@
   <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
-  <td class="mono">boxrun_relay.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">archive/<wbr>boxrun_relay.bat</td><td><span class="tag t-box">box-farm</span></td>
   <td class="mono">main.py</td><td class="mono">boxrun_relay</td><td class="mono">60</td>
   <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · <b style="color:var(--rd)">ซ้ำ magnet ทุกอย่าง</b></td><td class="no">∞</td><td class="no">—</td>
 </tr>
@@ -255,12 +255,12 @@
   <td>เลือกตอนรัน</td><td>เลือกตอนรัน (<code>--quit-after-boxes</code>)</td><td class="no">∞</td><td><span class="tag t-warn">5 ข้อ</span></td>
 </tr>
 <tr>
-  <td class="mono">boxrun_magnet_hoard.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">archive/<wbr>boxrun_magnet_hoard.bat</td><td><span class="tag t-box">box-farm</span></td>
   <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">83</td>
   <td><span class="tag t-hot">Magnetic Aura</span></td><td>เล่นจนตาย · relic=hoard</td><td class="no">∞</td><td class="no">— (preset)</td>
 </tr>
 <tr>
-  <td class="mono">run_boxrun_noboost_claim.bat</td><td><span class="tag t-box">box-farm</span></td>
+  <td class="mono">archive/<wbr>run_boxrun_noboost_claim.bat</td><td><span class="tag t-box">box-farm</span></td>
   <td class="mono">run_toggle.py</td><td class="mono">boxrun_toggle</td><td class="mono">83</td>
   <td><span class="tag t-no">none</span></td><td>เล่นจนตาย · relic=claim · <b>relay=y</b></td><td class="no">∞</td><td class="no">— (preset)</td>
 </tr>
@@ -270,22 +270,22 @@
   <td><span class="tag t-ok">Double Coins</span></td><td>เล่นจนตาย</td><td class="no">∞</td><td class="no">—</td>
 </tr>
 <tr>
-  <td class="mono">giftdraw.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">utility/<wbr>giftdraw.bat</td><td><span class="tag t-util">utility</span></td>
   <td class="mono">main.py</td><td class="mono">giftdraw</td><td class="mono">13</td>
   <td class="no">—</td><td>draw หมด → ปิด popup</td><td class="mono">boxes×4+8</td><td>จำนวนกล่อง</td>
 </tr>
 <tr>
-  <td class="mono">sendlife.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">utility/<wbr>sendlife.bat</td><td><span class="tag t-util">utility</span></td>
   <td class="mono">main.py</td><td class="mono">sendlife</td><td class="mono">16</td>
   <td class="no">—</td><td>สุด list (2 scan ว่าง)</td><td class="mono">300</td><td class="no">—</td>
 </tr>
 <tr>
-  <td class="mono">sendlife_mailbox.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">utility/<wbr>sendlife_mailbox.bat</td><td><span class="tag t-util">utility</span></td>
   <td class="mono">main.py</td><td class="mono">sendlife_mailbox</td><td class="mono">3</td>
   <td class="no">—</td><td>dialog ไม่เด้งซ้ำ</td><td class="mono">250</td><td class="no">—</td>
 </tr>
 <tr>
-  <td class="mono">addfriend.bat</td><td><span class="tag t-util">utility</span></td>
+  <td class="mono">utility/<wbr>addfriend.bat</td><td><span class="tag t-util">utility</span></td>
   <td class="mono">main.py</td><td class="mono">addfriend</td><td class="mono">15</td>
   <td class="no">—</td><td><span class="tag t-warn">ไม่มี</span> — cap เท่านั้น</td><td class="mono">friends×5/4+8</td><td>จำนวน request</td>
 </tr>
@@ -298,6 +298,7 @@
 </table>
 </div>
 
+<div class="note ac"><b><code>launchers/</code> แยกเป็น 3 ชั้น (2026-08-04)</b> — ราก <code>launchers/</code> เหลือตัวที่ใช้ประจำ (<code>boxrun_toggle.bat</code> · <code>boxrun_magnet.bat</code> · <code>coinrun.bat</code>), <code>launchers/utility/</code> = ตัวที่ไม่ใช่ farm run, <code>launchers/archive/</code> = boxrun ที่เลิกใช้แล้ว. ทุกตัวยังดับเบิลคลิกรันได้ปกติ — <code>cd /d "%~dp0.."</code> ในไฟล์ที่ย้ายลงชั้นย่อยถูกแก้เป็น <code>"%~dp0..\..\"</code> แล้ว (verify: CWD ออกมาเป็น repo root และหา <code>config/cookierun</code> เจอ). ย้ายกลับขึ้นรากได้ทุกเมื่อ แต่ต้องแก้ <code>cd</code> กลับ 1 ชั้นด้วย ไม่งั้นหา config ไม่เจอ.</div>
 <div class="note ac"><b>Relay default = y ตั้งแต่ 2026-08-03</b> — ทั้ง prompt ของ <code>boxrun_toggle.bat</code> และ preset <code>run_boxrun_noboost_claim.bat</code> เปลี่ยนจาก <code>n</code> เป็น <code>y</code> เพราะ relay เลิกเป็น blind no-op tap แล้ว (ดู §10). <code>boxrun_magnet_hoard.bat</code> ส่ง <code>--relay y</code> อยู่ก่อนแล้ว.</div>
 <div class="note ac"><b>3 launcher นั่งบน config เดียวกัน</b> — <code>boxrun_toggle.bat</code> / <code>boxrun_magnet_hoard.bat</code> / <code>run_boxrun_noboost_claim.bat</code> ใช้ <code>boxrun_toggle.json</code> ทั้งหมด ต่างกันแค่ argv ที่ส่งเข้า <code>run_toggle.py</code>. สองตัวหลัง = preset ไม่ต้องตอบคำถามซ้ำ.</div>
 

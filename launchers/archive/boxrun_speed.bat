@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0.."
+cd /d "%~dp0..\.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,19 +27,14 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - Mailbox Send-Life
+echo   NetRunner - boxrun: speed (+17%% base speed, play to death)
+echo   Mystery Box farm - buys +17%% base speed every run
+echo   precondition: ANY episode selected on home (bot only taps Play)
+echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
-echo Precondition: Mailbox open, Lives tab selected
-echo (the received-lives list with the green
-echo  "Quick Receive & Send Lives" banner visible).
-echo.
-echo Sends to every friend in the list one dialog
-echo at a time. Stops automatically once the confirm
-echo dialog stops reappearing.  Stop early: Ctrl+C
-echo.
 
-%PY% main.py --config config/cookierun/sendlife_mailbox.json --max-cycles 250
+%PY% main.py --config config/cookierun/boxrun_speed.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

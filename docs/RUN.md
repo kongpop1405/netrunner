@@ -194,7 +194,7 @@ python main.py --config config/cookierun/coinrun.json --dry-run -v
 
 ## Gift Draw (box opener)
 
-Double-click **`launchers/giftdraw.bat`** — prompts for how many boxes to open, then runs `config/cookierun/giftdraw.json` capped to that many draws (`boxes*5 + 15` cycles — extra headroom for the rescue path below).
+Double-click **`launchers/utility/giftdraw.bat`** — prompts for how many boxes to open, then runs `config/cookierun/giftdraw.json` capped to that many draws (`boxes*5 + 15` cycles — extra headroom for the rescue path below).
 
 Precondition: the **Gift Draw popup already open** (home → tap the Rewards gift-box icon, bottom bar). Loop: tap Draw → pick the yellow box → tap Confirm (finds it via `tap_template`, handles both reward-reveal layouts) → repeat. Auto-stops when draws run out (Draw greys → pick_box times out → closes the popup). `Ctrl+C` to abort early.
 
@@ -212,7 +212,7 @@ python main.py --config config/cookierun/giftdraw.json --max-cycles 50
 
 ## Send-Life (friends list)
 
-Double-click **`launchers/sendlife.bat`** — runs `config/cookierun/sendlife.json`, capped 300 cycles.
+Double-click **`launchers/utility/sendlife.bat`** — runs `config/cookierun/sendlife.json`, capped 300 cycles.
 
 Precondition: **home screen, Friends tab open** (default tab — leaderboard/friends list with Send-Life icons visible). Loop: scan for any visible Send-Life icon (`tap_template`, so row position doesn't matter) → tap → Confirm the "Send a free Life?" dialog → Confirm "Message sent!" → repeat. When no icon is visible it swipes the list up and re-scans; stops automatically once two consecutive scans past a swipe find nothing (bottom of list). `Ctrl+C` to abort early.
 
@@ -224,7 +224,7 @@ python main.py --config config/cookierun/sendlife.json --max-cycles 300
 
 ## Mailbox Send-Life (Mailbox popup — different screen from the Friends-tab bot above)
 
-Double-click **`launchers/sendlife_mailbox.bat`** — runs `config/cookierun/sendlife_mailbox.json`, capped 250 cycles.
+Double-click **`launchers/utility/sendlife_mailbox.bat`** — runs `config/cookierun/sendlife_mailbox.json`, capped 250 cycles.
 
 Not the same bot as **Send-Life** above: that one drives the home-screen
 **Friends tab** list (per-row icon, "Send \<name\> a free Life? (+3 Gift Points)"
@@ -266,7 +266,7 @@ python main.py --config config/cookierun/sendlife_mailbox.json --max-cycles 250
 
 ## Add Friends (Find tab)
 
-Double-click **`launchers/addfriend.bat`** — prompts for how many friend requests to send, then runs `config/cookierun/addfriend.json` capped to `friends*5/4 + 8` cycles.
+Double-click **`launchers/utility/addfriend.bat`** — prompts for how many friend requests to send, then runs `config/cookierun/addfriend.json` capped to `friends*5/4 + 8` cycles.
 
 Entry automated: from **home** it taps the Friends icon (1203,465) → Find tab (851,117); if the popup is already on Find it starts straight away. Loop: **Refresh first** (fresh all-green batch), then a fixed-coordinate walk taps each of the 4 rows exactly once (y = 367/529/691/853), then Refresh again → repeat. No natural end — the cycle cap ends the run. `Ctrl+C` to abort early.
 
@@ -282,9 +282,9 @@ Manual equivalent:
 python main.py --config config/cookierun/addfriend.json --max-cycles 50
 ```
 
-## Box Farm — Speed (`launchers/boxrun_default.bat`)
+## Box Farm — Speed (`launchers/archive/boxrun_default.bat`)
 
-Double-click **`launchers/boxrun_default.bat`** — runs `config/cookierun/boxrun_default.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
+Double-click **`launchers/archive/boxrun_default.bat`** — runs `config/cookierun/boxrun_default.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
 
 **Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_default` / `boxrun_toggle`), not by episode.
 
@@ -406,21 +406,21 @@ Manual equivalent:
 python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --relay y --relic-mode claim --quit-after-boxes 2 --launch
 ```
 
-## Box Farm — No-boost/claim preset (`launchers/run_boxrun_noboost_claim.bat`)
+## Box Farm — No-boost/claim preset (`launchers/archive/run_boxrun_noboost_claim.bat`)
 
-Double-click **`launchers/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, **Relay=y**, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. (Relay flipped from `n` to `y` on 2026-08-03, once the relay stopped being a blind no-op tap and became the real two-stage prompt chain — see the Cookie Relay section above.) Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-answering the prompts each launch.
-
-**Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
-
-## Box Farm — Magnet/hoard preset (`launchers/boxrun_magnet_hoard.bat`)
-
-Double-click **`launchers/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, Relay=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-answering the prompts each launch (and `hoard` is no longer offered by `boxrun_toggle.bat` at all).
+Double-click **`launchers/archive/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, **Relay=y**, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. (Relay flipped from `n` to `y` on 2026-08-03, once the relay stopped being a blind no-op tap and became the real two-stage prompt chain — see the Cookie Relay section above.) Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-answering the prompts each launch.
 
 **Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
 
-## Box Farm — Speed (`launchers/boxrun_speed.bat`) — live-verified 2026-08-02
+## Box Farm — Magnet/hoard preset (`launchers/archive/boxrun_magnet_hoard.bat`)
 
-Double-click **`launchers/boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` directly (unlimited cycles, `Ctrl+C` to stop). Same Mystery Box farm loop as `boxrun_magnet`, with the Magnetic Aura buy chain swapped for **+17% base speed**: `probe_speed`/`start_run` read `speedbase17_banner.png`, `buy_speed` opens the picker, `picker` Multi-Buys at (953,899).
+Double-click **`launchers/archive/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, Relay=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-answering the prompts each launch (and `hoard` is no longer offered by `boxrun_toggle.bat` at all).
+
+**Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
+
+## Box Farm — Speed (`launchers/archive/boxrun_speed.bat`) — live-verified 2026-08-02
+
+Double-click **`launchers/archive/boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` directly (unlimited cycles, `Ctrl+C` to stop). Same Mystery Box farm loop as `boxrun_magnet`, with the Magnetic Aura buy chain swapped for **+17% base speed**: `probe_speed`/`start_run` read `speedbase17_banner.png`, `buy_speed` opens the picker, `picker` Multi-Buys at (953,899).
 
 **Precondition**: any episode selected on home before starting — the bot only taps `Play!`.
 
@@ -442,9 +442,9 @@ Manual equivalent:
 python main.py --config config/cookierun/boxrun_speed.json
 ```
 
-## Box Farm — Relay preset (`launchers/boxrun_relay.bat`)
+## Box Farm — Relay preset (`launchers/archive/boxrun_relay.bat`)
 
-Double-click **`launchers/boxrun_relay.bat`** — runs `config/cookierun/boxrun_relay.json` directly (not through `run_toggle.py`), unlimited cycles, `Ctrl+C` to stop. A copy of `boxrun_magnet.json` with exactly one change: **`relay_tap` fires twice per hop instead of once** (`"taps": 2` on all four call sites — `jump_2`, `jump_3`, `jump_4`, `guard_not_inactive`), for a higher Cookie Relay Boost trigger rate. Repeat taps are paced by `Act.relay_gap_s` (0.12s). Everything else — states, coords, Magnetic Aura buy chain, guard chain — is unchanged from `boxrun_magnet`; see that config's `_note` fields for the reasoning behind each state.
+Double-click **`launchers/archive/boxrun_relay.bat`** — runs `config/cookierun/boxrun_relay.json` directly (not through `run_toggle.py`), unlimited cycles, `Ctrl+C` to stop. A copy of `boxrun_magnet.json` with exactly one change: **`relay_tap` fires twice per hop instead of once** (`"taps": 2` on all four call sites — `jump_2`, `jump_3`, `jump_4`, `guard_not_inactive`), for a higher Cookie Relay Boost trigger rate. Repeat taps are paced by `Act.relay_gap_s` (0.12s). Everything else — states, coords, Magnetic Aura buy chain, guard chain — is unchanged from `boxrun_magnet`; see that config's `_note` fields for the reasoning behind each state.
 
 The relay button has no template and is a no-op when no partner is ready, so extra taps cost nothing but the ~120ms gap; `relay_taps` in `src/act.py` is the equivalent global knob for every other bot.
 
