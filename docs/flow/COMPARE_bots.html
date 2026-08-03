@@ -204,7 +204,8 @@
     <a href="#s8">08 กลไกร่วม</a>
     <a href="#s9">09 archived</a>
     <a href="#s10">10 ✅ bug ที่แก้แล้ว</a>
-    <a href="#s11">11 popup coverage</a>
+    <a href="#s11">11 ✅ toggle relay fix</a>
+    <a href="#s12">12 popup coverage</a>
   </nav>
   <p class="lead">ทุกบอทใช้ engine ตัวเดียว (<code>src/fsm.py</code> — capture → perceive → act loop) ความต่างอยู่ที่ <b>config JSON</b> ล้วน. launcher <code>.bat</code> แค่เลือก config + ถาม flag แล้วเรียก <code>main.py</code> หรือ <code>tools/run_toggle.py</code>.</p>
 </header>
@@ -1208,7 +1209,47 @@
 <h3>④ picker tick — เกมจำ tick ข้าม session</h3>
 <p>config เดี่ยว (<code>boxrun_magnet</code> · <code>boxrun_speed</code> · <code>boxrun_relay</code> · <code>coinrun</code>) เคยพึ่งสมมติฐาน "boost ที่ต้องการติ๊กไว้อยู่แล้ว". เจอจริงตอน audit: <b>speed ติ๊กค้าง ส่วน magnet/doublecoins ไม่ติ๊ก</b> → Multi-Buy จะ roll ผิดตัว → banner check ไม่ผ่าน → <code>retry_buy</code> เผาเหรียญ. ตอนนี้ทุกตัวมี prelude เคลียร์ทุกแถวแล้วติ๊กเฉพาะของตัวเอง (11 <code>tap_template</code> แบบ <code>optional</code> + roi) ตรงกับที่ <code>apply_boost</code> inject ให้ toggle family.</p>
 
-<h2 id="s11"><span class="n">11</span> Popup coverage — กฎที่ <code>lint</code> จับให้ไม่ได้</h2>
+<h2 id="s11"><span class="n">11</span> ✅ 2026-08-04 — ทำไม toggle ไม่กด relay ทั้งที่ coinrun กดทุกครั้ง</h2>
+<p>อาการ: <code>coinrun</code> กด Cookie Relay ได้ปกติ แต่ <b><code>boxrun_toggle</code> ไม่กดเลยสักครั้ง</b> ทั้งที่ config มี relay chain ครบเหมือนกัน (8 state) และ <code>--relay y</code> ก็ส่งไปแล้ว. ไม่ใช่บั๊กของ relay chain — เป็น <b>engine optimization ที่ชนกับ hop ที่ไม่มี action เหลืออยู่</b>.</p>
+
+<h3>สาเหตุ — เฟรมค้าง (stale frame) เมื่อ hop เหลือแต่ <code>goto</code></h3>
+<p><code>src/fsm.py</code> ตัดสินว่าจะ grab เฟรมใหม่หรือใช้เฟรมเดิม จาก <b>"state นี้ทำ action อะไรหรือเปล่า"</b>:</p>
+<table>
+<tr><th>hop มีอะไรใน <code>on_absent</code></th><th>engine ทำอะไรต่อ</th><th>relay chain เห็นอะไร</th></tr>
+<tr><td class="mono">['jump', 'goto']<br><span class="no">(jump/slide เปิด)</span></td>
+    <td>ทำ action → <code>frame = None</code> → <b>grab เฟรมใหม่</b> + sleep ตาม poll</td>
+    <td class="mono">ภาพสดทุก hop ✓</td></tr>
+<tr><td class="mono">['goto']<br><span class="no">(jump/slide ปิด)</span></td>
+    <td><code>did_transition = True</code> → <b>ใช้เฟรมเดิมที่ cache ไว้</b> ไล่ goto ต่อจนกว่า pure-goto chain จะยาวเกินจำนวน state (83) ถึงจะ re-grab</td>
+    <td class="mono no">ภาพนิ่งใบเดิม ✗</td></tr>
+</table>
+<p>Cookie Relay prompt อยู่บนจอแค่ <b>~2–3 วินาที</b> — toggle ที่ปิด jump/slide จึงตรวจแต่เฟรมที่ถ่ายไว้<i>ก่อน</i> prompt โผล่ วนซ้ำใบเดิม ไม่มีทางเจอ. ส่วน <code>coinrun</code> รันผ่าน <code>main.py</code> ไม่มีใคร strip อะไรออก hop จึงมี <code>jump</code> ครบ → เฟรมสดทุกครั้ง → กดติดทุกรอบ.</p>
+
+<div class="note ac"><b>หลักฐานจาก live log</b> — ฝั่งที่ jump เปิด (<code>boxrun_magnet</code>) score ของ <code>relay_prompt_marker</code> เปลี่ยนทุก hop: <code>0.35 → 0.40 → 0.33</code> (13 ค่าไม่ซ้ำกันตลอด run) = เฟรมใหม่จริง. ถ้าเป็นเฟรมค้าง score จะซ้ำเป๊ะทุกครั้ง เพราะ matchTemplate เป็น deterministic.</div>
+
+<h3>ที่มาของสถานะนี้</h3>
+<p><code>launchers/boxrun_toggle.bat</code> เคย hardcode <code>set "JUMPSLIDE=n"</code> พร้อม comment ว่า "prompt hidden for now — both run actions default off" และ comment prompt ทิ้ง (ผู้ใช้เลือกไม่ได้ตอนรัน). ตอนตั้งค่านั้น relay ยังเป็น blind tap ที่ไม่ทำงานอยู่แล้ว จึงไม่มีใครเห็นผลข้างเคียง — พอ relay chain ใช้ได้จริง (§10) ผลข้างเคียงถึงโผล่.</p>
+
+<h3>แก้แล้ว</h3>
+<p><code>JUMPSLIDE=y</code> + comment เตือนไว้ในไฟล์ว่าห้ามตั้งเป็น <code>n</code> พร้อมเหตุผล. ตรวจแล้วทุก hop กลับมามี action:</p>
+<pre class="mono">guard_not_inactive   ['jump','goto']    -&gt; relay_stage1_jump_2        frame-regrab: YES
+jump_2               ['jump','goto']    -&gt; relay_stage1_jump_3        frame-regrab: YES
+jump_3               ['slide','goto']   -&gt; relay_stage1_jump_4        frame-regrab: YES
+jump_4               ['jump','goto']    -&gt; relay_stage1_check_box     frame-regrab: YES</pre>
+
+<div class="note rd"><b>กับดักที่ยังเหลือ</b> — <code>run_toggle.py</code> ยังยอมให้ <code>--jump n --slide n</code> ผ่านได้เงียบ ๆ ซึ่งจะสร้างสถานะเดิมซ้ำ. ยังไม่มี guard เตือนตอน strip แล้ว hop เหลือ goto ล้วน — เป็นงานที่ค้างไว้.</div>
+
+<h3>ทำไมไม่ให้ทุก launcher เรียก <code>main.py</code> ไปเลย</h3>
+<p>คำถามที่ตามมาตรง ๆ จากบั๊กนี้ (ความต่างของสองเส้นทางคือต้นเหตุ). <code>run_toggle.py</code> ทำ 3 อย่างที่ <code>main.py</code> ทำแทนไม่ได้:</p>
+<table>
+<tr><th>ความสามารถ</th><th>ทำอะไร</th></tr>
+<tr><td class="mono">patch FSM ใน memory</td><td><code>--jump/--slide/--relay/--boost</code> ลบหรือ re-point action ใน <code>cfg.states</code> ตอนโหลด — JSON บน disk ไม่เปลี่ยน. <code>main.py</code> ใช้ config ตามที่เขียนไว้เท่านั้น</td></tr>
+<tr><td class="mono">BoxQuitRunner</td><td>subclass ของ <code>Runner</code> — นับ "run ที่ได้กล่อง" ข้ามรอบ (<code>--quit-after-boxes</code>), จำ <code>_box_counted_this_run</code>, ยิง warm-up burst. เป็น Python state ที่ FSM (JSON ไม่มีตัวแปร) เก็บไม่ได้</td></tr>
+<tr><td class="mono">--relic-mode stop</td><td>ต้องสั่งจบ process หลัง home เคลียร์ — ต้องมีโค้ดคุม ไม่ใช่ goto</td></tr>
+</table>
+<p>ถ้าย้ายไป <code>main.py</code> หมด ต้องแตก JSON เป็นไฟล์ละ combination (magnet×claim×quit2, none×hoard×quit0, …) ซึ่งคือสิ่งที่ <code>boxrun_toggle</code> ถูกสร้างมาเพื่อยุบทิ้ง (5 config ใน §09 archive มาจากยุคนั้น).</p>
+
+<h2 id="s12"><span class="n">12</span> Popup coverage — กฎที่ <code>lint</code> จับให้ไม่ได้</h2>
 <p>popup ที่ไม่มีใครปิด = เสีย session ทั้งยวง จนกว่า livelock warning จะยิงแล้วมีคนมาดู. แต่ <b>มี probe state อย่างเดียวไม่พอ</b> — ขึ้นกับว่า popup นั้นบัง Play! หรือเปล่า.</p>
 
 <h3>popup มี 2 ชนิด — ต่างกันที่ Play! ยังเห็นมั้ย</h3>

@@ -459,7 +459,7 @@
       "timeout_ms": 6000
     },
     "jump_2": {
-      "_note": "Hop 2/4 — jump. One capture per hop, spent on the only mid-run question: result popup up? If not, jump again. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Hop 2/4 — jump. One capture per hop, spent on the only mid-run question: result popup up? If not, jump again. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here. RELAY (2026-08-03): the blind relay_tap here is gone. After the hop action we go through relay_stage1_jump_3/relay_stage2_jump_3, which detect the real two-stage Cookie Relay prompt and resume at jump_3 either way.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -476,17 +476,14 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
-        },
-        {
           "type": "goto",
-          "state": "jump_3"
+          "state": "relay_stage1_jump_3"
         }
       ],
       "timeout_ms": 20000
     },
     "jump_3": {
-      "_note": "Hop 3/4 — the SLIDE hop of the J->J->S->J anti-collision cycle. Overhead bars are the one obstacle class a jump can never clear; one slide per 4-hop cycle (~every 3-4s) sweeps them without giving up much pit coverage. Slide zone = the 'Slide' button bottom-right (~1671,937), press-and-hold via act.py (default ~550ms clears a typical low bar). Same detect contract: result up -> run over. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Hop 3/4 — the SLIDE hop of the J->J->S->J anti-collision cycle. Overhead bars are the one obstacle class a jump can never clear; one slide per 4-hop cycle (~every 3-4s) sweeps them without giving up much pit coverage. Slide zone = the 'Slide' button bottom-right (~1671,937), press-and-hold via act.py (default ~550ms clears a typical low bar). Same detect contract: result up -> run over. RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here. RELAY (2026-08-03): the blind relay_tap here is gone. After the hop action we go through relay_stage1_jump_4/relay_stage2_jump_4, which detect the real two-stage Cookie Relay prompt and resume at jump_4 either way.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -503,17 +500,14 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
-        },
-        {
           "type": "goto",
-          "state": "jump_4"
+          "state": "relay_stage1_jump_4"
         }
       ],
       "timeout_ms": 20000
     },
     "jump_4": {
-      "_note": "Hop 4/4 — jump, last hop before a housekeeping pass through the probe chain (popups don't expire on their own; sweeping every ~4 hops clears them at a quarter of the capture cost). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Hop 4/4 — jump, last hop before a housekeeping pass through the probe chain (popups don't expire on their own; sweeping every ~4 hops clears them at a quarter of the capture cost). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here. RELAY (2026-08-03): the blind relay_tap here is gone. After the hop action we go through relay_stage1_check_box/relay_stage2_check_box, which detect the real two-stage Cookie Relay prompt and resume at check_box either way.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -530,11 +524,8 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
-        },
-        {
           "type": "goto",
-          "state": "check_box"
+          "state": "relay_stage1_check_box"
         }
       ],
       "timeout_ms": 20000
@@ -920,7 +911,7 @@
       "timeout_ms": 8000
     },
     "guard_not_inactive": {
-      "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here.",
+      "_note": "Mid-run inactive guard. The inactive-restart popup can fire WHILE a run is on screen (Jump/Slide visible) when the bot stops feeding input -> observed live hanging the run. Confirm (953,690) -> recover_login re-auths. Absent -> the run is genuinely live: fall through to the original mid-run action (unchanged). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here. RELAY (2026-08-03): the blind relay_tap here is gone. After the hop action we go through relay_stage1_jump_2/relay_stage2_jump_2, which detect the real two-stage Cookie Relay prompt and resume at jump_2 either way.",
       "detect": "home/inactive_marker.png",
       "on_match": [
         {
@@ -944,11 +935,8 @@
           "ry": 55
         },
         {
-          "type": "relay_tap"
-        },
-        {
           "type": "goto",
-          "state": "jump_2"
+          "state": "relay_stage1_jump_2"
         }
       ],
       "timeout_ms": 6000
@@ -1790,6 +1778,190 @@
         }
       ],
       "timeout_ms": 20000
+    },
+    "relay_stage1_check_box": {
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at check_box. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing.",
+      "detect": "boxrun/relay_prompt_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 946,
+          "y": 433
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "relay_stage2_check_box"
+        }
+      ],
+      "on_absent": {
+        "goto": "relay_stage2_check_box"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage2_check_box": {
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at check_box. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle.",
+      "detect": "boxrun/relay_prompt2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 980,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "check_box"
+        }
+      ],
+      "on_absent": {
+        "goto": "check_box"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage1_jump_2": {
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_2. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing.",
+      "detect": "boxrun/relay_prompt_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 946,
+          "y": 433
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "relay_stage2_jump_2"
+        }
+      ],
+      "on_absent": {
+        "goto": "relay_stage2_jump_2"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage2_jump_2": {
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_2. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle.",
+      "detect": "boxrun/relay_prompt2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 980,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "jump_2"
+        }
+      ],
+      "on_absent": {
+        "goto": "jump_2"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage1_jump_3": {
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_3. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing.",
+      "detect": "boxrun/relay_prompt_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 946,
+          "y": 433
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "relay_stage2_jump_3"
+        }
+      ],
+      "on_absent": {
+        "goto": "relay_stage2_jump_3"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage2_jump_3": {
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_3. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle.",
+      "detect": "boxrun/relay_prompt2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 980,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "jump_3"
+        }
+      ],
+      "on_absent": {
+        "goto": "jump_3"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage1_jump_4": {
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_4. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing.",
+      "detect": "boxrun/relay_prompt_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 946,
+          "y": 433
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "relay_stage2_jump_4"
+        }
+      ],
+      "on_absent": {
+        "goto": "relay_stage2_jump_4"
+      },
+      "timeout_ms": 5000
+    },
+    "relay_stage2_jump_4": {
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_4. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle.",
+      "detect": "boxrun/relay_prompt2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 980,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "jump_4"
+        }
+      ],
+      "on_absent": {
+        "goto": "jump_4"
+      },
+      "timeout_ms": 5000
     }
   },
   "inter_game_delay_s": [
