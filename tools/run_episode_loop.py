@@ -9,7 +9,7 @@ until --boxes-per-episode runs have ended with a box, then move to the next
 Episode. Ctrl+C to stop; the current run finishes its natural exit points
 (quit_run/run_result), it is not killed mid-tap.
 
-Same Fast Start / boost / Jump / Slide / Relay flags as run_toggle.py, applied
+Same Fast Start / boost / Jump / Slide flags as run_toggle.py, applied
 identically to every Episode in the rotation — this tool does not vary them
 per Episode.
 """
@@ -38,7 +38,6 @@ from tools.run_toggle import (
     _apply_boost,
     _strip_faststart,
     _strip_jump,
-    _strip_relay,
     _strip_relic,
     _strip_slide,
     _yn,
@@ -108,7 +107,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--boost", default="none")
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
-    ap.add_argument("--relay", type=_yn, required=True)
+    ap.add_argument("--relay", type=_yn, default=True,
+                     help=argparse.SUPPRESS)  # accepted and ignored: relay is always on
     ap.add_argument("--device", default=None)
     ap.add_argument("--adb", default=None)
     ap.add_argument("--launch", action="store_true")
@@ -152,8 +152,6 @@ def main(argv: list[str] | None = None) -> int:
         _strip_jump(base_states)
     if not args.slide:
         _strip_slide(base_states)
-    if not args.relay:
-        _strip_relay(base_states)
     _strip_relic(base_states)
 
     address = args.device or os.environ.get("NETRUNNER_DEVICE")
@@ -183,9 +181,9 @@ def main(argv: list[str] | None = None) -> int:
 
     log.info("device: %s  adb: %s", address, adb)
     log.info("reveal snaps: %s", reveal_dir or "disabled")
-    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic_mode=hoard "
-              "(fixed — no --relic/--relic-mode flag on this launcher)",
-              args.faststart, args.boost, args.jump, args.slide, args.relay)
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relic_mode=hoard "
+              "(fixed — no --relic/--relic-mode flag on this launcher; relay always on)",
+              args.faststart, args.boost, args.jump, args.slide)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
     store = TemplateStore(args.templates_dir)

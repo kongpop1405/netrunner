@@ -1,5 +1,5 @@
 {
-  "_comment": "boxrun_default — Mystery Box farm, NO boost purchase (Fast Start only), jump-hop run (J->J->S->J, NO Cookie Relay tap), quits the run once 1 Mystery Box is banked. The default box-farm: minimal, no shop dependency. Episode-agnostic: the bot only taps Play!, so it farms WHICHEVER episode is selected on home — pick one first (tools/switch_episode.py --episode N), any episode works. Loop: home->Play->await_shop(->check_heart, no buy)->check_heart(Play+FastStart spam)->run(J/J/S/J)->check_box(box?->quit_run | else die)->result->box->home.",
+  "_comment": "boxrun_noboost — Mystery Box farm with NO boost purchase at all, jump-hop run, play to death (no early quit). Same loop and same guard/popup/relay coverage as boxrun_speed and boxrun_magnet; the only difference is that the whole buy chain (probe_speed/buy_speed/picker/wait_roll/start_run/retry_buy/insufficient_coins/force_play) is removed and await_shop/boost_shop route straight to check_heart. Coins are therefore never spent — use this when you want boxes without touching the wallet. Not the same as the archived boxrun_speed1 (ex-boxrun_default), which also buys nothing but QUITS the run as soon as one box is banked; this one plays every run to the end like the boosted bots. PRECONDITION: any episode selected on home BEFORE starting (bot only taps Play!). Fast Start prompt spam-tapped at run start. Cookie Relay handled by the two-stage prompt chain on every hop. Boxes collected mid-run are opened on the Mystery Box screen after Result. Loop: home->Play->await_shop->check_heart->Play->run(J->J->S->J till death)->run_result->mystery_box->reveal->home.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
   "poll_ms": 600,
@@ -7,7 +7,7 @@
   "start_state": "home",
   "states": {
     "home": {
-      "_note": "Main menu, detected by the episode-independent 'Play!' button (home/home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). After Play, an after_play gate verifies we left home before any Fast Start spam — spamming 985,515 while still on home hits the leaderboard and opens Send-Life. Ported from boxrun_magnet.",
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home/home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). Play! at (1650,970) -> await_shop. No home-spam and no after_play gate: after_play misread the Play! button showing THROUGH the shop fade (~0.87) as a missed tap and double-tapped Play, which closed the shop. Fast Start is spammed later (await_shop absent = direct run, or check_heart = shop path) — always AFTER we have left home, so it can never hit the leaderboard.",
       "detect": "home/home_play_marker.png",
       "on_match": [
         {
@@ -21,7 +21,7 @@
       "timeout_ms": 20000
     },
     "await_shop": {
-      "_note": "Bridge between tapping Play! on home and acting in the boost shop (Play! shows THROUGH the shop fade above threshold — see coinrun.json for the double-tap loop this prevents). NO boost purchase (this is boxrun_default): shop up -> check_heart directly, skip straight to Play. For a config that buys a boost see boxrun_magnet or boxrun_toggle. Absent -> one settle-retry (~1.2s via absent_wait_ms), then fall through to running.",
+      "_note": "After Play, poll for the boost shop. Shop present -> check_heart: this bot buys NOTHING, so there is nothing to do in the shop except leave through the heart gate and tap Play. Absent after retries = we went straight into a run (no shop) -> spam the Fast Start spot (985,515) across the prompt window -> running. The buy chain (probe/buy/picker/wait_roll/start_run/retry_buy) is deliberately absent — see _comment.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -29,12 +29,19 @@
           "state": "check_heart"
         }
       ],
-      "absent_retries": 1,
-      "absent_wait_ms": 1200,
-      "on_absent": {
-        "goto": "running"
-      },
-      "timeout_ms": 8000
+      "absent_retries": 6,
+      "absent_wait_ms": 700,
+      "on_absent": [
+        {
+          "type": "faststart_tap",
+          "taps": 14,
+          "gap_ms": 400
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ]
     },
     "probe_dailycheckin": {
       "_note": "New head of the modal-peeling chain. The 'Daily Check-in' calendar pops ONCE per day at first launch and sits ON TOP of home, hiding Play! — with no dismiss the whole bot stalls here (observed live: run loop never resumed). Detected by the unique 'Daily Check-in' banner title (dailycheckin_marker: self=1.000, in-run frame=0.232 — no false-positive). Present -> tap the green OK button (965,985, CV-located from the button's green blob) -> home re-checks. Absent -> fall to probe_sendlife, the rest of the chain unchanged.",
@@ -100,7 +107,7 @@
       "timeout_ms": 8000
     },
     "boost_shop": {
-      "_note": "Boost shop open (entry point for guard/probe re-routing). NO boost purchase: route straight to check_heart. (boxrun_default has no buy chain.)",
+      "_note": "Boost shop open (entry point for guard/probe re-routing). Straight to check_heart — this bot never buys a boost.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
@@ -114,7 +121,7 @@
       "timeout_ms": 8000
     },
     "check_heart": {
-      "_note": "SINGLE Play gate, reached from await_shop/boost_shop (Play at 1365,931). boxrun/heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> wait 30s and self-loop until a heart regenerates (timeout 25 min). HARD RULE: never buy hearts. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short).",
+      "_note": "SINGLE Play gate. heart_empty present -> wait 30s self-loop until a heart regenerates. Absent (>=1 heart) -> tap Play, then SPAM-TAP the Fast Start button spot (985,515) every ~400ms from the load screen through the whole prompt window and into the run. Blind spam instead of detect+tap: the prompt appears ~5.6s after Play and lingers only ~2s, so a fixed cadence of taps across 0-8s can never miss it, and taps that land before/after the prompt are harmless (empty run area). Ends at running.",
       "detect": "boxrun/heart_empty.png",
       "on_match": [
         {
@@ -138,7 +145,7 @@
         },
         {
           "type": "faststart_tap",
-          "taps": 14,
+          "taps": 18,
           "gap_ms": 400
         },
         {
@@ -281,7 +288,7 @@
       "timeout_ms": 20000
     },
     "jump_4": {
-      "_note": "Hop 4/4 — jump, last hop before a housekeeping pass through the probe chain (popups don't expire on their own; sweeping every ~4 hops clears them at a quarter of the capture cost). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here. RELAY (2026-08-03): the blind relay_tap here is gone. After the hop action we go through relay_stage1_check_box/relay_stage2_check_box, which detect the real two-stage Cookie Relay prompt and resume at check_box either way.",
+      "_note": "Hop 4/4 — jump, last hop before a housekeeping pass through the probe chain (popups don't expire on their own; sweeping every ~4 hops clears them at a quarter of the capture cost). RELAY REVERTED: (490,955) was misread from a partner-count BADGE, not the actual relay button. The Cookie Relay Boost tap is screen-centre (960,540) as originally verified — restored here. RELAY (2026-08-03): the blind relay_tap here is gone. After the hop action we go through relay_stage1_check_shop_after_run/relay_stage2_check_shop_after_run, which detect the real two-stage Cookie Relay prompt and resume at check_shop_after_run either way.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
@@ -299,68 +306,10 @@
         },
         {
           "type": "goto",
-          "state": "relay_stage1_check_box"
+          "state": "relay_stage1_check_shop_after_run"
         }
       ],
       "timeout_ms": 20000
-    },
-    "check_box": {
-      "_note": "Once per 4-hop cycle: did we pick up a Mystery Box this run? The '[?] xN' counter appears top-left (boxcounter_marker at a fixed 118,360) the instant a box is collected and stays there for the rest of the run — so checking once per cycle can't miss it, it just bounds the reaction to one cycle. Present -> the run has served its only purpose (box farming), so quit_run bails out immediately instead of running to death, turning a ~4-5 min run into ~40s. Absent -> no box yet, keep running via check_shop_after_run. Counter self=1.000, no-box in-run=0.345 — clean separation.",
-      "detect": "boxrun/boxcounter_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "quit_run"
-        }
-      ],
-      "on_absent": {
-        "goto": "check_shop_after_run"
-      },
-      "timeout_ms": 8000
-    },
-    "quit_run": {
-      "_note": "Box collected -> bail out via the pause menu to bank it now. Sequence (coords CV-verified live): pause button (1790,55) -> pause menu 'Quit' (960,640) -> confirm dialog 'Quit' (960,570, NOT Cancel at 960,755). Quitting drops straight to the Result popup with the box credited (Consumed Life is spent either way, so quitting loses nothing a full run would have kept). Hand to run_result -> the existing Mystery Box open/reveal chain banks it. Waits are generous (1200-1500ms) because each tap triggers a menu/dialog fade the next tap must land after.",
-      "detect": "boxrun/result_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "run_result"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "tap_xy",
-          "x": 1790,
-          "y": 55
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 640
-        },
-        {
-          "type": "wait",
-          "ms": 1200
-        },
-        {
-          "type": "tap_xy",
-          "x": 960,
-          "y": 570
-        },
-        {
-          "type": "wait",
-          "ms": 2500
-        },
-        {
-          "type": "goto",
-          "state": "run_result"
-        }
-      ],
-      "timeout_ms": 15000
     },
     "check_shop_after_run": {
       "_note": "Result popup not up yet — still running, home is back, or we're in the shop. Try home; absent -> walk the probe chain.",
@@ -377,12 +326,12 @@
       "timeout_ms": 15000
     },
     "probe_boostshop": {
-      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to check_heart (no buy).",
+      "_note": "Recovery probe: sitting in the boost shop (process started there, or run ended straight into shop)? boost_shop routes to probe_speed.",
       "detect": "boxrun/boostshop_marker.png",
       "on_match": [
         {
           "type": "goto",
-          "state": "check_heart"
+          "state": "boost_shop"
         }
       ],
       "on_absent": {
@@ -556,27 +505,6 @@
         "goto": "probe_inactive"
       },
       "timeout_ms": 15000
-    },
-    "after_play": {
-      "_note": "Gate between Play and the Fast Start spam. home_play still visible -> Play missed (home was mid-fade) -> back to home to retap (spamming now would hit the leaderboard). home gone -> loading into a run or shop -> safe to spam 985,515 across the prompt window, then await_shop sorts shop vs direct-run. Ported from boxrun_magnet.",
-      "detect": "home/home_play_marker.png",
-      "on_match": [
-        {
-          "type": "goto",
-          "state": "home"
-        }
-      ],
-      "on_absent": [
-        {
-          "type": "faststart_tap",
-          "taps": 14,
-          "gap_ms": 400
-        },
-        {
-          "type": "goto",
-          "state": "await_shop"
-        }
-      ]
     },
     "probe_connectionlost": {
       "_note": "Connection Lost — server drop popup, can appear anywhere (head of the probe chain since nothing else works while offline). Text: 'Connection lost! Tap Confirm to restart the game and reload your data.' Not a dismiss: Confirm (960,700) actually restarts the client, so we hand off to restart_app (cycles the process the same way session_reset does) then the existing recover_login chain re-auths. Absent -> probe_inactive (rest of the popup chain).",
@@ -828,16 +756,16 @@
       "on_absent": [
         {
           "type": "tap_xy",
-          "x": 1431,
-          "y": 963
+          "x": 1650,
+          "y": 970
         },
         {
           "type": "wait",
-          "ms": 2500
+          "ms": 3000
         },
         {
           "type": "goto",
-          "state": "after_play"
+          "state": "await_shop"
         }
       ],
       "timeout_ms": 6000
@@ -1020,8 +948,8 @@
       ],
       "timeout_ms": 20000
     },
-    "relay_stage1_check_box": {
-      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at check_box. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
+    "relay_stage1_check_shop_after_run": {
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at check_shop_after_run. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
       "detect": "boxrun/relay_prompt_marker.png",
       "on_match": [
         {
@@ -1035,7 +963,7 @@
         },
         {
           "type": "goto",
-          "state": "relay_stage2_check_box"
+          "state": "relay_stage2_check_shop_after_run"
         }
       ],
       "on_absent": [
@@ -1048,13 +976,13 @@
         },
         {
           "type": "goto",
-          "state": "relay_stage2_check_box"
+          "state": "relay_stage2_check_shop_after_run"
         }
       ],
       "timeout_ms": 5000
     },
-    "relay_stage2_check_box": {
-      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at check_box. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card.",
+    "relay_stage2_check_shop_after_run": {
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at check_shop_after_run. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card.",
       "detect": "boxrun/relay_prompt2_marker.png",
       "on_match": [
         {
@@ -1068,7 +996,7 @@
         },
         {
           "type": "goto",
-          "state": "check_box"
+          "state": "check_shop_after_run"
         }
       ],
       "on_absent": [
@@ -1081,7 +1009,7 @@
         },
         {
           "type": "goto",
-          "state": "check_box"
+          "state": "check_shop_after_run"
         }
       ],
       "timeout_ms": 5000
