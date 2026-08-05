@@ -130,20 +130,14 @@ def test_strip_faststart_still_handles_the_pre_migration_ladder(states):
     assert _types(states["check_heart"]["on_absent"]) == ["tap_xy", "goto"]
 
 
-def test_strip_relay_clears_the_hop_states(states):
-    rt._strip_relay(states)
-    for name in ("jump_2", "jump_3", "jump_4", "guard_not_inactive"):
-        assert not any(rt._is_relay(a) for a in states[name]["on_absent"])
+def test_relay_is_not_switchable(states):
+    """`--relay n` used to strip the relay out; it no longer does anything.
 
-
-def test_strip_relay_matches_the_pre_migration_tap(states):
-    states["jump_2"]["on_absent"] = [
-        {"type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55},
-        {"type": "tap_xy", "x": 960, "y": 540},
-        {"type": "goto", "state": "jump_3"},
-    ]
-    rt._strip_relay(states)
-    assert _types(states["jump_2"]["on_absent"]) == ["jump", "goto"]
+    The flag is still accepted (old scripts pass it) but every hop must keep
+    routing through the relay chain regardless.
+    """
+    assert not hasattr(rt, "_strip_relay")
+    assert not hasattr(rt, "_is_relay")
 
 
 def test_strip_jump_and_slide_leave_the_goto(states):

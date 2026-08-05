@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-cd /d "%~dp0..\.."
+cd /d "%~dp0.."
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").
@@ -27,15 +27,14 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - boxrun: relay (Magnetic Aura, 2x relay tap/hop)
-echo   Mystery Box farm - buys Magnetic Aura, Fast Start
-echo   Cookie Relay Boost tapped 2x per hop (vs 1x in boxrun_magnet)
+echo   NetRunner - boxrun: noboost (no purchase, play to death)
+echo   Mystery Box farm - spends NO coins, Fast Start, Cookie Relay
 echo   precondition: ANY episode selected on home (bot only taps Play)
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% main.py --config config/cookierun/boxrun_relay.json --launch
+%PY% main.py --config config/cookierun/boxrun_noboost.json --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

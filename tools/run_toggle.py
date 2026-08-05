@@ -1,6 +1,10 @@
-"""Launch boxrun_toggle.json with Fast Start / boost / Jump / Slide / Relay chosen per run.
+"""Launch boxrun_toggle.json with Fast Start / boost / Jump / Slide chosen per run.
 
-    python tools/run_toggle.py --faststart y --boost magnet --jump y --slide y --relay y --launch
+    python tools/run_toggle.py --faststart y --boost magnet --jump y --slide y --launch
+
+The Cookie Relay is always on and has no flag — same as every config run
+through main.py. `--relay` is still accepted so old scripts do not break, but
+it is ignored.
 
 Patches the loaded Config's states dict in memory before handing it to the
 same Runner main.py uses — the JSON on disk (config/cookierun/boxrun_toggle.json)
@@ -391,39 +395,14 @@ def _strip_slide(states: dict) -> None:
     state["on_absent"] = [a for a in state["on_absent"] if a.get("type") != "slide"]
 
 
-_RELAY_XY = (960, 540)
-
-
-def _is_relay(action: dict) -> bool:
-    """True for either shape of the relay tap — the shared `relay_tap` action or
-    the pre-migration inline tap_xy(960,540)."""
-    if action.get("type") == "relay_tap":
-        return True
-    return (action.get("type") == "tap_xy"
-            and (action.get("x"), action.get("y")) == _RELAY_XY)
-
-
-def _strip_relay(states: dict) -> None:
-    """Skip the Cookie Relay entirely: hops jump straight to where they resume.
-
-    Two shapes to handle. The old one was a blind `relay_tap` action sitting in
-    the hop's own list — that is what `_is_relay` removes, kept for any config
-    still carrying it. The current one is the two-stage relay chain
-    (relay_stage1_X -> relay_stage2_X -> X, added 2026-08-03 once the real
-    prompt was found), where the hop's goto points at relay_stage1_X instead of
-    at X. Turning the relay off there means re-pointing that goto back at X, so
-    the states stay in the config but are never entered.
-    """
-    for name in ("jump_2", "jump_3", "jump_4", "guard_not_inactive"):
-        state = states.get(name)
-        if state is None:
-            continue
-        acts = [a for a in state.get("on_absent", []) if not _is_relay(a)]
-        for a in acts:
-            tgt = a.get("state", "") if a.get("type") == "goto" else ""
-            if tgt.startswith("relay_stage1_"):
-                a["state"] = tgt[len("relay_stage1_"):]
-        state["on_absent"] = acts
+#: The Cookie Relay is NOT switchable here. It used to be (`--relay y/n`), from
+#: back when the relay was a blind tap at (960,540) that turned out to hit empty
+#: background and do nothing — leaving it off cost nothing, so a flag was cheap.
+#: Now that the relay is a real detected two-stage prompt (relay_stage1_X ->
+#: relay_stage2_X -> X) there is no reason to ever skip it: the states are pure
+#: detect-then-tap, so with no prompt on screen they fall straight through.
+#: Configs run through main.py have no way to disable it either, and this
+#: launcher matching that keeps one less thing to get wrong.
 
 
 def _yn(v: str) -> bool:
@@ -482,7 +461,8 @@ def main(argv: list[str] | None = None) -> int:
                          + boostmod.describe_choices().replace("%", "%%"))
     ap.add_argument("--jump", type=_yn, required=True)
     ap.add_argument("--slide", type=_yn, required=True)
-    ap.add_argument("--relay", type=_yn, required=True)
+    ap.add_argument("--relay", type=_yn, default=True,
+                    help=argparse.SUPPRESS)  # accepted and ignored, see _RELAY note
     relic_group = ap.add_mutually_exclusive_group()
     relic_group.add_argument("--relic", type=_yn, default=None,
                     help="y = claim an episode's relic as soon as its 'Get!' "
@@ -534,8 +514,6 @@ def main(argv: list[str] | None = None) -> int:
         _strip_jump(states)
     if not args.slide:
         _strip_slide(states)
-    if not args.relay:
-        _strip_relay(states)
     if relic_mode == "hoard":
         _strip_relic(states)
     cfg.states = states
@@ -584,9 +562,9 @@ def main(argv: list[str] | None = None) -> int:
     log.info("device: %s  adb: %s", address, adb)
     idle_desc = ("config" if args.idle is _IDLE_CONFIG
                  else "off" if args.idle is None else f"{args.idle[0]:g}-{args.idle[1]:g}s")
-    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relay=%s relic_mode=%s "
-             "quit_after_boxes=%d idle=%s",
-              args.faststart, args.boost, args.jump, args.slide, args.relay,
+    log.info("flags: faststart=%s boost=%s jump=%s slide=%s relic_mode=%s "
+             "quit_after_boxes=%d idle=%s (relay: always on)",
+              args.faststart, args.boost, args.jump, args.slide,
               relic_mode, args.quit_after_boxes, idle_desc)
 
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")

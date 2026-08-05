@@ -64,9 +64,9 @@ rem if "%JUMPSLIDE%"=="" set "JUMPSLIDE=y"
 set "JUMP=%JUMPSLIDE%"
 set "SLIDE=%JUMPSLIDE%"
 
-set "RELAY=y"
-set /p "RELAY=Relay Boost? [y]: "
-if "%RELAY%"=="" set "RELAY=y"
+rem Cookie Relay has no prompt: it is always on, same as any config run through
+rem main.py. The relay states are detect-then-tap, so with no prompt on screen
+rem they fall straight through and cost nothing.
 
 :askrelic
 set "RELICPICK="
@@ -91,12 +91,12 @@ rem set /p "IDLE=Idle? y=config n=off MIN-MAX [n]: "
 rem if "%IDLE%"=="" set "IDLE=n"
 
 echo.
-echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=%RELAY%  RelicMode=%RELICMODE%  QuitAfterBoxes=%QUITBOXES%  Idle=%IDLE%
+echo   Fast Start=%FASTSTART%  Boost=%BOOST%  Jump=%JUMP%  Slide=%SLIDE%  Relay=always  RelicMode=%RELICMODE%  QuitAfterBoxes=%QUITBOXES%  Idle=%IDLE%
 echo   unlimited cycles  ^|  stop: Ctrl+C
 echo ============================================
 echo.
 
-%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relay %RELAY% --relic-mode %RELICMODE% --quit-after-boxes %QUITBOXES% --idle %IDLE% --launch
+%PY% tools\run_toggle.py --faststart %FASTSTART% --boost %BOOST% --jump %JUMP% --slide %SLIDE% --relic-mode %RELICMODE% --quit-after-boxes %QUITBOXES% --idle %IDLE% --launch
 set "RC=%ERRORLEVEL%"
 
 echo.
