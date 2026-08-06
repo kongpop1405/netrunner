@@ -1,7 +1,24 @@
 @echo off
 chcp 65001 >nul
 setlocal enabledelayedexpansion
-cd /d "%~dp0.."
+rem Find the repo root by walking up until main.py appears, instead of
+rem hardcoding how many ..\ it takes. Moving this file needs no edit.
+set "ROOT=%~dp0"
+:findroot
+if exist "%ROOT%main.py" goto gotroot
+set "PREV=%ROOT%"
+for %%I in ("%ROOT%..") do set "ROOT=%%~fI\"
+if "%ROOT%"=="%PREV%" goto noroot
+goto findroot
+:noroot
+echo.
+echo   [X] Could not find the project root ^(no main.py above "%~dp0"^).
+echo       Keep this file inside the netrunner folder.
+echo.
+pause
+exit /b 1
+:gotroot
+cd /d "%ROOT%"
 
 rem numpy's bundled OpenBLAS can fail to allocate its thread-pool memory
 rem on some machines ("Memory allocation still failed after 10 retries").

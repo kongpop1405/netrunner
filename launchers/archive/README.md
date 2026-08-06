@@ -17,11 +17,15 @@ The active set at the root is `boxrun_toggle.bat` (flags asked at run time),
 
 ## Running one from here
 
-Double-click works as-is. Each file's `cd /d "%~dp0..\.."` climbs two levels to
-the repo root — that is one level deeper than the launchers at the root, which
-use `"%~dp0.."`. **Move a file back up to `launchers/` and you must change its
-`cd` back to `"%~dp0.."`**, otherwise it lands in `launchers/` instead of the
-repo root and fails to find `config/`.
+Double-click works as-is, and **moving a file needs no edit**: since 2026-08-06
+every launcher walks up from its own location until it finds `main.py`, instead
+of counting `..` against how deep it sits. Put one of these anywhere inside the
+project and it still runs; put it outside and it says so and exits rather than
+failing on a missing `config/`.
+
+(Before that, each file hardcoded its depth — `"%~dp0..\.."` here versus
+`"%~dp0.."` at `launchers/` — and every folder move silently broke one until
+somebody double-clicked it.)
 
 Bot comparison including these: `docs/flow/COMPARE_bots.html`. Per-launcher
 detail: `docs/RUN.md`.

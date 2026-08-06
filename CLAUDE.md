@@ -48,20 +48,43 @@ UI ที่โผล่ ~2-3 วิ (relay prompt) จะพลาดถ้า 
 
 Capture loop ที่ยิง `adb exec-out screencap` ทุก 2 วิ พร้อมกับ bot ที่กำลังรัน → bot crash ตอน spawn adb subprocess (`_winapi.CreateProcess` → `Access is denied`). **ห้าม capture ขนานกับ bot** — ถ้าต้องเก็บเฟรมให้ (ก) เก็บก่อน/หลังรัน หรือ (ข) ให้ bot เก็บเอง (`reveal_snap_dir` pattern) หรือ (ค) รัน capture รอบแยกที่ไม่มี bot. Crash แบบนี้ไม่ใช่บั๊กของ config/patch — เช็คก่อนว่ามี process อื่นแย่ง adb อยู่มั้ยก่อนไล่ debug ผิดทาง
 
-## ย้าย `.bat` ข้ามชั้นโฟลเดอร์ — ต้องแก้ `cd` แล้ว smoke test ทุกกลุ่ม
+## `.bat` หา repo root เอง — ย้ายไฟล์ได้อิสระ ไม่ต้องแก้ `cd`
 
-ทุก launcher เริ่มด้วย `cd /d "%~dp0.."` เพื่อไต่จากที่อยู่ของตัวเองขึ้นไป repo root. `%~dp0` คือ path ของ `.bat` **ตัวมันเอง** ดังนั้นย้ายไฟล์ลง/ขึ้นชั้น = จำนวน `..` ต้องเปลี่ยนตาม:
+ทุก launcher (16 ไฟล์ รวม `install.bat`) เริ่มด้วย **root finder** ที่ไต่ขึ้นจากที่อยู่ของตัวเองจนเจอ `main.py` แทนการนับ `..` (2026-08-06):
 
-| ไฟล์อยู่ที่ | `cd` ที่ถูก |
-|---|---|
-| `launchers/` | `cd /d "%~dp0.."` |
-| `launchers/<sub>/` | `cd /d "%~dp0..\.."` |
+```batch
+set "ROOT=%~dp0"
+:findroot
+if exist "%ROOT%main.py" goto gotroot
+set "PREV=%ROOT%"
+for %%I in ("%ROOT%..") do set "ROOT=%%~fI\"
+if "%ROOT%"=="%PREV%" goto noroot
+goto findroot
+:noroot
+echo   [X] Could not find the project root ^(no main.py above "%~dp0"^).
+pause
+exit /b 1
+:gotroot
+cd /d "%ROOT%"
+```
 
-- **พังเงียบ ไม่มีอะไรจับได้** — `cd` ผิดทำให้ไปโผล่ `launchers/` แทน repo root แล้วหา `config/` ไม่เจอ. `lint_config.py` อ่านแต่ JSON ไม่เห็น `.bat`, unit test ไม่แตะ launcher เลย — เจอตอน user ดับเบิลคลิกจริงเท่านั้น
-- **Smoke test หลังย้ายทุกครั้ง** อย่างน้อย 1 ตัวต่อโฟลเดอร์: copy `.bat` เป็น stub ที่แทนบรรทัด `%PY% ...` ด้วย `echo CWD=%CD% && if exist config\cookierun (echo OK) else (echo BROKEN)` แล้วรันจากตำแหน่งจริง — CWD ต้องเป็น repo root
-  - **Stub ต้องข้าม input validation ด้วย** — launcher ที่มี `set /p` + `findstr` validate (เช่น `giftdraw.bat`) จะ `exit /b 1` ก่อนถึงบรรทัดที่ stub ถ้าปล่อยตัวแปรว่าง ให้ replace `set /p` ด้วยค่าที่ผ่าน validate ไม่ใช่ลบทิ้ง
-- **ย้ายกลับขึ้นราก = ต้องแก้ `cd` กลับด้วย** ทุกครั้ง — README ใน `launchers/utility/` กับ `launchers/archive/` เขียนกฎนี้ไว้แล้ว อัพเดตด้วยถ้าโครงเปลี่ยน
-- Doc ที่อ้าง path launcher (`docs/RUN.md`, `docs/flow/COMPARE_bots.html`) ต้องแก้ในคอมมิตเดียวกัน — ดู section COMPARE_bots ด้านล่าง
+- **ย้าย `.bat` ไปโฟลเดอร์ไหนก็ได้ในโปรเจกต์ ไม่ต้องแก้อะไรข้างใน** — นี่คือเหตุผลที่เปลี่ยนมาใช้: `cd /d "%~dp0..\.."` แบบเดิมผูกกับความลึก ย้ายทีไรลืมนับใหม่ทุกที **พังเงียบ 3 รอบใน repo นี้** (commit `45e2b1b`, `87f7d91`, และ promote ตอน `15aa842`) เจอตอน user ดับเบิลคลิกเท่านั้น เพราะ `lint_config.py` อ่านแต่ JSON และ unit test ไม่แตะ `.bat`
+- **`if "%ROOT%"=="%PREV%"` คือ guard กันวน infinite** — ที่ drive root `cd ..` ไม่เปลี่ยน path อีก ต้องหยุด. ห้ามตัดบรรทัดนี้ออก
+- **`for %%I in ("%ROOT%..") do set "ROOT=%%~fI\"`** — `%%~fI` ทำ path ให้เป็น absolute+normalize (ไม่เหลือ `..` ซ้อน). ต่อ `\` ท้ายเสมอ เพราะ `%ROOT%main.py` ต่อสายตรง
+- **path หลัง `cd` ต้องเขียนจาก repo root เสมอ** — `--config config/cookierun/x.json`, `%PY% tools\run_toggle.py`. ไฟล์ใน `_archive/` ก็ใช้ path เต็มจาก root (`config\cookierun\_archive\tools\...`) ไม่ใช่ relative จากที่ `.bat` ตั้ง
+
+### Verify launcher — รันจริง อย่าอ่าน pattern
+
+Checker ที่ตรวจ "จำนวน `..` ตรงความลึกมั้ย" **หมดความหมายแล้ว**. สิ่งที่ยังต้องพิสูจน์คือ *ผลลัพธ์* — เลยต้องรัน `.bat` จริง:
+
+- สร้าง **stub** จากไฟล์จริง: แทนบรรทัด `%PY% ...` ด้วย `echo NETRUNNER_CWD=%CD%`, comment `pause` ออก, แล้ว `subprocess.run(["cmd","/c",stub])` → CWD ต้องเป็น repo root
+- **copy stub ไปวางอีกชั้นด้วย** (เช่น `docs/flow/`) แล้วรันซ้ำ — พิสูจน์ว่า "ย้ายได้จริง" ไม่ใช่แค่เชื่อ
+- เช็คต่อว่า **ทุก `--config` / `.py` ที่ไฟล์อ้างถึง resolve ได้จาก CWD นั้น** ไม่ใช่แค่ landed root
+- **Stub ต้องตอบ `set /p` ด้วยค่าที่ผ่าน validate** ไม่ใช่ปล่อยว่าง (ไม่งั้น `findstr` วนถามซ้ำ → timeout):
+  - repo นี้มี **2 syntax**: `set /p "VAR=prompt"` และ `set /p VAR="prompt"` — regex ต้องครอบทั้งคู่
+  - prompt แบบ `How many ...?` validate ว่าเป็น **positive** whole number → ตอบ `1` (`0` ไม่ผ่าน) · picker แบบ `0=none 1=magnet` → `0` · y/n → `y`
+- ตั้ง `timeout` ต่อ stub (20s พอ) + ลบ stub ใน `finally` — stub ที่ค้างเพราะ timeout จะโผล่ใน `git status` รอบถัดไป
+- Doc ที่อ้างพฤติกรรม launcher (`docs/flow/COMPARE_bots.html`, `launchers/*/README.md`) ต้องแก้ในคอมมิตเดียวกัน
 
 ## Branching
 
