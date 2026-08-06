@@ -4,7 +4,9 @@
 
 The Cookie Relay is always on and has no flag — same as every config run
 through main.py. `--relay` is still accepted so old scripts do not break, but
-it is ignored.
+it is ignored. It is polled from the four hop states and from `running` /
+`check_box` (see docs/RUN.md — the hop states alone left ~2-3s gaps where the
+whole prompt window fit).
 
 Patches the loaded Config's states dict in memory before handing it to the
 same Runner main.py uses — the JSON on disk (config/cookierun/boxrun_toggle.json)
@@ -201,6 +203,25 @@ class BoxQuitRunner(Runner):
         except Exception as e:  # noqa: BLE001 — a failed screenshot must never crash the farm
             logging.getLogger("netrunner").warning("could not save reveal snap: %s", e)
 
+    def _continue_run_target(self) -> str:
+        """Where "box seen, but keep playing" hands off to.
+
+        Reads check_box's own absent goto instead of naming the state, because
+        that edge gained a relay poll in front of it (check_box -> relay_poll1_
+        check_box -> relay_poll2_check_box -> check_shop_after_run) and a
+        hardcoded "check_shop_after_run" here silently skipped the whole chain
+        on the most common path of all — quit_after=0, i.e. every box ever
+        banked. Same failure mode as the state-keyed Play-tap check below:
+        whoever owns the edge owns the routing.
+        """
+        absent = self.cfg.states["check_box"].get("on_absent")
+        if isinstance(absent, dict):
+            target = absent.get("goto")
+        else:
+            target = next((a.get("state") for a in (absent or [])
+                           if a.get("type") == "goto"), None)
+        return target or "check_shop_after_run"
+
     def _run_actions(self, actions, frame, state):
         if state == "mb_open":
             self._save_reveal_snap(frame)
@@ -219,7 +240,7 @@ class BoxQuitRunner(Runner):
                     if self.quit_after <= 0 or in_run < self.quit_after:
                         log.info("check_box: box %d this run (quit_after=%d) — continuing run",
                                  in_run, self.quit_after)
-                        return "check_shop_after_run", False
+                        return self._continue_run_target(), False
                     log.info("check_box: box %d/%d this run — quitting run",
                              in_run, self.quit_after)
                 else:
@@ -235,7 +256,7 @@ class BoxQuitRunner(Runner):
                         log.info("check_box: %d run(s) with a box so far (quit_after=%d) "
                                  "— continuing run [no OCR]",
                                  self.boxes_seen, self.quit_after)
-                        return "check_shop_after_run", False
+                        return self._continue_run_target(), False
                     log.info("check_box: %d/%d runs-with-a-box reached — quitting run [no OCR]",
                              self.boxes_seen, self.quit_after)
 
