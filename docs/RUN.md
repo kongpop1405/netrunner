@@ -146,6 +146,12 @@ loop is on the probe side, and the loop was in the `running` guard chain.
   `no_progress_goto`. Reaching none of them for `no_progress_s` (300s) means the
   screen is something the FSM cannot name, whatever it looks like. Opt-in: configs
   without the keys behave exactly as before.
+- **Blind-screen detector** (`_BLIND_LAP_CYCLES`, 160 — added 2026-08-06) — the
+  same recovery, reached without waiting out the wall clock. `no_progress_s` alone
+  cannot tell a long run from a stuck one; a streak of polls where *nothing*
+  matched can. It counts across state changes, unlike `absent_streak`, which resets
+  on every transition and so never sees a chain walking thirty states in a row.
+  The threshold is measured, not derived — see the live numbers below.
 - **Two-step recovery, escalating** — `recover_unknown` spends one cheap pass
   through the probe chain (free, and it fixes every *known* popup); a second fire
   means that failed, so `recover_unknown_restart` cycles the app and re-auths via
@@ -165,6 +171,34 @@ Applied to all five guard-chain configs (`boxrun_default`, `boxrun_magnet`,
 **Known gap**: Events (and any future unnamed popup) is still only *recovered*,
 not *recognised* — each watchdog fire archives its frame to `unknown_screens/` and
 posts it to Discord precisely so the marker can be cropped afterwards.
+
+##### Why `_BLIND_LAP_CYCLES` is 160 and not "one and a half laps"
+
+Sizing it off the state table (32 states → 48) looked reasonable and was wrong.
+Live on 2026-08-06, `boxrun_magnet` measured **70 consecutive misses while running
+perfectly**: `home` → ten probes → `boost_shop` → the in-run jump chain match
+nothing by design, because the jump chain drives entirely off absent edges. At 48
+the watchdog fired mid-run and the recovery cost a heart and a 7.3M-point run —
+worse than the livelock it exists to break. See
+`docs/evidence/blind_false_positive_in_run.png`: the cookie is mid-level at 7.37M
+at the moment the detector fired on it.
+
+| screen | consecutive misses |
+|---|---|
+| healthy `boxrun_magnet` run (measured twice: 70, 68) | **70** |
+| Events popup — no marker, survives BACK | **229** before escalation |
+
+160 clears the first with 2.3× headroom and still beats the 300s clock by 2-3×.
+Re-tested after the change: **0 fires** across 200 cycles, peak streak 68, and the
+run finished at 58.1M. `tests/test_observability.py` locks both bounds so the next
+person to touch the number has to argue with the measurement.
+
+Both detectors are exempt during a recovery. The grace window works by pushing
+`last_progress_at` into the future, which silences the wall clock but says nothing
+about a streak — and a restart+relogin polls ~99s matching nothing, so without the
+exemption the streak stacks a second recovery onto the one still running. Live
+`fire #2` read *"229 consecutive polls … only 1s of 300s elapsed"*: proof the wall
+clock alone would have stayed quiet for another 299s.
 
 ## cd into repo first
 
@@ -395,18 +429,77 @@ The relay prompt also **appears mid-run, not only on death** — the live hits l
 
 The bot sat on Party Run's **"Select a Mode"** screen indefinitely. The log read as perfectly healthy — the guard chain and both relay polls kept transitioning on schedule — because every state simply *missed* and fell through, while the hop taps landed on a menu instead of a run. No template in any config could see that screen, so nothing recovered from it.
 
-It was reachable by accident, from `probe_friendinfo`. That state fired **two blind taps back to back** — (1552,117) then (1633,107) — and only re-checked its marker after both. Measured live: the first tap does **not** close Friend's Info (marker still 0.974 after it); the second does. So on any pass where the dialog was already gone, the second tap landed on **home**, where (1633,107) sits inside the Party Run / Episode banner strip.
+It was reachable by accident, from `probe_friendinfo`. That state fired **two blind taps back to back** — (1552,117) then (1633,107) — and only re-checked its marker after both. On any pass where the dialog was already gone, the second tap landed on **home**, where (1633,107) sits inside the Party Run / Episode banner strip.
 
 Two fixes:
 
 | fix | what |
 |---|---|
-| `probe_friendinfo` taps **once** per pass | keeps only (1633,107), the tap proven to close the dialog. The self-loop already re-detects, so no tap is ever fired on a screen the state has not just confirmed |
-| new **`guard_not_partyrun`** in the guard chain | `guard_not_news` → `guard_not_partyrun` → `guard_not_inactive`. Detects `home/partyrun_marker.png`, taps the X, re-verifies, falls through when clear. Added to all eight cookierun configs |
+| `probe_friendinfo` closes **once** per pass | one verified close at (1633,107). No tap is ever fired on a screen the state has not just confirmed |
+| new **`guard_not_partyrun`** in the guard chain | `guard_not_news` → `guard_not_partyrun` → `guard_not_inactive`. Detects `home/partyrun_marker.png`, closes at (1820,135), falls through when clear. In all eight farm configs and, since 2026-08-06, the three home-screen errand configs too |
 
 `partyrun_marker.png` is the purple **"Select a Mode" title bar cropped with its background colour** — 1.000 on the screen itself, ≤0.403 on every other frame captured. That 0.6 margin is the difference from `relay_prompt2_marker`, a text-only crop over live gameplay whose margin collapsed to 0.02.
 
 ⚠️ **The close button is at (1820,135) — the top-right of the *screen*, not a dialog header.** The first version of this guard tapped (1638,108), measured off the Friend's Info dialog by mistake; on the Party Run frame that point is dark background (BGR 93,53,51). The guard detected the screen correctly and tapped **38 passes in a row without closing it** — a livelock inside the very guard meant to fix a livelock. Measure the button on the screen you are closing, not on a similar-looking one.
+
+##### Both guards close with `close_popup`, not a bare tap (2026-08-06)
+
+Those 38 passes were silent for a structural reason, not a coordinate one: the
+guard was `tap_xy` + `goto` itself. A bare tap cannot tell a wrong coordinate from
+a slow fade, and self-looping on it logs nothing either way — so a wrong pixel and
+a working close read identically. Every other guard in these configs already used
+`close_popup` + `verify`, which re-reads the frame after the settle, taps again
+while the marker is still up, and `log.warning`s when it gives up.
+`guard_not_partyrun` and `probe_friendinfo` now match them.
+
+The value showed up on the first live run. A stacked Friend's dialog produced:
+
+```text
+tap (1633,108) → close_popup: 'friendinfo_marker.png' still on screen (score 1.00) — retrying
+tap (1635,107) → still on screen (score 1.00) — retrying
+WARNING close_popup: 'friendinfo_marker.png' still on screen after 3 attempt(s)
+transition probe_friendinfo -> running
+```
+
+It said so, then moved on rather than spinning. Measuring that frame corrected a
+claim this document used to make:
+
+| dialog | its X | (1633,107) is |
+|---|---|---|
+| **Friend's Info** alone | (1637,108) | the button — closes in one tap, 0.974 → 0.343 |
+| **Friend's Cookie** stacked over it | ~(1555,125), the inner card's | covered by that card — BGR(85,85,85), a shadow |
+
+So (1552,117) was never a dead coordinate; it is the *inner* layer's button, and
+the earlier measurement that dismissed it was taken on a single-layer dialog where
+that point lands on the card. No retry count clears two layers from one
+coordinate — but the state does not livelock either: it warns, hands to `running`,
+and the next pass finds whichever layer is left. Both frames are in
+`docs/evidence/` (`friendinfo_stacked_2layers.png`, `friendinfo_single_layer.png`);
+neither alone describes the dialog, which is how the original measurement went
+wrong.
+
+Do **not** re-add a second blind tap to "cover" the inner layer. That is exactly
+the shape that opened Party Run in the first place.
+
+##### The errand configs got the same guard (2026-08-06)
+
+`addfriend`, `giftdraw` and `sendlife` run on the home screen with the full
+template tree, so Party Run was reachable from them for the same reason — and
+`addfriend` was worse off than any farm config: `close_info` fires (1640,107) on its
+**absent** path, i.e. while it does not know what is on screen at all, seven pixels
+from the tap that opened Party Run. Its own note said the screen was "probably" a
+Friend's Info; probably is not detected. With no watchdog configured, the
+`open_find ↔ close_info` loop had nothing to end it but `--max-cycles`.
+
+All three now check `guard_not_partyrun` on `peel_congrats`'s absent edge — the one
+place that sits in front of every blind action in those configs — and carry
+`no_progress_goto` (180s) with `recover_unknown` / `recover_unknown_restart`.
+Live: `peel_congrats → guard_not_partyrun → tap (1820,134) → open_find`, Party Run
+closed before `close_info` could fire.
+
+`sendlife_mailbox` is deliberately excluded: it scopes itself to
+`templates/cookierun/mailbox` and drives a popup, so it has no home markers to
+guard with, and its chain ends in `stop` rather than looping.
 
 ⚠️ **`tools/run_toggle.py` had to change with it.** On the *most common* path of all — a box is banked and `--quit-after-boxes 0` says keep playing — `BoxQuitRunner._run_actions` returned the string `"check_shop_after_run"` directly, which jumped straight past the poll that was just spliced in front of it. It now reads `check_box`'s own absent goto (`_continue_run_target()`), so whoever owns that edge owns the routing. Same failure mode as the state-keyed Play-tap check that broke when `probe_relic` was spliced in — see the note in that method.
 

@@ -57,7 +57,8 @@ is still on screen instead of assumed to have landed.
 | Send \<friend> a Life? | `sendlife_marker.png` | Cancel, never Confirm |
 | Gift Draw | `giftdraw_marker.png` | X only — never auto-consume a draw |
 | Ranking Rewards | `rankingrewards_marker.png` | season popup from a stray tap |
-| Friend's … | `friendinfo_marker.png` | two-layer X, left blind (two taps) |
+| Friend's … | `friendinfo_marker.png` | one verified close per pass at (1633,107). Can stack two layers, and the outer X is covered when it does — `close_popup` warns instead of spinning, the next pass takes the layer left. See RUN.md for the measured coordinates |
+| Party Run "Select a Mode" | `partyrun_marker.png` | `guard_not_partyrun`, closes at (1820,135) — the top-right of the **screen**, not a dialog header |
 | Game Settings | `gamesettings_marker.png` | user can open it at any time |
 | Fortune Bakery | `fortunebakery_marker.png` | X coord not yet CV-verified |
 | Previous Results | `prevresults_marker.png` | after a run cut short |
@@ -80,7 +81,6 @@ popup appears, crop the title ribbon (tight crops match best), drop it in
 | Popup | Reference @720p | Handling to port | Priority |
 | --- | --- | --- | --- |
 | Connection Lost | `CONNECTION_LOST_1.png`, `_2.png` | **not a dismiss** — the reload button often lands back on the same dead screen, so cycle the process: `restart_app` action (already implemented) then the existing `recover_login` chain | high — random, and it strands the bot |
-| Party Run | `PARTY_RUN_1.png` | X top-right, then back to home | high — follows announcements |
 | Overtake / Break Score | `OVERTAKE_BREAK_SCORE_1.png` | confirm; POST_GAME group | medium — after a record run |
 | Enter League | `ENTER_LEAGUE_1.png` | confirm centre, free | medium — season start |
 | League Results | `LEAGUE_RESULTS_1.png` | confirm centre, free | medium — season end |

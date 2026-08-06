@@ -135,8 +135,15 @@ def lint(path: Path, svg_dir: Path | None) -> int:
         return 2
 
     findings = 0
+    # Every way the engine can enter a state without a goto edge pointing at it,
+    # or the report is noise: the watchdog's recovery states are reached from
+    # fsm.py, so leaving them out flagged 3 orphans in all 8 bot configs on every
+    # run — and a linter that always cries wolf is a linter nobody reads, which
+    # is how ep3's boost-buy chain stayed unreachable for weeks.
     routine_roots = [r["goto"] for r in cfg.periodic_routines]
-    orphans = unreachable_states(cfg.states, cfg.start_state, extra_roots=routine_roots)
+    engine_roots = routine_roots + [
+        s for s in (cfg.no_progress_goto, cfg.no_progress_escalate_goto) if s]
+    orphans = unreachable_states(cfg.states, cfg.start_state, extra_roots=engine_roots)
     if orphans:
         findings += len(orphans)
         print(f"{path.name}: {len(orphans)} unreachable state(s): {', '.join(orphans)}")
@@ -148,7 +155,7 @@ def lint(path: Path, svg_dir: Path | None) -> int:
     if svg_dir is not None:
         svg_dir.mkdir(parents=True, exist_ok=True)
         out = svg_dir / f"{path.stem}.svg"
-        write_svg(cfg.states, cfg.start_state, out, routine_roots)
+        write_svg(cfg.states, cfg.start_state, out, engine_roots)
         print(f"{path.name}: graph -> {out}")
 
     if not findings:

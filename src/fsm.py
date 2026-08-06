@@ -42,6 +42,30 @@ _STUCK_STATE_WARN_CYCLES = 100
 # `progress_states` + `no_progress_goto`.
 _NO_PROGRESS_DEFAULT_S = 300
 
+# Consecutive polls where EVERY state missed its marker, counted across state
+# changes, before the same recovery `no_progress_goto` names is triggered early.
+#
+# `no_progress_s` alone is too coarse to distinguish "slow" from "stuck": a run
+# that lasts four minutes and a chain jumping into an unrecognised screen both
+# look like 300s without progress. What separates them is how long NOTHING has
+# matched — an unrecognised screen misses every state in the table, over and
+# over, while a working loop eventually lands on one.
+#
+# The threshold is measured, not derived. Sizing it off the state-table length
+# (32 states, so "one and a half laps" = 48) was wrong and live-tested wrong on
+# 2026-08-06: a perfectly healthy boxrun_magnet run measured **70** consecutive
+# misses, because home -> ten probes -> boost_shop -> the in-run jump chain match
+# nothing by design — the jump chain drives entirely off absent edges. At 48 the
+# watchdog fired mid-run and recovery cost a heart and a 7.3M-point run, which is
+# worse than the livelock it exists to break.
+#
+# Live measurements on the same build:
+#   healthy run, nothing on screen to match ....  70 polls
+#   Events popup (no marker, survives BACK) .... 229 polls before escalation
+# 160 sits comfortably above the first and below the second, and still cuts in
+# 2-3x faster than the 300s wall clock did.
+_BLIND_LAP_CYCLES = 160
+
 # Extra seconds a recovery gets before the watchdog may judge it. `restart_app`
 # plus the relogin chain measured 99s live (2026-08-01), which is longer than a
 # tight `no_progress_s` — without this the watchdog fires again while the restart
@@ -94,6 +118,10 @@ class Runner:
         same_state_streak = 0
         stuck_alerted = False
         absent_streak = 0        # consecutive absent polls in the current state
+        # Same count, but it survives state changes: absent_streak resets on every
+        # transition, which is precisely what a chain walking 30 states in a row
+        # does, so it can never see a lap that matched nothing anywhere.
+        blind_streak = 0
         adb_fail_streak = 0      # consecutive cycles lost to adb errors
         perceive_fail_streak = 0  # consecutive cycles lost to perceive-layer OOM
         no_act_streak = 0        # consecutive polls without any screen-affecting action
@@ -192,6 +220,7 @@ class Runner:
                         acted = False
                     elif m.found:
                         absent_streak = 0
+                        blind_streak = 0  # something on screen was recognised
                         entered_at = time.monotonic()
                         on_match = spec.get("on_match", [])
                         if isinstance(on_match, dict):  # per-template branch (detect list)
@@ -205,6 +234,7 @@ class Runner:
                             did_transition = True
                     else:
                         absent_streak += 1
+                        blind_streak += 1
                         next_state, acted = self._handle_absent(
                             state, spec, entered_at, frame, absent_streak
                         )
@@ -282,6 +312,7 @@ class Runner:
                             state = self.cfg.start_state
                             frame = None
                             absent_streak = same_state_streak = no_act_streak = 0
+                            blind_streak = 0  # the app went away and came back
                             stuck_alerted = no_act_alerted = False
                             no_act_states.clear()
                             entered_at = state_entered_at = time.monotonic()
@@ -312,6 +343,12 @@ class Runner:
                         state = routine["goto"]
                         state_entered_at = entered_at = time.monotonic()
                         absent_streak = 0
+                        # blind_streak deliberately survives the detour: unlike a
+                        # session reset nothing happened to the SCREEN here, only to
+                        # which chain the FSM walks. An errand's states miss on an
+                        # unrecognised screen exactly like the farm's did, and
+                        # clearing the count would hand a stuck bot a fresh budget
+                        # every time an errand came due.
                         continue
 
                     # Idle between games, on ENTRY to the inter-game state only —
@@ -343,8 +380,35 @@ class Runner:
                         no_progress_fires = 0  # recovery worked (or never ran)
                     else:
                         stalled_s = time.monotonic() - last_progress_at
-                        if stalled_s >= no_progress_s:
+                        # Two ways to conclude the screen is unrecognised, and the
+                        # cheap one has to come first or it never gets to speak:
+                        # the wall clock cannot tell a long run from a stuck one,
+                        # while a miss streak far past what a healthy run produces
+                        # (measured at 70 — see _BLIND_LAP_CYCLES) means nothing on
+                        # screen is recognised.
+                        #
+                        # A recovery in flight is exempt from BOTH. The grace window
+                        # pushes last_progress_at into the future, which held the
+                        # wall clock off but said nothing about the streak: a
+                        # restart+relogin polls for ~99s while matching nothing, so
+                        # the streak sails past the trip line and stacks a second
+                        # recovery on the one still running — the exact failure
+                        # _RECOVERY_GRACE_S exists to prevent, arriving by a new door.
+                        blind = blind_streak >= _BLIND_LAP_CYCLES and stalled_s >= 0
+                        if blind or stalled_s >= no_progress_s:
                             no_progress_fires += 1
+                            # Which detector spoke is the whole diagnosis, so it
+                            # goes in the line and the alert rather than being left
+                            # for whoever reads the log to infer: "blind" means no
+                            # marker anywhere (add one), "no progress" means the
+                            # markers work but the loop is not banking anything.
+                            why = (f"{blind_streak} consecutive polls matched nothing "
+                                   f"across {len(self.cfg.states)} state(s) — well past "
+                                   f"the {_BLIND_LAP_CYCLES} a healthy run stays under, so "
+                                   f"the screen is unrecognised rather than slow (only "
+                                   f"{stalled_s:.0f}s of {no_progress_s:.0f}s elapsed)"
+                                   if blind else
+                                   f"no progress for {stalled_s:.0f}s")
                             # A second fire means the first recovery produced no
                             # progress at all, so repeating it would just stall
                             # again — escalate if the config offers somewhere.
@@ -352,16 +416,15 @@ class Runner:
                             if no_progress_fires > 1 and self.cfg.no_progress_escalate_goto:
                                 target = self.cfg.no_progress_escalate_goto
                             log.warning(
-                                "no progress for %.0fs (fire #%d, last reached one of %s) — "
-                                "screen is probably an unrecognised popup; recovering via '%s'",
-                                stalled_s, no_progress_fires,
+                                "%s (fire #%d, last reached one of %s) — recovering via '%s'",
+                                why, no_progress_fires,
                                 sorted(self.cfg.progress_states), target)
                             send_alert(
                                 self.webhook_url,
-                                "NetRunner: no progress",
-                                f"No progress state reached in {stalled_s:.0f}s on device "
-                                f"{self.device.serial} (fire #{no_progress_fires}) — "
-                                f"recovering via `{target}`.",
+                                "NetRunner: unrecognised screen" if blind
+                                else "NetRunner: no progress",
+                                f"{why} on device {self.device.serial} "
+                                f"(fire #{no_progress_fires}) — recovering via `{target}`.",
                             )
                             self._archive_unknown(frame, state)
                             state = target
@@ -372,7 +435,10 @@ class Runner:
                             # restart on top of the one still running.
                             last_progress_at = time.monotonic() + _RECOVERY_GRACE_S
                             frame = None
-                            absent_streak = same_state_streak = 0
+                            # Without this the streak is already past the trip line
+                            # on the recovery's own first absent poll, so it would
+                            # re-fire every cycle and never let the recovery run.
+                            absent_streak = same_state_streak = blind_streak = 0
                             entered_at = state_entered_at = time.monotonic()
                             continue
 

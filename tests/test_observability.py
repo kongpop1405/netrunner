@@ -285,3 +285,78 @@ class TestProgressWatchdog:
             fsm.Runner._archive_unknown = real
         # Without the grace window this loop fires on essentially every poll.
         assert len(fires) == 1, f"grace window must suppress re-fires, got {len(fires)}"
+
+    def test_the_blind_threshold_clears_a_healthy_run(self):
+        """The limit is a measurement, not a derivation.
+
+        Sizing it off the state-table length (32 states -> 48) fired mid-run on a
+        live boxrun_magnet: home -> ten probes -> boost_shop -> the in-run jump
+        chain match nothing by design, which measured 70 consecutive misses on
+        2026-08-06, and the recovery cost a heart and a 7.3M-point run. The Events
+        popup — a genuinely unrecognised screen — reached 229 before escalating.
+        Anything inside that gap is safe; 48 was not.
+        """
+        healthy_run_misses = 70      # measured, healthy boxrun_magnet
+        stuck_screen_misses = 229    # measured, Events popup
+        assert fsm._BLIND_LAP_CYCLES > healthy_run_misses, (
+            "would fire during a normal run and forfeit it")
+        assert fsm._BLIND_LAP_CYCLES < stuck_screen_misses, (
+            "would never beat the wall clock it exists to pre-empt")
+
+    def test_blind_lap_fires_before_the_wall_clock(self, monkeypatch):
+        """Nothing matching anywhere is a stuck screen, and knowing that does not
+        require waiting out no_progress_s.
+
+        Party Run (2026-08-06) rode a 29-state absent chain at ~21s a lap for 38
+        passes of blind tapping before 300s elapsed. The wall clock cannot tell
+        that from a long run; a streak of misses outliving the whole state table
+        can only mean nothing on screen is recognised.
+        """
+        monkeypatch.setattr(fsm, "_BLIND_LAP_CYCLES", 6)
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_s = 3600  # the wall clock must not be what fires
+        fires = []
+        real = fsm.Runner._archive_unknown
+        fsm.Runner._archive_unknown = lambda self, f, s: fires.append(s)
+        try:
+            self._run(cfg, cycles=10)
+        finally:
+            fsm.Runner._archive_unknown = real
+        assert fires, "a blind lap must trip the recovery on its own"
+        assert "NetRunner: unrecognised screen" in self.alerts, self.alerts
+
+    def test_a_match_anywhere_clears_the_blind_streak(self, monkeypatch):
+        """The streak counts misses, not polls: a loop that keeps matching
+        something is being understood, however slowly it moves."""
+        monkeypatch.setattr(fsm, "_BLIND_LAP_CYCLES", 6)
+        # `running` matches every poll, so the loop sits there acting on it — busy
+        # and never reaching a progress state, but never blind either.
+        monkeypatch.setattr(fsm, "find_named", lambda f, s, name, t: Match(
+            found=name == "result.png", score=1.0, x=0, y=0, w=1, h=1))
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_s = 3600
+        cfg.states["running"]["on_match"] = [{"type": "wait", "ms": 0}]
+        self._run(cfg, cycles=30)
+        assert "NetRunner: unrecognised screen" not in self.alerts, self.alerts
+
+    def test_blind_streak_is_also_held_off_during_recovery(self, monkeypatch):
+        """The grace window has to cover both detectors.
+
+        It works by pushing last_progress_at into the future, which silenced the
+        wall clock but said nothing about the streak — and a restart+relogin polls
+        ~99s matching nothing, so the streak would sail past its limit and stack a
+        second recovery on the one still running.
+        """
+        monkeypatch.setattr(fsm, "_BLIND_LAP_CYCLES", 6)
+        monkeypatch.setattr(fsm, "_RECOVERY_GRACE_S", 30)
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_s = 0.05
+        fires = []
+        real = fsm.Runner._archive_unknown
+        fsm.Runner._archive_unknown = lambda self, f, s: fires.append(s)
+        try:
+            self._run(cfg, cycles=60)
+        finally:
+            fsm.Runner._archive_unknown = real
+        assert len(fires) == 1, (
+            f"blind streak must respect the grace window too, got {len(fires)}")

@@ -167,3 +167,95 @@ class TestShippedConfigsUseVerifiedCloses:
     def test_all_configs_still_load(self):
         for path in self._configs():
             cfgmod.load(path)  # validation covers verify templates existing
+
+
+class TestGuardParity:
+    """Every config that runs on the home screen carries the same guards.
+
+    Party Run (2026-08-06) was reachable from anywhere on home and detectable by
+    nothing, so it livelocked whatever config happened to land there. A guard that
+    exists in six configs and not the seventh just moves which launcher hangs.
+    """
+
+    def _home_configs(self):
+        """Configs driving the home screen — i.e. those with the full template
+        tree. sendlife_mailbox scopes itself to templates/cookierun/mailbox and
+        drives a popup, so home markers do not exist for it to guard with."""
+        out = {}
+        for path in sorted(CONFIG_DIR.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if raw.get("templates_dir") == "templates/cookierun":
+                out[path.stem] = raw
+        return out
+
+    def test_every_home_config_guards_party_run(self):
+        configs = self._home_configs()
+        assert len(configs) >= 11, f"expected the whole home set, got {sorted(configs)}"
+        for name, raw in configs.items():
+            g = raw["states"].get("guard_not_partyrun")
+            assert g, f"{name} has no Party Run guard"
+            assert g["detect"] == "home/partyrun_marker.png", name
+            closes = [a for a in g["on_match"] if a.get("type") == "close_popup"]
+            assert len(closes) == 1, f"{name}: {g['on_match']}"
+            assert (closes[0]["x"], closes[0]["y"]) == (1820, 135), name
+
+    #: Taps in the top-right banner strip are the ones that matter here: that is
+    #: where Party Run's own entry point lives, so a blind tap landing there can
+    #: open the screen the guard exists to close. Measured on a live Party Run
+    #: frame (20260806_182330): (1640,107) is dark background BGR(93,52,51) —
+    #: pressing nothing, forever — while (851,117) lands on the purple title bar
+    #: itself, which is inert. Guarding against every tap on the path would flag
+    #: harmless navigation and teach the next reader to skip the assertion.
+    BANNER_STRIP_X = 1400
+    BANNER_STRIP_Y = 200
+
+    def _is_banner_tap(self, action):
+        x = action.get("x", action.get("x1"))
+        y = action.get("y", action.get("y1"))
+        return (x is not None and y is not None
+                and x > self.BANNER_STRIP_X and y < self.BANNER_STRIP_Y)
+
+    def test_the_guard_precedes_every_blind_action_it_protects(self):
+        """A guard placed after the blind tap is a guard that fires on the screen
+        the tap just opened. addfriend's close_info tap (1640,107) sits four pixels
+        from the (1633,107) that opened Party Run in the farm loop."""
+        blind = {"tap_xy", "jump", "swipe"}
+        for name, raw in self._home_configs().items():
+            st = raw["states"]
+
+            def absent_goto(spec):
+                v = spec.get("on_absent")
+                if isinstance(v, dict):
+                    return v.get("goto")
+                if isinstance(v, list):
+                    return next((a["state"] for a in v
+                                 if a.get("type") == "goto"), None)
+                return None
+
+            walked, node = [], raw["start_state"]
+            while node and node in st and node not in walked:
+                walked.append(node)
+                node = absent_goto(st[node])
+            assert "guard_not_partyrun" in walked, (
+                f"{name}: the guard is not on the absent path, so a screen that "
+                f"matches nothing never reaches it")
+            pos = walked.index("guard_not_partyrun")
+            for earlier in walked[:pos]:
+                acts = st[earlier].get("on_absent")
+                acts = acts if isinstance(acts, list) else []
+                risky = [a for a in acts
+                         if a.get("type") in blind and self._is_banner_tap(a)]
+                assert not risky, (
+                    f"{name}: {earlier} taps the Party Run banner strip at "
+                    f"{risky} before the guard is checked")
+
+    def test_every_home_config_has_a_watchdog(self):
+        """Without one, a livelock ends only when --max-cycles does — which the
+        errand configs relied on, and which is not a recovery."""
+        for name, raw in self._home_configs().items():
+            assert raw.get("no_progress_goto"), f"{name} has no watchdog"
+            assert raw.get("progress_states"), f"{name} has no progress states"
+            goto = raw["no_progress_goto"]
+            assert goto in raw["states"], f"{name}: watchdog points at missing {goto}"
+            esc = raw.get("no_progress_escalate_goto")
+            assert esc in raw["states"], f"{name}: escalation points at missing {esc}"

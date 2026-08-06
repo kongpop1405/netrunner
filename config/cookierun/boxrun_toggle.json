@@ -731,7 +731,7 @@
       "timeout_ms": 15000
     },
     "probe_friendinfo": {
-      "_note": "SAFETY NET: 'Friend's ___' popup family (can stack 2 layers). Tap inner X (1552,117) then outer X (1633,107) each pass, self-loop until the ribbon is gone. ONE TAP PER PASS (2026-08-06): this state used to fire (1552,117) and (1633,107) back to back before re-checking. Measured live: (1552,117) does NOT close the dialog (marker still 0.974 after it) and (1633,107) does. So on any pass where the dialog was already gone the second tap landed on home, where (1633,107) is inside the Party Run / Episode banner strip — which opened Party Run's 'Select a Mode', a screen nothing in the config could detect, and the bot livelocked there. Now: one tap, then the self-loop re-detects. Never fire a tap on a screen this state has not just confirmed.",
+      "_note": "SAFETY NET: 'Friend's ___' popup family, which can stack two layers. MEASURED LIVE 2026-08-06 (frames archived as docs/evidence/friendinfo_stacked_2layers.png and docs/evidence/friendinfo_single_layer.png):\n• ONE layer ('Friend's Info' alone) — (1633,107) IS the X and closes it in a single tap, 0.974 -> 0.343.\n• TWO layers ('Friend's Cookie' over 'Friend's Info') — the inner card covers (1633,107) (that pixel reads BGR 85,85,85, a shadow) and the inner X sits at about (1555,125). Tapping the outer coordinate hits nothing, so no retry count clears both layers from one coordinate.\nThat is why the close is a close_popup rather than a bare tap: on the stacked case it reported 'still on screen (score 1.00)' twice and then warned, instead of self-looping on an unchecked tap forever — which is how this state class hid a livelock for 38 passes on the Party Run screen. The absent edge hands to `running`, so a layer left behind is picked up on the next pass through the chain rather than blocking here.\nDo NOT add a second blind tap to 'cover' the inner layer: the earlier version fired (1552,117) and (1633,107) back to back, and on any pass where the dialog was already gone the second tap landed on home, inside the Party Run banner strip — opening a screen nothing in the config could detect. One verified close per pass.",
       "detect": "friends/friendinfo_marker.png",
       "on_match": [
         {
@@ -742,20 +742,16 @@
           ]
         },
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1633,
-          "y": 107
-        },
-        {
-          "type": "wait",
-          "ms": [
-            1020,
-            1440
-          ]
+          "y": 107,
+          "verify": "friends/friendinfo_marker.png",
+          "settle_ms": 1200,
+          "retries": 2
         },
         {
           "type": "goto",
-          "state": "probe_friendinfo"
+          "state": "running"
         }
       ],
       "on_absent": {
@@ -2177,24 +2173,20 @@
       "threshold": 0.62
     },
     "guard_not_partyrun": {
-      "_note": "Close Party Run's 'Select a Mode' screen (added 2026-08-06). This screen had NO marker anywhere in the config, so the bot livelocked on it: every state missed, the guard chain and relay polls kept transitioning normally, and the hop taps landed on a menu instead of a run — a log that reads perfectly healthy while nothing progresses. It is reachable by accident because probe_friendinfo's second blind tap (1633,107) lands in the Party Run banner strip when Friend's Info is not actually up (see that state's note). partyrun_marker.png is the purple 'Select a Mode' title bar cropped WITH its background colour — scores 1.000 here and <=0.403 on every other captured frame, unlike a text-only crop whose score would swing with the scene. on_match taps the X at (1820,135) — the grey circle at the top-right of the SCREEN (area 4919, bbox 80x80 on a live Party Run frame). An earlier version of this guard tapped (1638,108), measured off the Friend's Info dialog by mistake; on the Party Run frame that point is dark background (BGR 93,53,51), so the guard detected the screen 38 passes in a row and never closed it. Measure the button on the screen you are closing, not a similar-looking one.",
+      "_note": "Close Party Run's 'Select a Mode' screen (added 2026-08-06). This screen had NO marker anywhere in the config, so the bot livelocked on it: every state missed, the guard chain and relay polls kept transitioning normally, and the hop taps landed on a menu instead of a run — a log that reads perfectly healthy while nothing progresses. It is reachable by accident because probe_friendinfo's blind tap (1633,107) lands in the Party Run banner strip when Friend's Info is not actually up (see that state's note). partyrun_marker.png is the purple 'Select a Mode' title bar cropped WITH its background colour — scores 1.000 here and <=0.403 on every other captured frame, unlike a text-only crop whose score would swing with the scene. on_match closes via the X at (1820,135) — the grey circle at the top-right of the SCREEN (area 4919, bbox 80x80 on a live Party Run frame). An earlier version tapped (1638,108), measured off the Friend's Info dialog by mistake; on the Party Run frame that point is dark background (BGR 93,53,51), so the guard detected the screen 38 passes in a row and never closed it. Measure the button on the screen you are closing, not a similar-looking one. CLOSE VERIFIED (2026-08-06): this used tap_xy + goto self, which is how those 38 passes stayed silent — a blind tap cannot tell a wrong coordinate from a slow fade, and self-looping on it produces no log line either way. close_popup re-reads the frame after the settle, taps again while the marker is still up, and log.warning()s if it never clears, exactly like guard_not_news does.",
       "detect": "home/partyrun_marker.png",
       "on_match": [
         {
-          "type": "tap_xy",
+          "type": "close_popup",
           "x": 1820,
-          "y": 135
-        },
-        {
-          "type": "wait",
-          "ms": [
-            1020,
-            1440
-          ]
+          "y": 135,
+          "verify": "home/partyrun_marker.png",
+          "settle_ms": 1200,
+          "retries": 2
         },
         {
           "type": "goto",
-          "state": "guard_not_partyrun"
+          "state": "home"
         }
       ],
       "on_absent": [

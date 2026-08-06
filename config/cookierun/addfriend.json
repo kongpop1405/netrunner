@@ -126,7 +126,7 @@
         }
       ],
       "on_absent": {
-        "goto": "close_info"
+        "goto": "guard_not_partyrun"
       },
       "timeout_ms": 6000
     },
@@ -337,6 +337,76 @@
         "goto": "entry"
       },
       "timeout_ms": 30000
+    },
+    "guard_not_partyrun": {
+      "_note": "Close Party Run's 'Select a Mode' screen (added 2026-08-06, same guard the bot configs carry). This errand runs on the home screen with the full template tree, so Party Run is reachable here for the same reason it was there: a tap in the top-right banner strip opens it, nothing else in this config can detect it, and every state then misses while the chain keeps transitioning — a log that reads healthy while nothing progresses. close_popup (not a bare tap) so a close that does not take says so in the log: the blind-tap version of this guard sat on Party Run for 38 passes in silence. partyrun_marker.png scores 1.000 on that screen and <=0.403 on every other captured frame, so the 0.85 threshold this config uses is as safe as the bots' 0.82.",
+      "detect": "home/partyrun_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1820,
+          "y": 135,
+          "verify": "home/partyrun_marker.png",
+          "settle_ms": 1200,
+          "retries": 2
+        },
+        {
+          "type": "goto",
+          "state": "open_find"
+        }
+      ],
+      "on_absent": {
+        "goto": "close_info"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_unknown": {
+      "_note": "Watchdog recovery entry (src/fsm.py no_progress_goto), mirroring the bot configs. Reached when no progress state has been touched for no_progress_s OR when enough consecutive polls matched nothing that the screen cannot be one this config knows — see _BLIND_LAP_CYCLES. Home visible means there is nothing to recover, so rejoin at start_state; otherwise escalate to the restart, because a screen we cannot identify has no close button we can aim at.",
+      "detect": "home/home_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "entry"
+        }
+      ],
+      "on_absent": {
+        "goto": "recover_unknown_restart"
+      },
+      "timeout_ms": 8000
+    },
+    "recover_unknown_restart": {
+      "_note": "Expensive half, and the one that always works. A screen with no marker has no button to aim at, so cycle the process instead: restart_app -> recover_login re-auths -> start_state. An errand loses nothing by restarting — unlike the farm loop it has no run in flight to forfeit.",
+      "detect": "home/home_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "entry"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "restart_app"
+        },
+        {
+          "type": "wait",
+          "ms": 8000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "timeout_ms": 20000
     }
-  }
+  },
+  "progress_states": [
+    "do_refresh",
+    "req_row1",
+    "req_row2",
+    "req_row3",
+    "req_row4"
+  ],
+  "no_progress_goto": "recover_unknown",
+  "no_progress_s": 180,
+  "no_progress_escalate_goto": "recover_unknown_restart"
 }

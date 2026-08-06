@@ -151,18 +151,47 @@ Checker ที่ตรวจ "จำนวน `..` ตรงความลึ�
 
 Bot ค้างได้แบบที่ **log ไหลลื่นทุกบรรทัด** ไม่มี error ไม่มี warning — เกิดเมื่อจออยู่บนหน้าที่**ไม่มี template ในทุก config**: ทุก state miss แล้ว fall through, guard chain กับ relay poll transition ตามปกติ, jump/slide ยิงลงเมนูแทนตัวเกม (เจอจริง 2026-08-06: หน้า Party Run "Select a Mode" ค้างเป็นชั่วโมง)
 
-- **`progress_watchdog` จับไม่ได้** เพราะ transition ยังเกิดต่อเนื่อง — watchdog นับ "ไม่มี progress state" ไม่ใช่ "ไม่มี transition"
+- **`progress_watchdog` จับได้แต่ช้า** — transition ยังเกิดต่อเนื่อง (watchdog นับ "ไม่มี progress state" ไม่ใช่ "ไม่มี transition") จึงต้องรอครบ `no_progress_s` 300s = ยิง tap มั่ว 40-100 ครั้งก่อนกู้. **`_BLIND_LAP_CYCLES` (fsm.py, 160) ตัดเร็วกว่า** ด้วยตัวชี้วัดที่ไม่ผูกเวลา: นับ poll ที่ **ไม่ match อะไรเลย ข้าม state** (`absent_streak` reset ทุก transition จึงมองวง 30 states ไม่เห็น)
 - **สงสัยเมื่อไร**: log วน guard chain ซ้ำ ๆ นานผิดปกติโดยไม่มี `run_result`/`check_box` โผล่เลย → **snap จอทันที** ไม่ต้องรออ่าน log ต่อ (ดู section "Snap ก่อนแตะจอเสมอ")
 - **แก้แบบถาวร** = crop marker ของหน้านั้น + เพิ่ม `guard_not_<x>` เข้า guard chain ที่ปิดมันได้ ไม่ใช่แค่เคลียร์มือครั้งเดียว
 - **หา entry point ด้วย** — จอนั้นเปิดมาได้ยังไง. เจอจริง: `probe_friendinfo` ยิง 2 tap ติดกันก่อน re-check แล้ว tap ที่ 2 ตกลง home ตรงแถบ Party Run พอดี. **Blind tap ชุดติดกัน = ต้องเหลือ tap เดียวต่อ pass แล้วให้ self-loop ตรวจซ้ำ** ไม่ใช่ยิงรวดแล้วเช็คทีหลัง
+- **Guard ต้องอยู่ก่อน blind action ที่มันกัน** — ไม่ใช่แค่ "มีอยู่ใน config". guard ที่วางหลัง blind tap = ยิงบนจอที่ tap นั้นเพิ่งเปิด. ตรวจด้วยการไล่ absent chain จาก `start_state` แล้วดูว่า guard อยู่ก่อนทุก tap ในโซนอันตราย (`tests/test_popup.py::TestGuardParity`)
+- **Config ที่รันบนจอเดียวกันต้องมี guard ชุดเดียวกัน** — guard ที่มีใน 8 config แต่ไม่มีใน errand config = ย้ายว่า launcher ตัวไหนค้าง ไม่ได้แก้. เจอจริง: `addfriend` ยิง `(1640,107)` บน **absent path** (ยิงตอนไม่รู้ว่าจออะไร) ห่างจากพิกัดที่เปิด Party Run 7px และไม่มี watchdog เลย — จบเมื่อ `--max-cycles` หมดเท่านั้น
 
 ## วัดพิกัดปุ่มต้องวัดบนหน้าที่จะปิดจริง ไม่ใช่หน้าที่หน้าตาคล้าย
 
-Dialog คนละหน้ามีปุ่ม X คนละที่ — **ปุ่มใน dialog header** (Friend's Info: 1638,108) กับ **ปุ่มมุมขวาบนของจอ** (Party Run: 1820,135) ห่างกัน 180px. เอาพิกัดจากหน้าหนึ่งไปใช้กับอีกหน้า = tap ลงพื้นหลังเปล่า
+Dialog คนละหน้ามีปุ่ม X คนละที่ — **ปุ่มใน dialog header** (Friend's Info: 1637,108) กับ **ปุ่มมุมขวาบนของจอ** (Party Run: 1820,135) ห่างกัน 180px. เอาพิกัดจากหน้าหนึ่งไปใช้กับอีกหน้า = tap ลงพื้นหลังเปล่า
+
+**Dialog ซ้อนชั้นก็เลื่อนปุ่มด้วย** — วัดจากเฟรมชั้นเดียวแล้วใช้กับเฟรมซ้อน = ผิดอีกแบบ. เจอจริง 2026-08-06: "Friend's Info" ชั้นเดียวปิดที่ `(1633,107)` (0.974 → 0.343 tap เดียว) แต่เมื่อ "Friend's Cookie" ซ้อนทับ ปุ่มชั้นในย้ายไป `~(1555,125)` และ `(1633,107)` กลายเป็น BGR(85,85,85) = **เงาใต้การ์ด**. Retry พิกัดเดียวไม่เคลียร์ 2 ชั้นได้เท่าไรก็ตาม — แต่ `close_popup` ไม่ค้าง: warn แล้วส่งต่อ, pass ถัดไปเก็บชั้นที่เหลือ
 
 - เจอจริง 2026-08-06: guard ที่เขียนใหม่ detect หน้า Party Run ถูก (score 1.00) แต่ tap พิกัดที่วัดจาก Friend's Info → **tap 38 pass ติดกันไม่ปิดเลย** = livelock ซ้อนใน guard ที่เขียนมาแก้ livelock. `(1638,108)` บนเฟรม Party Run คือ BGR (93,53,51) พื้นหลังมืด
 - **วิธีวัด**: หา blob วงกลมเทาบนเฟรม**ของหน้านั้น** — `hsv[:,:,1] < 70` (สีจาง) + `hsv[:,:,2] > 140` (สว่าง) → `findContours` → เอา contour ใหญ่สุด → center ของ bbox. เช็คด้วยว่า `frame[y,x]` ที่จุดนั้นเป็นสีขาว/เทาจริง
 - **ยืนยันด้วย live tap ก่อนเขียนลง config** — tap แล้ว re-score marker ต้องตกจาก 1.00 ลงต่ำกว่า threshold. ถ้าไม่ตก พิกัดผิด
+
+## Threshold ที่ derive จากโครงโค้ด vs วัดจากพฤติกรรมจริง
+
+เลขที่คิดจาก "จำนวน state × 1.5" อ่านดูมีเหตุผลแต่ไม่ได้อ้างอิงอะไรจริง. `_BLIND_LAP_CYCLES` ตั้ง 48 (32 states × 1.5) แล้ว **ยิงกลาง run จริง**: healthy run วัดได้ **70 poll ติดกันที่ไม่ match อะไรเลย** เพราะ `home` → probe 10 ตัว → `boost_shop` → in-run jump chain **ไม่ match โดยดีไซน์** (jump chain เดินบน absent edge ล้วน). Recovery กลาง run = เสียหัวใจ + run 7.3M คะแนนทิ้ง = แย่กว่าอาการที่จะแก้
+
+- **วัด baseline ของ "ปกติ" ก่อนตั้งเส้น** — รัน `-v` แล้วนับ streak จาก `found=False` ใน debug log ไม่ใช่เดาจากขนาดตาราง state
+- **ต้องมี 2 ตัวเลข**: ปกติสูงสุด (70) กับ อาการจริง (Events popup 229) → เส้นอยู่กลาง (160 = headroom 2.3×)
+- **ล็อกด้วยเทสที่อ้างตัวเลขที่วัด** (`test_the_blind_threshold_clears_a_healthy_run`) ไม่ใช่ assert ค่าคงที่เปล่า ๆ — คนหลังจะเห็นว่าเลขมาจากไหนและต้องเถียงกับการวัด
+- **Detector ทุกตัวต้องได้ grace ตอน recovery ทำงาน** — `_RECOVERY_GRACE_S` ดัน `last_progress_at` ไปอนาคต ซึ่งปิดปาก wall-clock แต่ไม่แตะ streak. restart+relogin poll ~99s โดยไม่ match อะไร → streak ทะลุเส้น → ยิง recovery ซ้อน recovery ที่ยังทำงานอยู่
+
+## Action ที่ปิด popup ต้อง verify — ไม่ใช่เพราะ retry แต่เพราะ log
+
+`close_popup` + `verify` ต่างจาก `tap_xy` + `goto` ตัวเอง ที่ **observability** ก่อนเรื่อง retry: มัน re-read เฟรมหลัง settle แล้ว `log.warning` เมื่อปิดไม่ลง. `tap_xy` + self-loop ยิงเดา ไม่รู้ผล **ไม่มี log** — พิกัดผิดกับปิดสำเร็จอ่านเหมือนกันเป๊ะ
+
+- นี่คือเหตุผลที่ Party Run guard ยิง 38 pass เงียบ ๆ ได้: guard **detect ถูก** แต่ปิดไม่ลงและไม่มีใครรู้
+- **Guard/probe ทุกตัวที่ tap แล้ว goto ตัวเอง ต้องใช้ `close_popup`** เว้นแต่มี `match_timeout_ms` กั้น (เช่น `mb_open` ที่ยิง 3 จุดคนละหน้าที่ = flow ไม่ใช่ guard)
+- ตรงกับกฎ "log ระดับ DEBUG ที่ไม่มีใครอ่าน = บั๊กซ่อนได้นาน" — action ที่เงียบตอนพังคือ action ที่ซ่อนบั๊กได้เป็นชั่วโมง
+
+## Linter ที่ false-positive ประจำ = linter ที่ไม่มีคนอ่าน
+
+`tools/lint_config.py` รายงาน `recover_unknown*` เป็น orphan 3 ตัว × 8 config **ทุกครั้งที่รัน** เพราะใส่ `periodic_routines` roots แต่ลืม watchdog roots (`no_progress_goto` / `no_progress_escalate_goto`) ที่ `src/config.py` ใส่ไว้แล้ว — engine เข้าถึง state พวกนี้โดยไม่มี goto edge
+
+- **Reachability ต้องรวมทุกทางที่ engine กระโดดเองได้** ไม่ใช่แค่ goto edge ใน JSON
+- คอมเมนต์ใน `src/config.py` เตือนเองว่า orphan จริงเคยซ่อนอยู่ 2 สัปดาห์ (ep3 boost-buy chain) — noise ทำให้คนข้าม
+- **Static reachability ของ tool ภายนอกต้อง mirror ตัว validator** ไม่ใช่เขียนใหม่ครึ่งทาง
 
 ## Kill bot ได้เลยไม่ต้องขอ — เมื่อจะแก้บัคหรือพิสูจน์อะไร
 

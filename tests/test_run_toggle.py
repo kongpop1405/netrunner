@@ -214,20 +214,31 @@ def test_party_run_is_guarded_and_closes_on_its_own_button(base_states):
     transitioning, and the hop taps landed on a menu. The guard must sit in the
     chain and tap Party Run's OWN close button (1820,135), not the Friend's Info
     one (1638,108), which is dark background on that screen and closed nothing
-    across 38 passes."""
+    across 38 passes.
+
+    The close must also be a verified one. Those 38 passes were silent because a
+    bare tap_xy cannot tell a wrong coordinate from a slow fade and self-looping
+    on it logs nothing either way; close_popup re-reads the frame after the
+    settle and warns when the marker never clears."""
     g = base_states.get("guard_not_partyrun")
     assert g, "guard_not_partyrun missing"
     assert g["detect"] == "home/partyrun_marker.png"
 
-    taps = [(a["x"], a["y"]) for a in g["on_match"] if a.get("type") == "tap_xy"]
-    assert taps == [(1820, 135)], taps
+    closes = [a for a in g["on_match"] if a.get("type") == "close_popup"]
+    assert len(closes) == 1, g["on_match"]
+    assert (closes[0]["x"], closes[0]["y"]) == (1820, 135), closes
+    assert closes[0]["verify"] == "home/partyrun_marker.png", (
+        "close must be verified against the screen's own marker")
+    assert closes[0].get("retries", 0) >= 1, "one blind attempt is what failed before"
+    assert not [a for a in g["on_match"] if a.get("type") == "tap_xy"], (
+        "a bare tap here is the shape that stayed silent for 38 passes")
 
     def goto(block):
         if isinstance(block, dict):
             return block.get("goto")
         return next((a["state"] for a in block if a.get("type") == "goto"), None)
 
-    assert goto(g["on_match"]) == "guard_not_partyrun", "must re-verify after tapping"
+    assert goto(g["on_match"]) == "home", "a verified close lands back home"
     assert goto(g["on_absent"]) == "guard_not_inactive", "must fall through the chain"
 
     reachable = [k for k, v in base_states.items()
@@ -239,10 +250,16 @@ def test_probe_friendinfo_taps_once_per_pass(base_states):
     """It used to fire (1552,117) then (1633,107) before re-checking. Live:
     (1552,117) does not close the dialog, (1633,107) does — so on a pass where
     the dialog was already gone the second tap hit home, where (1633,107) is
-    inside the Party Run banner strip, opening the undetectable screen above."""
-    taps = [(a["x"], a["y"]) for a in base_states["probe_friendinfo"]["on_match"]
-            if a.get("type") == "tap_xy"]
-    assert taps == [(1633, 107)], taps
+    inside the Party Run banner strip, opening the undetectable screen above.
+
+    One tap per pass, and that tap verified: a stacked second layer is the
+    retry's job inside close_popup, which re-reads the frame between attempts."""
+    on_match = base_states["probe_friendinfo"]["on_match"]
+    assert not [a for a in on_match if a.get("type") == "tap_xy"], on_match
+    closes = [a for a in on_match if a.get("type") == "close_popup"]
+    assert len(closes) == 1, on_match
+    assert (closes[0]["x"], closes[0]["y"]) == (1633, 107), closes
+    assert closes[0]["verify"] == "friends/friendinfo_marker.png", closes
 
 
 def test_continue_run_target_follows_the_config_edge(states):
