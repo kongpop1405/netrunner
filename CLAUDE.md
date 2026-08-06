@@ -285,7 +285,7 @@ Config ที่รันตรงผ่าน `main.py` (`boxrun_magnet` · `bo
 
 Doc ในรีโปนี้ (`docs/HANDOFF.md`, `docs/RUN.md`, plan HTML) เขียนสถานะไว้ ณ วันที่เขียน แล้วโค้ดเดินต่อโดยไม่มีใครกลับมาอัพเดต — **ห้ามอ้าง claim ใน doc เป็นสถานะปัจจุบันโดยไม่ verify**:
 
-- `HANDOFF.md` เขียนว่า "lint 0 orphan" แต่ `python tools/lint_config.py config/cookierun/*.json` รายงาน **3 unreachable ทุก box-farm config** (`recover_unknown`, `recover_unknown_probe`, `recover_unknown_restart`) — ทางกู้ "เจอจอไม่รู้จัก → restart" จึงไม่เคยทำงาน และไม่มีอะไรใน `src/` dispatch มันด้วย
+- **⚠️ แก้ไปแล้ว 2026-08-06 — เก็บไว้เป็นตัวอย่างว่า doc ผิดได้ทั้งสองทาง**: doc เคยเขียนว่า lint รายงาน 3 unreachable (`recover_unknown`, `_probe`, `_restart`) แล้วสรุปต่อว่า "ทางกู้จึงไม่เคยทำงาน และไม่มีอะไรใน `src/` dispatch มันด้วย" — **ข้อสรุปนั้นผิด**. `src/fsm.py` dispatch มันผ่าน `no_progress_goto` (engine root ไม่มี goto edge) และ live test 2026-08-06 เห็น chain ทำงานครบ `fire #1 → probe → fire #2 → restart_app → recover_login → home`. ตัวที่ผิดคือ **lint** ที่ลืมใส่ watchdog roots. บทเรียน: doc ที่อ้าง tool output ต้องแยก "tool ว่าอะไร" ออกจาก "แปลว่าอะไร" — output ถูกแต่ข้อสรุปผิดได้ และ tool เองก็ผิดได้ (ดู [Linter ที่ false-positive ประจำ](#linter-ที่-false-positive-ประจำ--linter-ที่ไม่มีคนอ่าน))
 - state count / active-config list ใน doc เก่าผิดได้ถึง 2 เท่า เพราะเขียนมือ — **นับจาก JSON จริงเสมอ** (`json.load` แล้ว `len(d['states'])`) อย่าลอกตัวเลขจาก doc ก่อนหน้า
 - เขียน doc ใหม่ที่มีตัวเลข → gen ตัวเลขจาก source ตอนเขียน + เขียน footer บอกว่า derive จากไฟล์ไหน ให้รอบหน้า regen ได้
 
@@ -303,6 +303,33 @@ Doc ในรีโปนี้ (`docs/HANDOFF.md`, `docs/RUN.md`, plan HTML) �
 - **บั๊กที่เพิ่งแก้** — เพิ่มลง section "bug ที่แก้แล้ว" พร้อม **หลักฐาน live-verify** (score ที่วัดได้ / log line จริง) ไม่ใช่แค่ "แก้แล้ว"
 
 **Verify ก่อนจบ**: serve ผ่าน `python -m http.server` แล้วเปิด browser ดูจริง (`file:` ถูกบล็อกใน playwright) — เช็คว่า HTML ไม่พัง + CSS class ที่ใช้มีจริงในไฟล์ (คลาสที่ไม่มีจะ render เป็นกล่องเปล่า ไม่ error ให้เห็น) แล้ว kill server ทิ้ง
+
+### อัพเดต state count ใน HTML — scope byte-range ของตารางก่อน substitute
+
+ไฟล์นี้มีตารางหลายอันที่ **shape ของ cell เหมือนกันเป๊ะ** — `<td class="mono">sendlife</td><td class="mono">400</td>` คือ **poll_ms** ไม่ใช่ state count. Regex ที่ anchor แค่ "cell ถัดจากชื่อ config" จับโดนทั้งคู่:
+
+```python
+# หา byte-range ของตารางที่ header ประกาศคอลัมน์ states เท่านั้น
+ranges = []
+for m in re.finditer(r"<thead", s):
+    hdr_end, tbl_end = s.find("</thead>", m.start()), s.find("</table>", m.start())
+    if 'class="mono">states<' in s[m.start():hdr_end]:
+        ranges.append((m.start(), tbl_end))
+# แล้ว substitute เฉพาะใน range พวกนั้น ประกอบเอกสารกลับทีหลัง
+```
+
+- **print `old -> new` ต่อจุด** ทุกครั้ง — เห็น `sendlife 400 -> 19` ทันทีว่าผิดตาราง (เจอจริง 2 รอบ: 2026-08-05 แก้เป็น 16, 2026-08-06 แก้เป็น 19 ด้วย pattern คนละตัว)
+- **substitute เฉพาะชื่อที่มีใน `config/cookierun/` วันนี้** — ตาราง archive §09 list config ที่ไม่มีแล้ว ต้องคงเลขประวัติศาสตร์ไว้
+- **เทียบ tag balance กับไฟล์ก่อนแก้ ไม่ใช่กับ 0** — ไฟล์นี้มี `<p>` เกิน 1 ตัวมาตั้งแต่ต้น (35/36) การเช็คแบบ "ต้องเท่ากัน" จะ false alarm ทุกครั้ง
+- **เลขที่เขียนกลางประโยค** ("baseline · 52 states") นับไว้คนละเวลาคนละเกณฑ์ — อย่าไล่แก้ด้วย regex ใส่ note บอกว่าเป็น snapshot แล้วชี้ไป `lint_config.py` เป็นค่าจริง
+
+## Evidence frame ที่ doc อ้าง → `docs/evidence/` ไม่ใช่ `unknown_screens/`
+
+`unknown_screens/` อยู่ใน `.gitignore` (bot เขียนทุกครั้งที่ watchdog ยิง) — **เฟรมที่ doc อ้างเป็นหลักฐานต้องย้ายออกมา** ไม่งั้นคนอ่าน clone มาแล้วเปิดไม่ได้ = ตัวเลขในเอกสารพิสูจน์ไม่ได้
+
+- ย้ายเฉพาะเฟรมที่ **มี doc อ้างถึงจริง** — ที่เหลืออยู่ `unknown_screens/` ตามเดิม ลบพร้อมกันได้
+- `docs/evidence/README.md` ต้องบอก **ต่อไฟล์ว่าพิสูจน์อะไร + doc ไหนอ้าง** ไม่ใช่แค่ list ชื่อ (เฟรมเกม 1920×1080 ดูเหมือนกันหมดสำหรับคนที่ไม่ได้อยู่ตอนวัด)
+- ตั้งชื่อตาม **สิ่งที่พิสูจน์** ไม่ใช่ timestamp — `blind_false_positive_in_run.png` บอกได้เอง, `20260806_212129_jump_4.png` บอกไม่ได้
 
 ## `verify_no_*` gate — `lint_config.py` จับที่ขาดไม่ได้
 
@@ -328,6 +355,23 @@ Test ที่ hardcode ค่าของ profile/config ตัวใดตั�
 - dry-run/unit test ไม่พอสำหรับ fix ที่เกี่ยวกับ UI timing, coordinate, หรือ state ของเกมจริง
 - ต้องรันจริงอย่างน้อย 1 รอบเห็นพฤติกรรมที่ fix ตั้งใจแก้ (เช่น relic claim สำเร็จจริง ไม่ใช่แค่ routing ถูกใน dry-run)
 - ถ้า fix ยัง verify ไม่ได้ (ต้องรอ state ที่หายาก เช่น relic ครบ) ให้บอก user ตรง ๆ ว่ายัง unverified แทนที่จะ commit เงียบ ๆ แล้วหวังว่าจะถูก
+
+### Live test — adb / capture / scan marker
+
+**หา adb ผ่านโค้ดของ repo อย่า hardcode** — `python -c "import main; print(main._find_adb())"` (อ่าน `.env` → PATH → LDPlayer install ที่ใหม่สุด). เครื่องนี้ได้ `C:\LDPlayer\LDPlayer14\adb.exe`, device `127.0.0.1:5555` + `emulator-5554`
+
+```bash
+ADB="C:\LDPlayer\LDPlayer14\adb.exe"
+"$ADB" -s 127.0.0.1:5555 shell pidof com.devsisters.crg      # เกมรันอยู่มั้ย
+"$ADB" -s 127.0.0.1:5555 exec-out screencap -p > /tmp/now.png # ต้องผ่าน Bash tool
+head -c 8 /tmp/now.png | xxd                                  # ต้องเห็น 8950 4e47
+```
+
+- **screencap ต้องใช้ Bash tool ไม่ใช่ PowerShell** — PS `>` เติม BOM ทำ PNG พัง (ดู global CLAUDE.md)
+- **Scan marker ทั้งชุดกับเฟรม** เพื่อรู้ว่าอยู่จอไหน — `cv2.matchTemplate` ทุกไฟล์ใน `templates/cookierun/**` (ข้าม `_archive`) เรียง score. เร็วกว่าเดาจากภาพ และเห็น false-positive ด้วย (เจอจริง: `picker_marker` 640×60 ได้ 0.879 บนจอ Events, `boxcounter_marker` 0.944 — ทั้งคู่ไม่อยู่บน absent chain จึงยังไม่ระเบิด)
+- **วัด streak จริงด้วย `-v`** — `main.py … -v 2>dbg.log` แล้วนับ `found=False` ติดกันจาก `log.debug("state=%s detect=%s found=%s …")` ใน `src/fsm.py`. นี่คือวิธีเดียวที่รู้ baseline ของ "ปกติ"
+- **เปิดจอสำหรับเทส guard** — Party Run: tap `(1580,175)` บน home · Events: tap `(1660,340)` · ปิด result: `(690,930)` · จอเปลี่ยนทุกครั้งที่ tap **ต้อง snap ใหม่ก่อนวัดพิกัดถัดไป** (เจอจริง: วัด `(1555,125)` จากเฟรมเก่าแล้วยิงบนเฟรมใหม่ = ตกคนละที่)
+- **Recovery ที่ทำงานถูกจะกินหัวใจ 1 ดวง** ถ้ายิงกลาง run — เทส watchdog บนจอที่ค้างจริง ไม่ใช่ตอนกำลังเล่น
 
 ## Snap ก่อนแตะจอเสมอเมื่อเจอสถานะค้าง/แปลก
 
