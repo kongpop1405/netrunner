@@ -391,6 +391,23 @@ Where the hits landed also settles whether the new poll points were redundant wi
 
 The relay prompt also **appears mid-run, not only on death** — the live hits landed while the cookie was still running (`result_marker` 0.32-0.45). An earlier note here claimed it "only appears on death"; that was wrong, and it is part of why polling from `running` matters.
 
+#### Party Run livelock — a screen with no marker at all (fixed 2026-08-06)
+
+The bot sat on Party Run's **"Select a Mode"** screen indefinitely. The log read as perfectly healthy — the guard chain and both relay polls kept transitioning on schedule — because every state simply *missed* and fell through, while the hop taps landed on a menu instead of a run. No template in any config could see that screen, so nothing recovered from it.
+
+It was reachable by accident, from `probe_friendinfo`. That state fired **two blind taps back to back** — (1552,117) then (1633,107) — and only re-checked its marker after both. Measured live: the first tap does **not** close Friend's Info (marker still 0.974 after it); the second does. So on any pass where the dialog was already gone, the second tap landed on **home**, where (1633,107) sits inside the Party Run / Episode banner strip.
+
+Two fixes:
+
+| fix | what |
+|---|---|
+| `probe_friendinfo` taps **once** per pass | keeps only (1633,107), the tap proven to close the dialog. The self-loop already re-detects, so no tap is ever fired on a screen the state has not just confirmed |
+| new **`guard_not_partyrun`** in the guard chain | `guard_not_news` → `guard_not_partyrun` → `guard_not_inactive`. Detects `home/partyrun_marker.png`, taps the X, re-verifies, falls through when clear. Added to all eight cookierun configs |
+
+`partyrun_marker.png` is the purple **"Select a Mode" title bar cropped with its background colour** — 1.000 on the screen itself, ≤0.403 on every other frame captured. That 0.6 margin is the difference from `relay_prompt2_marker`, a text-only crop over live gameplay whose margin collapsed to 0.02.
+
+⚠️ **The close button is at (1820,135) — the top-right of the *screen*, not a dialog header.** The first version of this guard tapped (1638,108), measured off the Friend's Info dialog by mistake; on the Party Run frame that point is dark background (BGR 93,53,51). The guard detected the screen correctly and tapped **38 passes in a row without closing it** — a livelock inside the very guard meant to fix a livelock. Measure the button on the screen you are closing, not on a similar-looking one.
+
 ⚠️ **`tools/run_toggle.py` had to change with it.** On the *most common* path of all — a box is banked and `--quit-after-boxes 0` says keep playing — `BoxQuitRunner._run_actions` returned the string `"check_shop_after_run"` directly, which jumped straight past the poll that was just spliced in front of it. It now reads `check_box`'s own absent goto (`_continue_run_target()`), so whoever owns that edge owns the routing. Same failure mode as the state-keyed Play-tap check that broke when `probe_relic` was spliced in — see the note in that method.
 
 **Live-verified:** two runs, relay card tapped twice (`relay_prompt2_marker` 0.98 and 0.84 → `tap (977,517)` / `tap (981,514)`), zero errors. Stage 1 has not yet been caught in the wild for the reason above; its template is verified against the captured prompt frame rather than in-loop.

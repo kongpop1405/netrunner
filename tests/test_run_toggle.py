@@ -208,6 +208,43 @@ def test_relay_stage2_lowers_its_threshold(states, base_states):
         assert "threshold" not in base_states[k], "%s should use the global threshold" % k
 
 
+def test_party_run_is_guarded_and_closes_on_its_own_button(base_states):
+    """Party Run's "Select a Mode" screen had no marker at all, so the bot
+    livelocked on it — every state missed, the guard chain and relay polls kept
+    transitioning, and the hop taps landed on a menu. The guard must sit in the
+    chain and tap Party Run's OWN close button (1820,135), not the Friend's Info
+    one (1638,108), which is dark background on that screen and closed nothing
+    across 38 passes."""
+    g = base_states.get("guard_not_partyrun")
+    assert g, "guard_not_partyrun missing"
+    assert g["detect"] == "home/partyrun_marker.png"
+
+    taps = [(a["x"], a["y"]) for a in g["on_match"] if a.get("type") == "tap_xy"]
+    assert taps == [(1820, 135)], taps
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    assert goto(g["on_match"]) == "guard_not_partyrun", "must re-verify after tapping"
+    assert goto(g["on_absent"]) == "guard_not_inactive", "must fall through the chain"
+
+    reachable = [k for k, v in base_states.items()
+                 if k != "guard_not_partyrun" and "guard_not_partyrun" in str(v)]
+    assert reachable, "nothing routes into guard_not_partyrun"
+
+
+def test_probe_friendinfo_taps_once_per_pass(base_states):
+    """It used to fire (1552,117) then (1633,107) before re-checking. Live:
+    (1552,117) does not close the dialog, (1633,107) does — so on a pass where
+    the dialog was already gone the second tap hit home, where (1633,107) is
+    inside the Party Run banner strip, opening the undetectable screen above."""
+    taps = [(a["x"], a["y"]) for a in base_states["probe_friendinfo"]["on_match"]
+            if a.get("type") == "tap_xy"]
+    assert taps == [(1633, 107)], taps
+
+
 def test_continue_run_target_follows_the_config_edge(states):
     """The keep-playing decision in _run_actions must read check_box's absent
     goto, not name check_shop_after_run — a relay poll now sits in between."""

@@ -749,14 +749,9 @@
       "timeout_ms": 15000
     },
     "probe_friendinfo": {
-      "_note": "SAFETY NET: a stray tap can occasionally land on a leaderboard row and open a 'Friend's Info/Cookie/Treasure' popup family — all share the same teal 'Friend's ___' ribbon, detected by matching just the word 'Friend's' (generic X-corner crops kept false-positiving on unrelated popups, e.g. the Event Rewards screen, since round X-close buttons look alike everywhere). Can stack 2 layers: an inner light-gray X (1552,117, closes the top Cookie/Treasure layer) and an outer dark-gray X (1633,107, closes the underlying Info layer). CV verified both centers @1920x1080 — the old 1651,105 landed ~18px RIGHT of the outer X (off the button), so taps did nothing and this state spun forever. Tap BOTH X's each pass, then self-loop until the ribbon is gone (peels one layer per pass regardless of how many are stacked).",
+      "_note": "SAFETY NET: a stray tap can occasionally land on a leaderboard row and open a 'Friend's Info/Cookie/Treasure' popup family — all share the same teal 'Friend's ___' ribbon, detected by matching just the word 'Friend's' (generic X-corner crops kept false-positiving on unrelated popups, e.g. the Event Rewards screen, since round X-close buttons look alike everywhere). Can stack 2 layers: an inner light-gray X (1552,117, closes the top Cookie/Treasure layer) and an outer dark-gray X (1633,107, closes the underlying Info layer). CV verified both centers @1920x1080 — the old 1651,105 landed ~18px RIGHT of the outer X (off the button), so taps did nothing and this state spun forever. Tap BOTH X's each pass, then self-loop until the ribbon is gone (peels one layer per pass regardless of how many are stacked). ONE TAP PER PASS (2026-08-06): this state used to fire (1552,117) and (1633,107) back to back before re-checking. Measured live: (1552,117) does NOT close the dialog (marker still 0.974 after it) and (1633,107) does. So on any pass where the dialog was already gone the second tap landed on home, where (1633,107) is inside the Party Run / Episode banner strip — which opened Party Run's 'Select a Mode', a screen nothing in the config could detect, and the bot livelocked there. Now: one tap, then the self-loop re-detects. Never fire a tap on a screen this state has not just confirmed.",
       "detect": "friends/friendinfo_marker.png",
       "on_match": [
-        {
-          "type": "tap_xy",
-          "x": 1552,
-          "y": 117
-        },
         {
           "type": "wait",
           "ms": 900
@@ -1217,7 +1212,7 @@
         }
       ],
       "on_absent": {
-        "goto": "guard_not_inactive"
+        "goto": "guard_not_partyrun"
       },
       "timeout_ms": 6000
     },
@@ -1607,6 +1602,42 @@
       ],
       "timeout_ms": 5000,
       "threshold": 0.62
+    },
+    "guard_not_partyrun": {
+      "_note": "Close Party Run's 'Select a Mode' screen (added 2026-08-06). This screen had NO marker anywhere in the config, so the bot livelocked on it: every state missed, the guard chain and relay polls kept transitioning normally, and the hop taps landed on a menu instead of a run — a log that reads perfectly healthy while nothing progresses. It is reachable by accident because probe_friendinfo's second blind tap (1633,107) lands in the Party Run banner strip when Friend's Info is not actually up (see that state's note). partyrun_marker.png is the purple 'Select a Mode' title bar cropped WITH its background colour — scores 1.000 here and <=0.403 on every other captured frame, unlike a text-only crop whose score would swing with the scene. on_match taps the X at (1820,135) — the grey circle at the top-right of the SCREEN (area 4919, bbox 80x80 on a live Party Run frame). An earlier version of this guard tapped (1638,108), measured off the Friend's Info dialog by mistake; on the Party Run frame that point is dark background (BGR 93,53,51), so the guard detected the screen 38 passes in a row and never closed it. Measure the button on the screen you are closing, not a similar-looking one.",
+      "detect": "home/partyrun_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 1820,
+          "y": 135
+        },
+        {
+          "type": "wait",
+          "ms": [
+            1020,
+            1440
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "guard_not_partyrun"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "guard_not_inactive"
+        }
+      ],
+      "timeout_ms": 8000
     }
   },
   "progress_states": [
