@@ -282,9 +282,11 @@ Manual equivalent:
 python main.py --config config/cookierun/addfriend.json --max-cycles 50
 ```
 
-## Box Farm — Speed (`launchers/archive/boxrun_default.bat`)
+## Box Farm — Speed, quit at first box (`launchers/boxrun_speed1.bat`)
 
-Double-click **`launchers/archive/boxrun_default.bat`** — runs `config/cookierun/boxrun_default.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward.
+Double-click **`launchers/boxrun_speed1.bat`** — runs `config/cookierun/boxrun_default.json` (device `127.0.0.1:5557`, unlimited cycles, `Ctrl+C` to stop). Farms **Mystery Boxes**: plays runs, and after each Result opens the Mystery Box screen (`?` boxes picked up mid-run) and collects the reward. Quits each run as soon as one box is banked — the `1` in the name — where `boxrun_speed.bat` plays to death on the same boost.
+
+(Was `launchers/boxrun_default.bat`, archived 2026-08-03, then promoted back on 2026-08-04 under the behaviour-first name. The config file keeps its old `boxrun_default.json` filename.)
 
 **Precondition**: **any episode already selected on home** before starting — the bot only taps `Play!`, it does **not** navigate episode selection, so it farms whichever episode is on home. Switch with `tools/switch_episode.py --episode N`. Configs are named by behaviour (`boxrun_magnet` / `boxrun_default` / `boxrun_toggle`), not by episode.
 
@@ -316,7 +318,7 @@ them via flags (relay/jump/slide off, `--quit-after-boxes N`).
 
 ## Box Farm — Toggle (`launchers/boxrun_toggle.bat`)
 
-Double-click **`launchers/boxrun_toggle.bat`** — asks 5 questions, then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
+Double-click **`launchers/boxrun_toggle.bat`** — asks 4 questions, then runs `config/cookierun/boxrun_toggle.json` through `tools/run_toggle.py` with those actions patched in/out of the FSM in memory. The JSON on disk never changes — same Mystery Box farm loop as `boxrun_default`/`ep5`/`ep6`, just with each optional action switchable per launch instead of baked into a separate config file per combination.
 
 The prompts (shortened 2026-08-03 — Enter accepts the bracketed default on every line):
 
@@ -324,15 +326,16 @@ The prompts (shortened 2026-08-03 — Enter accepts the bracketed default on eve
 |--------|---------|-----------|
 | `Fast Start? [y]:` | `y` | `--faststart` |
 | `Boost? 0=none 1=magnet 2=speed 3=coins [0]:` | `0` = none | `--boost` |
-| `Relay Boost? [y]:` | `y` | `--relay` |
 | `Relic? y=claim n=claim+stop [n]:` | `n` = `stop` | `--relic-mode` |
 | `Quit after N boxes? 0=off [0]:` | `0` | `--quit-after-boxes` |
+
+The Relay prompt was **dropped** on 2026-08-04 — the relay is no longer switchable anywhere, so the launcher does not pass `--relay` at all (see the Cookie Relay section below).
 
 Boost is picked **by number**, not by name — an out-of-range answer re-asks instead of falling through to a default.
 
 Two prompts are commented out in the `.bat` rather than deleted:
 
-- **Jump + Slide** — merged into one `JUMPSLIDE` variable that feeds both `--jump` and `--slide`, hardcoded to **`y`**. Uncomment the `set /p "JUMPSLIDE=..."` pair to ask again, but **do not pin it to `n`**: with no jump/slide the hop states carry only a `goto`, and the engine keeps matching against the same cached frame until a pure-goto chain has revisited every state. The Cookie Relay prompt only lasts ~2-3s, so the relay chain would only ever see a stale pre-prompt frame and never fire (verified 2026-08-04). The warm-up burst still fires on `jump=n + slide=n`, but it is a one-shot at run start and does not refresh frames at the later hops.
+- **Jump + Slide** — merged into one `JUMPSLIDE` variable that feeds both `--jump` and `--slide`, hardcoded to **`y`**. Uncomment the `set /p "JUMPSLIDE=..."` pair to ask again. Pinning it to `n` used to also break the relay — with no jump/slide the hop states carried only a `goto`, so the engine kept matching the same cached frame and the relay chain never saw the ~2-3s prompt. Each relay stage now takes its own short jittered wait on the absent path, which the engine treats as an acting state and re-grabs after, so the chain refreshes frames on its own regardless of jump/slide (2026-08-04). The warm-up burst still fires on `jump=n + slide=n` for the separate game-side bug where a zero-tap run is not counted at all.
 - **Idle** — hardcoded to `n` (no idling between games). Uncomment the `set /p "IDLE=..."` pair to ask again.
 
 `tools/run_toggle.py` is unchanged and still takes `--jump`/`--slide`/`--idle` separately, so any combination the launcher no longer asks for is reachable from the command line. Same for `--relic-mode hoard`: the launcher now offers only `claim`/`stop` (hoard and stop overlapped in practice), but the flag still accepts all three.
@@ -343,20 +346,58 @@ Two prompts are commented out in the `.bat` rather than deleted:
 
 Every boxrun/coinrun config carried a blind `relay_tap` at **(960,540)**, fired once per hop. It did nothing, for a simple reason: **there is no relay button on a normal in-run screen.** Measured on live frames, (960,540) has texture 0.00% and std 2.5 — flat gameplay background. A grid scan across 78 mid-run frames from three runs found no intermittent UI element anywhere (best stillness 25.9, where a real control reads near 0), and the partner-count badge at the bottom (avatar + flag, ~521,1009) is an *indicator*, not a button — tapping it mid-run leaves the count unchanged. That badge is also what an earlier fix mistook for the button before reverting to (960,540); both coordinates were wrong.
 
-The real Cookie Relay is a **two-stage prompt that only appears on death**:
+The real Cookie Relay is a **two-stage prompt that appears whenever a relay partner becomes available — mid-run, not only on death** (see the threshold section below for the live evidence; an earlier version of this line said "only on death", which is why nothing polled the relay outside the hop chain):
 
 | stage | screen | tap | template |
 |-------|--------|-----|----------|
 | 1 | `Tap to activate Cookie Relay Boost!` + **Continue** / Quit | **(946,433)** — Continue. **Never** Quit at (946,636), which ends the run | `boxrun/relay_prompt_marker.png` (the Continue pill: self=1.000, stage-2=0.346, everything else ≤0.35) |
-| 2 | same text + the relay cookie's card | **(980,515)** — the card | `boxrun/relay_prompt2_marker.png` (self=1.000, stage-1=0.367, mid-run=0.256) |
+| 2 | same text + the relay cookie's card | **(980,515)** — the card | `boxrun/relay_prompt2_marker.png` (self=1.000, stage-1=0.367; mid-run **up to 0.464** — not 0.256 as first measured, see the threshold section below) |
 
 Stage 1 is detected by the **Continue pill**, not the prompt text: both stages show the identical sentence, so a text crop scored 1.000 on stage 2 as well (margin ≤0.05) and could not tell them apart. The pill crop separates them by 0.65.
 
-Each hop state (`guard_not_inactive`, `jump_2`, `jump_3`, `jump_4`) now routes through `relay_stage1_X → relay_stage2_X → X`, polling at hop cadence because the whole window is only ~2-3 seconds. Stage 2 is reachable directly (stage 1 absent) on purpose: by the time the FSM has walked its guard chain, the Continue tap has often already landed — from the Fast Start spam, or a hop tap — and only the card is left. That is exactly what the live runs showed.
+Each hop state (`guard_not_inactive`, `jump_2`, `jump_3`, `jump_4`) routes through `relay_stage1_X → relay_stage2_X → X`, polling at hop cadence because the whole window is only ~2-3 seconds. Stage 2 is reachable directly (stage 1 absent) on purpose: by the time the FSM has walked its guard chain, the Continue tap has often already landed — from the Fast Start spam, or a hop tap — and only the card is left. That is exactly what the live runs showed.
+
+#### Two more poll points outside the hop chain (added 2026-08-04)
+
+Hanging the chain off the hop states alone still lost relays, because **the hop states are not where the FSM sits for large parts of a cycle**. Two windows had no relay check at all, both wide enough to swallow the entire ~2-3s prompt:
+
+| gap | what the FSM is doing | new poll |
+|---|---|---|
+| `running` → `guard_not_home` → `guard_not_shop` → … | the long guard walk on the way into a run, re-entered from `check_heart` and `await_shop` every cycle | `running` absent → `relay_poll1_running` → `relay_poll2_running` → `guard_not_home` |
+| `check_box` (absent) → `check_shop_after_run` → `probe_boostshop` → … | a run just ended **without** a box, so the loop is leaving the run phase and no hop is visited until the next run has started | `check_box` absent → `relay_poll1_check_box` → `relay_poll2_check_box` → `check_shop_after_run` |
+
+Same shape as the hop chain — Continue (946,433), then the card (980,515), jittered fresh-frame wait on both absent paths. Applied to all seven configs (`running` in every one; `check_box` only in `boxrun_default` and `boxrun_toggle`, the two that have that state).
+
+#### Stage 2's threshold: 0.82 was losing ~3 relays in 4 (fixed 2026-08-04)
+
+`relay_prompt2_marker.png` is a **text crop** — the sentence *"Tap to activate Cookie Relay Boost!"* — and the pixels behind that text are **live gameplay**, so its match score swings with whatever is on screen (coin rain, BONUSTIME flash, star trails). The config's global `match_threshold` is 0.82, which turned out to sit *inside* the score range the real prompt produces:
+
+| measurement | prompt on screen | prompt absent |
+|---|---|---|
+| 83-frame offline scan (Episode 5) | 0.782 · 0.815 · 0.834 | ≤ 0.464 (80 frames) |
+| three live runs, relay actually fired (11×) | 0.73 · 0.76 · 0.77 · 0.79 · 0.80 ×4 · 0.83 · 0.87 | — |
+
+So of eleven real prompts, **0.82 would have caught two** — about four relays in five lost. The misses were silent: nothing in the log above DEBUG level, the run simply carried on without the boost. It was never a detection problem — present-vs-absent separates by ~0.27.
+
+Every stage-2 state now pins **`"threshold": 0.62`** (37 states across the seven configs) — 0.11 below the lowest true positive observed, 0.16 above the highest false one. **Stage 1 keeps the global 0.82**: its template is the green `Continue` pill, which never scored above 0.40 on any frame or in any run, so a lower threshold would only invite false positives there.
+
+Where the hits landed also settles whether the new poll points were redundant with the hop chain — they were not:
+
+| state | hits | note |
+|---|---|---|
+| `relay_poll2_running` | **5** | added 2026-08-04; the hop chain never looks here |
+| `relay_stage2_jump_2` | 5 | existing hop chain |
+| `relay_stage2_check_box` | 1 | existing hop chain |
+
+The relay prompt also **appears mid-run, not only on death** — the live hits landed while the cookie was still running (`result_marker` 0.32-0.45). An earlier note here claimed it "only appears on death"; that was wrong, and it is part of why polling from `running` matters.
+
+⚠️ **`tools/run_toggle.py` had to change with it.** On the *most common* path of all — a box is banked and `--quit-after-boxes 0` says keep playing — `BoxQuitRunner._run_actions` returned the string `"check_shop_after_run"` directly, which jumped straight past the poll that was just spliced in front of it. It now reads `check_box`'s own absent goto (`_continue_run_target()`), so whoever owns that edge owns the routing. Same failure mode as the state-keyed Play-tap check that broke when `probe_relic` was spliced in — see the note in that method.
 
 **Live-verified:** two runs, relay card tapped twice (`relay_prompt2_marker` 0.98 and 0.84 → `tap (977,517)` / `tap (981,514)`), zero errors. Stage 1 has not yet been caught in the wild for the reason above; its template is verified against the captured prompt frame rather than in-loop.
 
-Applied to `boxrun_magnet`, `boxrun_speed`, `boxrun_relay`, `coinrun`, `boxrun_toggle`. ⚠️ `boxrun_relay`'s entire reason for existing was doubling the old blind tap — with that tap gone it is now identical to `boxrun_magnet`.
+Applied to **every** cookierun box/coin config — `boxrun_default`, `boxrun_magnet`, `boxrun_speed`, `boxrun_noboost`, `boxrun_relay`, `coinrun`, `boxrun_toggle`. 8 hop-chain relay states each, plus the 2-4 poll states below (`boxrun_default`/`boxrun_toggle` get 4, the rest 2). ⚠️ `boxrun_relay`'s entire reason for existing was doubling the old blind tap — with that tap gone it is now identical to `boxrun_magnet`, and its launcher was deleted.
+
+**The relay can no longer be switched off** (2026-08-04). `--relay y/n` is still *accepted* by `tools/run_toggle.py` so old scripts and `tools/run_episode_loop.py` do not break, but it is **ignored** — there is no `_strip_relay()`. The states are pure detect-then-tap, so with no prompt on screen they fall straight through; configs run through `main.py` never had a way to disable them either.
 
 ### Why no toggle-family preset ever bought a boost (fixed 2026-08-02)
 
@@ -403,24 +444,28 @@ The patching happens in `tools/run_toggle.py` (`_strip_faststart`, `_disable_mag
 Manual equivalent:
 
 ```powershell
-python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --relay y --relic-mode claim --quit-after-boxes 2 --launch
+python tools/run_toggle.py --faststart y --boost speed --jump y --slide n --relic-mode claim --quit-after-boxes 2 --launch
 ```
 
 ## Box Farm — No-boost/claim preset (`launchers/archive/run_boxrun_noboost_claim.bat`)
 
-Double-click **`launchers/archive/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, **Relay=y**, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. (Relay flipped from `n` to `y` on 2026-08-03, once the relay stopped being a blind no-op tap and became the real two-stage prompt chain — see the Cookie Relay section above.) Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-answering the prompts each launch.
+Double-click **`launchers/archive/run_boxrun_noboost_claim.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=none, Jump=y, Slide=y, RelicMode=claim, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop as above through `tools/run_toggle.py`, just hardcoded for the combination used most often instead of re-answering the prompts each launch. (It still passes `--relay y`, which is accepted and ignored — the relay is always on now.)
+
+⚠️ Superseded by **`launchers/boxrun_noboost.bat`** for plain no-boost farming: that one runs `boxrun_noboost.json` through `main.py` (play-to-death, no relic claim, no `run_toggle.py`). Keep using this preset only if you want the relic *claimed* as well.
 
 **Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
 
 ## Box Farm — Magnet/hoard preset (`launchers/archive/boxrun_magnet_hoard.bat`)
 
-Double-click **`launchers/archive/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, Relay=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-answering the prompts each launch (and `hoard` is no longer offered by `boxrun_toggle.bat` at all).
+Double-click **`launchers/archive/boxrun_magnet_hoard.bat`** — zero prompts, fixed preset: Fast Start=y, Boost=magnet, Jump=y, Slide=y, RelicMode=hoard, QuitAfterBoxes=0, Idle=n, unlimited cycles. (Its `--relay y` is accepted and ignored — the relay is always on now.) Same `boxrun_toggle.json` loop through `tools/run_toggle.py`, hardcoded for the magnet+hoard combination instead of re-answering the prompts each launch (and `hoard` is no longer offered by `boxrun_toggle.bat` at all).
 
 **Precondition**: same as `boxrun_toggle.bat` — any episode selected on home before starting.
 
-## Box Farm — Speed (`launchers/archive/boxrun_speed.bat`) — live-verified 2026-08-02
+## Box Farm — Speed, play to death (`launchers/boxrun_speed.bat`) — live-verified 2026-08-02
 
-Double-click **`launchers/archive/boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` directly (unlimited cycles, `Ctrl+C` to stop). Same Mystery Box farm loop as `boxrun_magnet`, with the Magnetic Aura buy chain swapped for **+17% base speed**: `probe_speed`/`start_run` read `speedbase17_banner.png`, `buy_speed` opens the picker, `picker` Multi-Buys at (953,899).
+Double-click **`launchers/boxrun_speed.bat`** — runs `config/cookierun/boxrun_speed.json` directly (unlimited cycles, `Ctrl+C` to stop). Same Mystery Box farm loop as `boxrun_magnet`, with the Magnetic Aura buy chain swapped for **+17% base speed**: `probe_speed`/`start_run` read `speedbase17_banner.png`, `buy_speed` opens the picker, `picker` Multi-Buys at (953,899). Plays each run to death — `boxrun_speed1.bat` is the same boost but quits at the first box.
+
+(Archived 2026-08-03, promoted back to the active tier on 2026-08-04.)
 
 **Precondition**: any episode selected on home before starting — the bot only taps `Play!`.
 
@@ -442,11 +487,33 @@ Manual equivalent:
 python main.py --config config/cookierun/boxrun_speed.json
 ```
 
-## Box Farm — Relay preset (`launchers/archive/boxrun_relay.bat`)
+## Box Farm — No boost (`launchers/boxrun_noboost.bat`) — added 2026-08-04
 
-Double-click **`launchers/archive/boxrun_relay.bat`** — runs `config/cookierun/boxrun_relay.json` directly (not through `run_toggle.py`), unlimited cycles, `Ctrl+C` to stop. A copy of `boxrun_magnet.json` with exactly one change: **`relay_tap` fires twice per hop instead of once** (`"taps": 2` on all four call sites — `jump_2`, `jump_3`, `jump_4`, `guard_not_inactive`), for a higher Cookie Relay Boost trigger rate. Repeat taps are paced by `Act.relay_gap_s` (0.12s). Everything else — states, coords, Magnetic Aura buy chain, guard chain — is unchanged from `boxrun_magnet`; see that config's `_note` fields for the reasoning behind each state.
+Double-click **`launchers/boxrun_noboost.bat`** — runs `config/cookierun/boxrun_noboost.json` directly through `main.py` (unlimited cycles, `Ctrl+C` to stop). Same play-to-death Mystery Box loop as `boxrun_speed` / `boxrun_magnet`, with **the entire buy chain removed**: no `probe_*`/`buy_*`/`picker`/`wait_roll` states at all, so it never opens the boost shop and **spends no coins**. Use it to farm boxes overnight without draining the coin balance.
 
-The relay button has no template and is a no-op when no partner is ready, so extra taps cost nothing but the ~120ms gap; `relay_taps` in `src/act.py` is the equivalent global knob for every other bot.
+Distinct from the two neighbours it is easy to confuse it with:
+
+| launcher | buys | ends a run |
+|---|---|---|
+| `boxrun_noboost.bat` | nothing | plays to death |
+| `boxrun_speed1.bat` (ex-`boxrun_default`) | +17% speed | quits at the first box |
+| `archive/run_boxrun_noboost_claim.bat` | nothing | plays to death, **and claims the relic** |
+
+**Precondition**: any episode selected on home before starting — the bot only taps `Play!`.
+
+```powershell
+python main.py --config config/cookierun/boxrun_noboost.json
+```
+
+## Box Farm — Relay (`config/cookierun/boxrun_relay.json`, no launcher)
+
+**No `.bat` any more** — `launchers/archive/boxrun_relay.bat` was deleted on 2026-08-04. The config existed for exactly one knob: `relay_tap` fired **twice** per hop instead of once (`"taps": 2` on `jump_2`, `jump_3`, `jump_4`, `guard_not_inactive`), for a higher Cookie Relay trigger rate. That blind tap is gone entirely (see the Cookie Relay section above — it hit empty background and never worked), so the config is now **byte-for-byte equivalent in behaviour to `boxrun_magnet.json`** and there is nothing left for a separate launcher to select.
+
+The JSON is kept only so the older log lines and plan docs that name it still resolve. Run it manually if you want:
+
+```powershell
+python main.py --config config/cookierun/boxrun_relay.json
+```
 
 **Precondition**: same as `boxrun_magnet.bat` — any episode selected on home before starting.
 

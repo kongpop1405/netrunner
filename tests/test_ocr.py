@@ -164,6 +164,25 @@ class TestBoxQuitRunnerFallback:
             r = self._runner(monkeypatch, ocr_result=ocr, quit_after=0)
             assert self._decide(r) == "check_shop_after_run"
 
+    def test_continue_follows_check_box_absent_edge(self, monkeypatch):
+        """A relay poll spliced in front of check_shop_after_run must not be
+        skipped: the real configs route check_box's absent path through
+        relay_poll1_check_box, and the continue-the-run decision has to enter
+        that chain rather than jump past it to the old target."""
+        r = self._runner(monkeypatch, ocr_result=1, quit_after=0)
+        r.cfg.states["check_box"]["on_absent"] = {"goto": "relay_poll1_check_box"}
+        r.cfg.states["relay_poll1_check_box"] = {"detect": "r1.png"}
+        assert self._decide(r) == "relay_poll1_check_box"
+
+    def test_continue_reads_list_shaped_absent_edge(self, monkeypatch):
+        r = self._runner(monkeypatch, ocr_result=1, quit_after=0)
+        r.cfg.states["check_box"]["on_absent"] = [
+            {"type": "wait", "ms": 100},
+            {"type": "goto", "state": "relay_poll1_check_box"},
+        ]
+        r.cfg.states["relay_poll1_check_box"] = {"detect": "r1.png"}
+        assert self._decide(r) == "relay_poll1_check_box"
+
     def test_ocr_error_disables_ocr_for_the_session(self, monkeypatch, caplog):
         import tools.run_toggle as rt
 

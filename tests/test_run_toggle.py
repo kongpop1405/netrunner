@@ -140,6 +140,86 @@ def test_relay_is_not_switchable(states):
     assert not hasattr(rt, "_is_relay")
 
 
+def _relay_pair(states, host):
+    """(stage1, stage2, final target) of the relay poll spliced in front of host."""
+    s1, s2 = "relay_poll1_%s" % host, "relay_poll2_%s" % host
+    assert s1 in states and s2 in states, "%s has no relay poll" % host
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in (block or []) if a.get("type") == "goto"), None)
+
+    assert goto(states[host]["on_absent"]) == s1
+    assert goto(states[s1]["on_match"]) == s2
+    assert goto(states[s1]["on_absent"]) == s2
+    target = goto(states[s2]["on_match"])
+    assert goto(states[s2]["on_absent"]) == target
+    return s1, s2, target
+
+
+@pytest.mark.parametrize("host,target", [("running", "guard_not_home"),
+                                         ("check_box", "check_shop_after_run")])
+def test_relay_is_polled_outside_the_hop_chain(states, host, target):
+    """The hop states are not where the FSM sits for large parts of a cycle, so
+    the relay is also polled from `running` (the long guard walk into a run) and
+    from `check_box`'s absent path (a run that ended with no box). Both must
+    still land on the state they replaced."""
+    assert _relay_pair(states, host)[2] == target
+
+
+@pytest.mark.parametrize("host", ["running", "check_box"])
+def test_relay_poll_taps_continue_then_card_never_quit(states, host):
+    s1, s2, _ = _relay_pair(states, host)
+    assert _taps(states[s1]["on_match"]) == [(946, 433)]   # Continue
+    assert _taps(states[s2]["on_match"]) == [(980, 515)]   # the relay cookie's card
+    for s in (s1, s2):
+        for key in ("on_match", "on_absent"):
+            assert (946, 636) not in _taps(states[s][key]), "%s taps Quit" % s
+
+
+@pytest.mark.parametrize("host", ["running", "check_box"])
+def test_relay_poll_absent_path_refreshes_the_frame(states, host):
+    """src/fsm.py re-grabs only after a state that DID something. Without a wait
+    on the absent path, stage 2 re-judges stage 1's frame and never sees the
+    card — the exact bug the hop chain was fixed for."""
+    s1, s2, _ = _relay_pair(states, host)
+    for s in (s1, s2):
+        assert "wait" in _types(states[s]["on_absent"])
+
+
+def test_relay_stage2_lowers_its_threshold(states, base_states):
+    """Stage 2's template is a text crop over live gameplay, so its score swings
+    with the background. Two measurements, Episode 5, 2026-08-04: an 83-frame
+    offline scan gave 0.782/0.815/0.834 where the prompt was genuinely up vs
+    <=0.464 on the 80 where it was not; three live runs then fired the relay
+    eleven times at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits
+    INSIDE the "present" cluster and would have caught 2 of those 11, so every
+    stage-2 state pins 0.62 — in the gap. Stage 1 (the green Continue pill, max
+    0.40 across every frame and run) must keep the global threshold."""
+    s2 = [k for k, v in base_states.items()
+          if k.startswith("relay_") and "relay_prompt2_marker" in str(v.get("detect"))]
+    s1 = [k for k, v in base_states.items()
+          if k.startswith("relay_") and "relay_prompt_marker.png" in str(v.get("detect"))]
+    assert s2 and s1
+    for k in s2:
+        assert base_states[k].get("threshold") == 0.62, "%s lost its threshold" % k
+    for k in s1:
+        assert "threshold" not in base_states[k], "%s should use the global threshold" % k
+
+
+def test_continue_run_target_follows_the_config_edge(states):
+    """The keep-playing decision in _run_actions must read check_box's absent
+    goto, not name check_shop_after_run — a relay poll now sits in between."""
+    s1, _, _ = _relay_pair(states, "check_box")
+
+    class _Shim:
+        cfg = type("C", (), {"states": states})()
+        _continue_run_target = rt.BoxQuitRunner._continue_run_target
+
+    assert _Shim()._continue_run_target() == s1
+
+
 def test_strip_jump_and_slide_leave_the_goto(states):
     rt._strip_jump(states)
     rt._strip_slide(states)

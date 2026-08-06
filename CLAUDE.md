@@ -16,6 +16,38 @@
 - พลาดมาแล้ว: เพิ่ม `--relic-mode` เข้า `run_toggle.py` แล้วไม่ได้แก้ `launchers/boxrun_toggle.bat` — user รัน `.bat` ไม่เห็น prompt relic เลยเพราะ `.bat` เขียนก่อน flag นี้มีอยู่ และไม่ได้ pass flag นี้ไปให้ python เลย
 - Launcher คนละตัวที่ไม่ได้เรียก script ที่แก้ (เช่น `boxrun_magnet.bat`/`boxrun_default.bat` ไม่เรียก `run_toggle.py`) — ไม่ต้องแตะ
 
+## Python override ที่ return ชื่อ state = ข้าม state ที่ splice เข้ามาใหม่
+
+`BoxQuitRunner._run_actions` (และ subclass อื่นของ `Runner`) return ชื่อ state เพื่อ redirect การเดินของ FSM ได้ — **ชื่อที่ hardcode ตรงนั้นจะ bypass ทุก state ที่ถูกแทรกเข้ามาใน config ทีหลัง เงียบ ๆ**:
+
+- เจอจริง 2026-08-04: แทรก relay poll ไว้หน้า `check_shop_after_run` (`check_box` → `relay_poll1_check_box` → `relay_poll2_check_box` → `check_shop_after_run`) แต่ `_run_actions` return `"check_shop_after_run"` ตรง ๆ ตอน "เห็นกล่องแล้วเล่นต่อ" — ซึ่งเป็น path ที่ใช้บ่อยที่สุด (`quit_after=0` = default) → poll ที่เพิ่งเพิ่มไม่เคยถูกเรียกในเคสนั้นเลย
+- **Fix = อ่าน goto จาก config ไม่ใช่ตั้งชื่อเอง** — `_continue_run_target()` อ่าน `states["check_box"]["on_absent"]` แล้วคืน target จริง (รองรับทั้ง `{"goto": X}` และ list) + fallback ชื่อเดิมถ้าอ่านไม่ได้
+- **กฎเดียวกับ `_PLAY_TAP_XY`** — ที่นั่นเคยพังเพราะ key ด้วยชื่อ state (`verify_no_enterleague`) แล้วมีคนแทรก `probe_relic` มารับ Play tap ต่อ. หลักคือ **"ใครถือ edge คนนั้นถือ routing"** — match ที่ action shape หรืออ่าน edge จาก config ไม่ใช่จำชื่อ state
+- ก่อนแทรก state ใหม่กลาง chain → `grep -n '"<ชื่อ state ปลายทาง>"' tools/ src/` หา Python ที่อ้างชื่อนั้นตรง ๆ ด้วย ไม่ใช่แก้แค่ JSON
+
+## Threshold ระดับ config ตัดผ่ากลาง cluster — วัดก่อนเชื่อ
+
+`match_threshold` ตัวเดียวทั้ง config ใช้ไม่ได้กับ template ที่ **พื้นหลังเป็น gameplay สด** — score แกว่งตามฉาก (coin rain / BONUSTIME / ดาว) จน threshold ตัดผ่ากลางกอง "เจอจริง" แล้วได้ผลแบบสุ่มหัวก้อย:
+
+- เจอจริง 2026-08-04: `relay_prompt2_marker.png` (crop ข้อความ "Tap to activate Cookie Relay Boost!" — ตัวหนังสือขาวบนพื้นเกม) score ตอน prompt โผล่จริง = **0.73-0.87** ส่วนตอนไม่มี prompt ≤ **0.464**. `match_threshold` 0.82 อยู่กลางกองแรก → live 11 hit ผ่านแค่ 2 (เสีย relay ~4 ใน 5) และไม่มี error ให้เห็น มีแต่ DEBUG score line
+- **วิธีวัด**: เก็บเฟรมจริงหลายสิบเฟรม (`adb exec-out screencap -p`, ผ่าน Bash ไม่ใช่ PS — BOM) → `cv2.matchTemplate` + `minMaxLoc` ทุกเฟรม → **แยกกลุ่มด้วยตาว่าเฟรมไหน prompt โผล่จริง** (เปิดรูปดู ไม่ใช่เดาจาก score) → sweep threshold ดู true-positive/false-positive ต่อค่า
+- **ตั้ง per-state `"threshold"`** (validator รับ `0 < thr <= 1`, `src/fsm.py` อ่าน `spec.get("threshold", cfg.match_threshold)`) ให้อยู่ **ในช่อง gap ระหว่าง 2 cluster** ไม่ใช่ชิดขอบใดขอบหนึ่ง
+- **template ที่พื้นหลังคงที่ไม่ต้องลด** — stage 1 (`Continue` pill สีเขียวอิ่ม) ไม่เคยเกิน 0.40 ทั้ง 83 เฟรม เก็บ global 0.82 ไว้ ลดไปมีแต่เปิดช่อง false positive
+- **crop ที่เป็นตัวหนังสือล้วน = เสี่ยงสุด** — ถ้าเลือกได้ crop เอา UI element ที่มีสี/รูปทรงเฉพาะ (ปุ่ม, กรอบ, ไอคอน) ดีกว่าข้อความ
+
+## Poll ที่รอ UI window สั้น — ต้องครอบทุกจุดที่ FSM แวะ
+
+UI ที่โผล่ ~2-3 วิ (relay prompt) จะพลาดถ้า state ที่ตรวจมันแขวนอยู่แค่ chain เดียว — **FSM ใช้เวลาส่วนใหญ่อยู่นอก chain นั้น**:
+
+- เจอจริง: relay chain แขวนแค่ hop state (`jump_2/3/4`, `guard_not_inactive`) แต่มี 2 ช่วงที่ไม่มีใครตรวจเลย — (1) `running` → guard chain ยาว 8 state ก่อนถึง hop (2) `check_box` absent → ออกจาก run phase (`check_shop_after_run` → `probe_boostshop` → …). live: 5 จาก 11 hit จับได้ที่ `relay_poll2_running` ที่เพิ่งเพิ่ม = hop chain เดิมพลาดไป 45%
+- **หา gap ด้วยการไล่ graph** ไม่ใช่เดา: state ไหน `goto` ไปไหน แล้วนับว่าตั้งแต่จุดที่ UI อาจโผล่ ถึง state ที่ตรวจมัน ห่างกันกี่ hop × poll_ms
+- Poll state ใหม่ต้องมี **fresh-frame wait บน absent path** ทุกตัว (ดู section "State ที่มีแต่ `goto`") ไม่งั้น stage 2 ตัดสินจาก frame ของ stage 1
+- **Prompt ที่คิดว่าโผล่ตอนตายอาจโผล่กลาง run** — relay prompt live-confirmed ว่าโผล่ตอน `result_marker` ยัง 0.32-0.47 (ยังวิ่งอยู่) ตรงข้ามกับที่ `_note` เดิมเขียนว่า "on death". อย่าออกแบบ poll จาก assumption ว่า UI โผล่เฉพาะ state ไหน — วัดจาก log จริง
+
+## adb ยิงขนานกับ bot = `PermissionError: [WinError 5]`
+
+Capture loop ที่ยิง `adb exec-out screencap` ทุก 2 วิ พร้อมกับ bot ที่กำลังรัน → bot crash ตอน spawn adb subprocess (`_winapi.CreateProcess` → `Access is denied`). **ห้าม capture ขนานกับ bot** — ถ้าต้องเก็บเฟรมให้ (ก) เก็บก่อน/หลังรัน หรือ (ข) ให้ bot เก็บเอง (`reveal_snap_dir` pattern) หรือ (ค) รัน capture รอบแยกที่ไม่มี bot. Crash แบบนี้ไม่ใช่บั๊กของ config/patch — เช็คก่อนว่ามี process อื่นแย่ง adb อยู่มั้ยก่อนไล่ debug ผิดทาง
+
 ## ย้าย `.bat` ข้ามชั้นโฟลเดอร์ — ต้องแก้ `cd` แล้ว smoke test ทุกกลุ่ม
 
 ทุก launcher เริ่มด้วย `cd /d "%~dp0.."` เพื่อไต่จากที่อยู่ของตัวเองขึ้นไป repo root. `%~dp0` คือ path ของ `.bat` **ตัวมันเอง** ดังนั้นย้ายไฟล์ลง/ขึ้นชั้น = จำนวน `..` ต้องเปลี่ยนตาม:

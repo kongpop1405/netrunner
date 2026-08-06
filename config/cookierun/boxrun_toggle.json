@@ -372,7 +372,7 @@
         }
       ],
       "on_absent": {
-        "goto": "guard_not_home"
+        "goto": "relay_poll1_running"
       },
       "timeout_ms": 300000
     },
@@ -540,7 +540,7 @@
         }
       ],
       "on_absent": {
-        "goto": "check_shop_after_run"
+        "goto": "relay_poll1_check_box"
       },
       "timeout_ms": 8000
     },
@@ -1780,7 +1780,7 @@
       "timeout_ms": 20000
     },
     "relay_stage1_check_box": {
-      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at check_box. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). The game offers 'Tap to activate Cookie Relay Boost!' whenever a relay partner becomes available — MID-RUN, not only on death (live-confirmed 2026-08-04: 11 hits across three runs, result_marker at 0.32-0.47 on those same frames, i.e. the cookie was still running). An earlier version of this note said 'on death', which is why nothing polled the relay outside the hop chain. with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at check_box. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
       "detect": "boxrun/relay_prompt_marker.png",
       "on_match": [
         {
@@ -1813,7 +1813,7 @@
       "timeout_ms": 5000
     },
     "relay_stage2_check_box": {
-      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at check_box. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card.",
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at check_box. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card. THRESHOLD 0.62 (2026-08-04). This template is a text crop whose background is live gameplay, so its score swings with whatever is behind it (coin rain, BONUSTIME flash, star trails). Measured two ways on Episode 5: an 83-frame offline scan scored 0.782/0.815/0.834 on the three frames where the prompt was genuinely up versus <=0.464 on the 80 where it was not; then three live runs fired the relay ELEVEN times, at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits INSIDE the 'prompt present' cluster and would have caught 2 of those 11 — about four relays in five were lost silently, visible only as a DEBUG score line. 0.62 sits in the gap: 0.11 below the lowest true positive seen, 0.16 above the highest false one. Stage 1's Continue pill keeps the global threshold — it never passed 0.40 on any frame or in any run.",
       "detect": "boxrun/relay_prompt2_marker.png",
       "on_match": [
         {
@@ -1843,10 +1843,11 @@
           "state": "check_box"
         }
       ],
-      "timeout_ms": 5000
+      "timeout_ms": 5000,
+      "threshold": 0.62
     },
     "relay_stage1_jump_2": {
-      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_2. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). The game offers 'Tap to activate Cookie Relay Boost!' whenever a relay partner becomes available — MID-RUN, not only on death (live-confirmed 2026-08-04: 11 hits across three runs, result_marker at 0.32-0.47 on those same frames, i.e. the cookie was still running). An earlier version of this note said 'on death', which is why nothing polled the relay outside the hop chain. with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_2. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
       "detect": "boxrun/relay_prompt_marker.png",
       "on_match": [
         {
@@ -1879,7 +1880,7 @@
       "timeout_ms": 5000
     },
     "relay_stage2_jump_2": {
-      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_2. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card.",
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_2. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card. THRESHOLD 0.62 (2026-08-04). This template is a text crop whose background is live gameplay, so its score swings with whatever is behind it (coin rain, BONUSTIME flash, star trails). Measured two ways on Episode 5: an 83-frame offline scan scored 0.782/0.815/0.834 on the three frames where the prompt was genuinely up versus <=0.464 on the 80 where it was not; then three live runs fired the relay ELEVEN times, at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits INSIDE the 'prompt present' cluster and would have caught 2 of those 11 — about four relays in five were lost silently, visible only as a DEBUG score line. 0.62 sits in the gap: 0.11 below the lowest true positive seen, 0.16 above the highest false one. Stage 1's Continue pill keeps the global threshold — it never passed 0.40 on any frame or in any run.",
       "detect": "boxrun/relay_prompt2_marker.png",
       "on_match": [
         {
@@ -1909,10 +1910,11 @@
           "state": "jump_2"
         }
       ],
-      "timeout_ms": 5000
+      "timeout_ms": 5000,
+      "threshold": 0.62
     },
     "relay_stage1_jump_3": {
-      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_3. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). The game offers 'Tap to activate Cookie Relay Boost!' whenever a relay partner becomes available — MID-RUN, not only on death (live-confirmed 2026-08-04: 11 hits across three runs, result_marker at 0.32-0.47 on those same frames, i.e. the cookie was still running). An earlier version of this note said 'on death', which is why nothing polled the relay outside the hop chain. with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_3. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
       "detect": "boxrun/relay_prompt_marker.png",
       "on_match": [
         {
@@ -1945,7 +1947,7 @@
       "timeout_ms": 5000
     },
     "relay_stage2_jump_3": {
-      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_3. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card.",
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_3. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card. THRESHOLD 0.62 (2026-08-04). This template is a text crop whose background is live gameplay, so its score swings with whatever is behind it (coin rain, BONUSTIME flash, star trails). Measured two ways on Episode 5: an 83-frame offline scan scored 0.782/0.815/0.834 on the three frames where the prompt was genuinely up versus <=0.464 on the 80 where it was not; then three live runs fired the relay ELEVEN times, at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits INSIDE the 'prompt present' cluster and would have caught 2 of those 11 — about four relays in five were lost silently, visible only as a DEBUG score line. 0.62 sits in the gap: 0.11 below the lowest true positive seen, 0.16 above the highest false one. Stage 1's Continue pill keeps the global threshold — it never passed 0.40 on any frame or in any run.",
       "detect": "boxrun/relay_prompt2_marker.png",
       "on_match": [
         {
@@ -1975,10 +1977,11 @@
           "state": "jump_3"
         }
       ],
-      "timeout_ms": 5000
+      "timeout_ms": 5000,
+      "threshold": 0.62
     },
     "relay_stage1_jump_4": {
-      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). On death the game offers 'Tap to activate Cookie Relay Boost!' with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_4. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
+      "_note": "Cookie Relay stage 1/2 (CV-verified live 2026-08-03). The game offers 'Tap to activate Cookie Relay Boost!' whenever a relay partner becomes available — MID-RUN, not only on death (live-confirmed 2026-08-04: 11 hits across three runs, result_marker at 0.32-0.47 on those same frames, i.e. the cookie was still running). An earlier version of this note said 'on death', which is why nothing polled the relay outside the hop chain. with Continue (946,433) above Quit (946,636). Tap Continue — NEVER Quit, which ends the run. Detected by the prompt text (relay_prompt_marker: self=1.000, stage-2=0.736, mid-run=0.387, result=0.489). Absent -> the prompt is not up, resume the run at jump_4. REPLACES the old blind relay_tap(960,540), which at this stage lands in the gap BETWEEN the two pills and did nothing. FRESH-FRAME WAIT (2026-08-04): the absent path ends with a short wait, not a bare goto. src/fsm.py re-grabs a frame only after a state that DID something; a pure-goto state keeps matching the frame the last acting state (the hop's jump/slide) captured. Without this wait both relay stages judged the same stale frame, so the ~2-3s prompt was caught only by luck — which is exactly why boxrun_toggle never fired the relay while coinrun sometimes did.",
       "detect": "boxrun/relay_prompt_marker.png",
       "on_match": [
         {
@@ -2011,7 +2014,7 @@
       "timeout_ms": 5000
     },
     "relay_stage2_jump_4": {
-      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_4. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card.",
+      "_note": "Cookie Relay stage 2/2. After Continue the same text stays up with the relay cookie's card at (980,515) — tapping THAT is what actually fires the relay (relay_prompt2_marker: self=1.000, stage-1=0.367, mid-run=0.256). Reached both from stage 1 and directly (stage 1 absent), because the two-tap sequence can be caught mid-way on a later hop. Absent -> nothing to do -> resume at jump_4. The whole prompt window is only ~2-3s, which is why every hop polls this chain instead of checking once per cycle. FRESH-FRAME WAIT (2026-08-04): same reason as stage 1 — without an action here the stage-2 check would re-judge stage 1's frame, i.e. the screen as it was BEFORE the Continue tap landed, and never see the card. THRESHOLD 0.62 (2026-08-04). This template is a text crop whose background is live gameplay, so its score swings with whatever is behind it (coin rain, BONUSTIME flash, star trails). Measured two ways on Episode 5: an 83-frame offline scan scored 0.782/0.815/0.834 on the three frames where the prompt was genuinely up versus <=0.464 on the 80 where it was not; then three live runs fired the relay ELEVEN times, at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits INSIDE the 'prompt present' cluster and would have caught 2 of those 11 — about four relays in five were lost silently, visible only as a DEBUG score line. 0.62 sits in the gap: 0.11 below the lowest true positive seen, 0.16 above the highest false one. Stage 1's Continue pill keeps the global threshold — it never passed 0.40 on any frame or in any run.",
       "detect": "boxrun/relay_prompt2_marker.png",
       "on_match": [
         {
@@ -2041,7 +2044,142 @@
           "state": "jump_4"
         }
       ],
+      "timeout_ms": 5000,
+      "threshold": 0.62
+    },
+    "relay_poll1_running": {
+      "_note": "Cookie Relay stage 1/2, polled from running (added 2026-08-04). Same chain the hop states carry, spliced here because the hop states are NOT where the FSM sits for large parts of a cycle: running's absent path walks the whole guard chain (guard_not_home -> guard_not_shop -> guard_not_sendlife -> ...) before it ever reaches a hop, and the loop re-enters running from check_heart and await_shop too. The prompt window is only ~2-3s, so a gap that wide loses relays outright rather than merely delaying them. Tap Continue (946,433) — NEVER Quit (946,636), which ends the run. Absent -> fall through to guard_not_home via stage 2. The jittered wait on the absent path is the fresh-frame wait: src/fsm.py only re-grabs after a state that DID something, so without it stage 2 would re-judge this stage's frame.",
+      "detect": "boxrun/relay_prompt_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 946,
+          "y": 433
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "relay_poll2_running"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "relay_poll2_running"
+        }
+      ],
       "timeout_ms": 5000
+    },
+    "relay_poll2_running": {
+      "_note": "Cookie Relay stage 2/2, polled from running (added 2026-08-04). Tapping the relay cookie's card at (980,515) is what actually fires the relay; stage 1's Continue only opens this screen. Reachable directly (stage 1 absent) on purpose — the Continue tap has often already landed from some other tap by the time the FSM looks. Absent -> nothing to do -> resume at guard_not_home. Jittered wait for the same fresh-frame reason as stage 1. THRESHOLD 0.62 (2026-08-04). This template is a text crop whose background is live gameplay, so its score swings with whatever is behind it (coin rain, BONUSTIME flash, star trails). Measured two ways on Episode 5: an 83-frame offline scan scored 0.782/0.815/0.834 on the three frames where the prompt was genuinely up versus <=0.464 on the 80 where it was not; then three live runs fired the relay ELEVEN times, at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits INSIDE the 'prompt present' cluster and would have caught 2 of those 11 — about four relays in five were lost silently, visible only as a DEBUG score line. 0.62 sits in the gap: 0.11 below the lowest true positive seen, 0.16 above the highest false one. Stage 1's Continue pill keeps the global threshold — it never passed 0.40 on any frame or in any run.",
+      "detect": "boxrun/relay_prompt2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 980,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "guard_not_home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "guard_not_home"
+        }
+      ],
+      "timeout_ms": 5000,
+      "threshold": 0.62
+    },
+    "relay_poll1_check_box": {
+      "_note": "Cookie Relay stage 1/2, polled from check_box (added 2026-08-04). Same chain the hop states carry, spliced here because the hop states are NOT where the FSM sits for large parts of a cycle: when a run ends WITHOUT a box, check_box's absent path leaves the run phase entirely (check_shop_after_run -> probe_boostshop -> ...) and no hop state is visited again until the next run has already started. The prompt window is only ~2-3s, so a gap that wide loses relays outright rather than merely delaying them. Tap Continue (946,433) — NEVER Quit (946,636), which ends the run. Absent -> fall through to check_shop_after_run via stage 2. The jittered wait on the absent path is the fresh-frame wait: src/fsm.py only re-grabs after a state that DID something, so without it stage 2 would re-judge this stage's frame.",
+      "detect": "boxrun/relay_prompt_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 946,
+          "y": 433
+        },
+        {
+          "type": "wait",
+          "ms": 700
+        },
+        {
+          "type": "goto",
+          "state": "relay_poll2_check_box"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "relay_poll2_check_box"
+        }
+      ],
+      "timeout_ms": 5000
+    },
+    "relay_poll2_check_box": {
+      "_note": "Cookie Relay stage 2/2, polled from check_box (added 2026-08-04). Tapping the relay cookie's card at (980,515) is what actually fires the relay; stage 1's Continue only opens this screen. Reachable directly (stage 1 absent) on purpose — the Continue tap has often already landed from some other tap by the time the FSM looks. Absent -> nothing to do -> resume at check_shop_after_run. Jittered wait for the same fresh-frame reason as stage 1. THRESHOLD 0.62 (2026-08-04). This template is a text crop whose background is live gameplay, so its score swings with whatever is behind it (coin rain, BONUSTIME flash, star trails). Measured two ways on Episode 5: an 83-frame offline scan scored 0.782/0.815/0.834 on the three frames where the prompt was genuinely up versus <=0.464 on the 80 where it was not; then three live runs fired the relay ELEVEN times, at 0.73/0.76/0.77/0.79/0.80x4/0.83/0.87. The global 0.82 sits INSIDE the 'prompt present' cluster and would have caught 2 of those 11 — about four relays in five were lost silently, visible only as a DEBUG score line. 0.62 sits in the gap: 0.11 below the lowest true positive seen, 0.16 above the highest false one. Stage 1's Continue pill keeps the global threshold — it never passed 0.40 on any frame or in any run.",
+      "detect": "boxrun/relay_prompt2_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 980,
+          "y": 515
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "goto",
+          "state": "check_shop_after_run"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "check_shop_after_run"
+        }
+      ],
+      "timeout_ms": 5000,
+      "threshold": 0.62
     }
   },
   "inter_game_delay_s": [
