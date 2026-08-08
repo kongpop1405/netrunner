@@ -44,19 +44,19 @@ if not defined PY (
 )
 
 echo ============================================
-echo   NetRunner - Send-Life to friends
+echo   NetRunner - Send-Life to friends (all Episodes)
 echo ============================================
 echo.
-echo Precondition: home screen, Friends tab open
-echo (the leaderboard/friends list with Send-Life
-echo  icons must already be visible).
+echo Precondition: home screen (any Episode selected -
+echo the Episode picker is opened automatically).
 echo.
-echo Sends to every unsent friend, scrolling the
-echo list as needed. Stops automatically at the
-echo bottom of the list.  Stop early: Ctrl+C
+echo For each Episode 1-6 in turn: sends to every unsent
+echo friend, scrolling the list as needed, then switches
+echo to the next Episode automatically. Stops after
+echo Episode 6.  Stop early: Ctrl+C
 echo.
 
-%PY% main.py --config config/cookierun/sendlife.json --launch --max-cycles 300
+%PY% tools\run_sendlife_loop.py --launch
 set "RC=%ERRORLEVEL%"
 
 echo.

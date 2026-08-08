@@ -89,7 +89,7 @@ def switch_episode(device, store: TemplateStore, episode: int,
             break
         (x1, y1), (x2, y2) = MAP_SWIPE_LEFT
         actor.swipe(x1, y1, x2, y2, ms=400)
-        time.sleep(0.6)
+        time.sleep(1.0)  # see the step-search loop below for why 1.0s, not 0.6s
     else:
         raise SwitchEpisodeError(
             f"map did not reach its left edge ({LEFT_EDGE_MARKER} never matched) "
@@ -106,7 +106,14 @@ def switch_episode(device, store: TemplateStore, episode: int,
             break
         (x1, y1), (x2, y2) = MAP_SWIPE_RIGHT
         actor.swipe(x1, y1, x2, y2, ms=400)
-        time.sleep(0.6)
+        # 0.6s left one live 6-episode run undercounted: the scroll had not
+        # fully settled when the frame was grabbed, so a single step's match
+        # came back low, the loop swiped past the target with no way to back
+        # up, and it walked all the way to the map's left edge (Episode 1)
+        # instead — switch_episode(6) failed "not found after 6 swipes" while
+        # Episode 6 sat one step away the whole time. Measured live
+        # 2026-08-07: the same walk with 1.0s per step matched cleanly.
+        time.sleep(1.0)
 
     if not found:
         raise SwitchEpisodeError(f"{banner_name} not found after {MAX_STEP_SWIPES} swipes")
