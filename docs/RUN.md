@@ -244,16 +244,22 @@ Manual equivalent:
 python main.py --config config/cookierun/giftdraw.json --max-cycles 50
 ```
 
-## Send-Life (friends list)
+## Send-Life (friends list, all Episodes)
 
-Double-click **`launchers/utility/sendlife.bat`** — runs `config/cookierun/sendlife.json`, capped 300 cycles.
+Double-click **`launchers/utility/sendlife.bat`** — runs `tools/run_sendlife_loop.py --launch`, which cycles Episodes 1-6 in order, clearing each one's friend list before switching to the next (fixed-preset launcher, no prompt).
 
-Precondition: **home screen, Friends tab open** (default tab — leaderboard/friends list with Send-Life icons visible). Loop: scan for any visible Send-Life icon (`tap_template`, so row position doesn't matter) → tap → Confirm the "Send a free Life?" dialog → Confirm "Message sent!" → repeat. When no icon is visible it swipes the list up and re-scans; stops automatically once two consecutive scans past a swipe find nothing (bottom of list). `Ctrl+C` to abort early.
+Precondition: **home screen** (any Episode selected on entry — the Episode picker is opened and driven automatically, no need to be on the Friends tab already).
+
+Per-Episode loop (`config/cookierun/sendlife.json`, unchanged): scan for any visible Send-Life icon (`tap_template`, so row position doesn't matter) → tap → Confirm the "Send a free Life?" dialog → Confirm "Message sent!" → repeat. When no icon is visible it swipes the list up and re-scans; stops (FSM `stop`) once several consecutive scans past a swipe find nothing (bottom of list).
+
+Between Episodes, `tools/switch_episode.py`'s `switch_episode()` opens the Episode Map (`Episode` button, top-right of home), swipes to the map's left edge (verified via `episode/ep7_banner.png`, not counted — swipe distance isn't pixel-exact), steps right one swipe at a time checking for the target `episode/epN_banner.png` after each, taps it, then taps `Enter` on the confirm dialog. `--order` defaults to `1,2,3,4,5,6`; a failed switch (e.g. banner not found) logs and skips to the next Episode rather than aborting the whole run. `Ctrl+C` to abort early.
 
 Manual equivalent:
 
 ```powershell
-python main.py --config config/cookierun/sendlife.json --max-cycles 300
+python tools/run_sendlife_loop.py --launch
+# or a custom subset/order:
+python tools/run_sendlife_loop.py --order 2,4,6 --launch
 ```
 
 ## Mailbox Send-Life (Mailbox popup — different screen from the Friends-tab bot above)
@@ -635,7 +641,18 @@ python main.py --config config/cookierun/boxrun_relay.json
 
 ### Heart gate (check_heart)
 
-Every Play goes through `check_heart`: `heart_empty.png` = the `|` separator + the **leftmost** heart gray, cropped live at 0 hearts. Hearts deplete right-to-left, so slot 1 is gray only when fully out; the separator anchors the match to slot 1 (gray hearts in slots 2-5 can't false-positive). Scores: 0 hearts = 1.000, any hearts = ~0.75 (margin over the 0.82 threshold is thinner than other templates — re-verify before raising `match_threshold`). At 0 hearts the bot waits 30s per poll (timeout 25 min covers regen) and **never buys hearts**. Both branches live-verified 2026-07-08: blocked at 0 hearts, played after a heart regenerated mid-wait.
+Every Play goes through `check_heart`: `heart_empty.png` = the `|` separator + the **leftmost** heart gray, cropped live at 0 hearts. Hearts deplete right-to-left, so slot 1 is gray only when fully out; the separator anchors the match to slot 1 (gray hearts in slots 2-5 can't false-positive). Scores: 0 hearts = 1.000, any hearts = ~0.75 (margin over the 0.82 threshold is thinner than other templates — re-verify before raising `match_threshold`). The bot **never buys hearts**.
+
+**At 0 hearts (added 2026-08-08, all `boxrun_*`/`coinrun`/`xpstat` configs)**: instead of idling in a 30s self-loop, `check_heart` runs two errands and comes straight back — 0 hearts means 25+ min of dead air before regen, so the wait is put to use on friend-list upkeep:
+
+1. `tap_template boxrun/boostshop_close_btn.png` with `optional: true` — closes the boost shop popup if one is open (this state is reached via `await_shop -> probe_speed` with the shop possibly still open; its own Play-tap path tolerates that because Play shows through the fade, but the errands below need a clean home screen). `optional`, not `close_popup`: this state is also reached with `--boost none` (`boost_skip_goto` skips the shop chain entirely), where no shop popup exists at all — `close_popup`'s unconditional blind tap at the shop's X coordinate would land on whatever home element happens to sit there instead.
+2. `run_config config/cookierun/sendlife.json` — clears the Episode already selected on home (no episode switching, so boxrun resumes on the same Episode it left).
+3. `run_config config/cookierun/sendlife_mailbox.json` — opens the Mailbox from home itself (`open_mailbox` state, added the same day — the config used to require the Mailbox already open by hand), sweeps the Lives tab, then closes the popup back to home (`close_mailbox` state, same commit — a standalone run used to end deliberately parked on the Lives tab).
+4. `goto check_heart` — re-checks: still 0 hearts -> another errand pass; a heart regenerated meanwhile -> falls through to the `on_absent` Play path.
+
+`run_config` is a generic engine action (`src/act.py`/`src/config.py`/`src/fsm.py`): it loads another config's own `Config`, drives it on a fresh `Runner` sharing this run's `device`, and returns once that config's own `stop` fires. No webhook/restarter/further-errand plumbing is passed through, so an errand can't itself schedule a session reset or chain into a nested errand.
+
+**Bug found live during rollout**: the very first version of this chain skipped step 1 — `check_heart` never closed the shop before handing off, so on a real `await_shop -> probe_speed -> check_heart` entry the shop popup was still covering the Mailbox icon and `open_mailbox` hung retrying `tap_template` for 500+ polls. Fixed by adding the optional shop-close tap; live-verified end-to-end afterwards (0 hearts -> shop closed -> Send-Life sent live -> Mailbox opened itself, swept, closed itself -> `check_heart` re-entered clean, heart had regenerated meanwhile -> resumed the Play path) with zero errors across the full cycle.
 
 ### Coin guard (probe_dc_owned)
 

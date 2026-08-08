@@ -121,12 +121,29 @@
       "timeout_ms": 8000
     },
     "check_heart": {
-      "_note": "SINGLE Play gate. heart_empty present -> wait 30s self-loop until a heart regenerates. Absent (>=1 heart) -> tap Play, then SPAM-TAP the Fast Start button spot (985,515) every ~400ms from the load screen through the whole prompt window and into the run. Blind spam instead of detect+tap: the prompt appears ~5.6s after Play and lingers only ~2s, so a fixed cadence of taps across 0-8s can never miss it, and taps that land before/after the prompt are harmless (empty run area). Ends at running.",
+      "_note": "SINGLE Play gate, reached from await_shop/boost_shop (Play at 1365,931). boxrun/heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> close the boost shop popup IF one is open (this state is reached via await_shop -> probe_speed with the shop possibly still open — its own tap-Play path tolerates that because Play shows through the fade, but the errands below need a clean home screen or their own detects miss everything behind the shop; live-verified 2026-08-08, the very first run through this path hung for 500+ polls on sendlife_mailbox's open_mailbox because the shop was still covering the mailbox icon). tap_template with optional=true, not close_popup: this state is also reached with --boost none (boost_skip_goto skips the shop chain entirely), where no shop popup exists at all and close_popup's unconditional blind tap at the shop's X coordinate would land on whatever home element happens to sit there instead — optional means absent is a normal outcome, not a retry target. Then run the Send-Life and mailbox-sweep errands (their own configs, each ending in their own `stop`) instead of idling here: 0 hearts means 25+ min of dead air before regen, so the wait is put to use on friend-list upkeep rather than burned sitting on a 30s self-loop. Send-Life only clears the Episode already selected on home (no episode switching — that would leave the wrong Episode selected when boxrun resumes); the mailbox sweep runs its own full loop. Then re-check check_heart: still 0 -> another errand pass; a heart regenerated meanwhile -> falls straight through to the on_absent Play path below. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short).",
       "detect": "boxrun/heart_empty.png",
       "on_match": [
         {
+          "type": "tap_template",
+          "template": "boxrun/boostshop_close_btn.png",
+          "optional": true
+        },
+        {
           "type": "wait",
-          "ms": 30000
+          "ms": 800
+        },
+        {
+          "type": "run_config",
+          "config": "config/cookierun/sendlife.json"
+        },
+        {
+          "type": "run_config",
+          "config": "config/cookierun/sendlife_mailbox.json"
+        },
+        {
+          "type": "wait",
+          "ms": 1500
         },
         {
           "type": "goto",

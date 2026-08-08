@@ -16,6 +16,7 @@ _ACTION_TYPES = {
     # shared game actions — behaviour lives in Actor so a fix reaches every
     # config naming the action (see src/act.py "shared game actions").
     "relay_tap", "faststart_tap", "close_popup", "restart_app", "solve_cards",
+    "run_config",
 }
 _REQUIRED_FIELDS = {
     "tap_template": {"template"},
@@ -34,6 +35,7 @@ _REQUIRED_FIELDS = {
     "close_popup": {"x", "y"},
     "restart_app": set(),
     "solve_cards": {"cells", "cell_size", "bail_goto"},
+    "run_config": {"config"},
 }
 
 
@@ -441,6 +443,9 @@ def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path
         parse_range(action["ms"], f"state '{state}': wait.ms", integer=True)
     if kind == "text":
         _validate_text_value(state, action["value"])
+    if kind == "run_config" and not Path(action["config"]).is_file():
+        raise ConfigError(
+            f"state '{state}': run_config target not found: {action['config']}")
 
 
 #: `adb shell input text` only carries printable ASCII, and the string still

@@ -236,3 +236,31 @@ def test_state_threshold_bounds(tmp_path, tdir):
     data["states"]["a"]["threshold"] = 1.5
     with pytest.raises(cfgmod.ConfigError, match="threshold"):
         cfgmod.load(_write(tmp_path, data))
+
+
+def test_run_config_requires_config_field(tmp_path, tdir):
+    data = _minimal(tdir)
+    data["states"]["a"]["on_match"] = [{"type": "run_config"}]
+    with pytest.raises(cfgmod.ConfigError, match="missing field"):
+        cfgmod.load(_write(tmp_path, data))
+
+
+def test_run_config_target_must_exist(tmp_path, tdir):
+    data = _minimal(tdir)
+    data["states"]["a"]["on_match"] = [
+        {"type": "run_config", "config": str(tmp_path / "ghost.json")}
+    ]
+    with pytest.raises(cfgmod.ConfigError, match="run_config target not found"):
+        cfgmod.load(_write(tmp_path, data))
+
+
+def test_run_config_accepted_when_target_exists(tmp_path, tdir):
+    errand = tmp_path / "errand.json"
+    errand.write_text("{}", encoding="utf-8")
+    data = _minimal(tdir)
+    data["states"]["a"]["on_match"] = [
+        {"type": "run_config", "config": str(errand)},
+        {"type": "stop"},
+    ]
+    cfg = cfgmod.load(_write(tmp_path, data))
+    assert cfg.states["a"]["on_match"][0]["config"] == str(errand)

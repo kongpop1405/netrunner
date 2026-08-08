@@ -69,6 +69,27 @@ def test_unknown_action_raises(actor):
         actor.run({"type": "warp"}, FRAME)
 
 
+def test_run_config_calls_injected_errand_runner(actor):
+    calls = []
+    actor.errand_runner = calls.append
+    assert actor.run({"type": "run_config", "config": "config/x.json"}, FRAME) is None
+    assert calls == ["config/x.json"]
+
+
+def test_run_config_without_errand_runner_is_a_noop(actor):
+    assert actor.errand_runner is None
+    # must not raise — degrades like restart_app with no restarter wired
+    actor.run({"type": "run_config", "config": "config/x.json"}, FRAME)
+
+
+def test_run_config_dry_run_never_calls_errand_runner(tmp_path):
+    a = Actor(FakeDevice(), TemplateStore(tmp_path), dry_run=True)
+    calls = []
+    a.errand_runner = calls.append
+    a.run({"type": "run_config", "config": "config/x.json"}, FRAME)
+    assert calls == []
+
+
 def test_jump_taps_inside_zone(actor):
     actor.double_jump_chance = 0  # deterministic single tap
     actor.run({"type": "jump", "cx": 238, "cy": 940, "rx": 175, "ry": 55}, FRAME)

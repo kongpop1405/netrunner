@@ -12,6 +12,7 @@ from .act import ActError, Actor
 from .alert import send_alert, send_alert_with_image
 from .capture import grab
 from .config import Config, detect_names
+from .config import load as load_config
 from .device import AdbError, Device
 from .perceive import Match, PerceiveError, TemplateStore, find_named
 from .session import Restarter, SessionError
@@ -111,6 +112,10 @@ class Runner:
         # `restart_app` actions cycle the process through the same Restarter the
         # scheduled resets use, so a config gets one without its own plumbing.
         self.actor.restarter = self.restarter
+        # `run_config` actions detour into another config's own Runner — see
+        # _run_errand.
+        self.actor.errand_runner = self._run_errand
+        self._errand_dry_run = dry_run
         state = self.cfg.start_state
         entered_at = time.monotonic()
         state_entered_at = time.monotonic()  # reset only when `state` changes
@@ -506,6 +511,24 @@ class Runner:
                 critical=True,
             )
             raise
+
+    def _run_errand(self, path: str) -> None:
+        """Run another config's FSM to completion (its own `stop` action ends
+        it), then return control to this one — the `run_config` action.
+
+        Loads a fresh Config/TemplateStore for `path` and drives it with a new
+        Runner on the same device, so an errand config (Send-Life, the mailbox
+        sweep) is written and tested exactly like a standalone bot. Deliberately
+        does NOT pass this Runner's webhook_url, restarter, or errand_runner
+        through: an errand should not itself schedule session resets or chain
+        into a further errand, and a crash-alert webhook firing mid-errand would
+        misreport which config was running — a failure here surfaces as this
+        state's own ActError/log instead.
+        """
+        sub_cfg = load_config(path)
+        log.info("errand: starting %s (start_state=%s)", path, sub_cfg.start_state)
+        Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)
+        log.info("errand: %s finished, resuming", path)
 
     def _due_routine(self, state: str, inter_game_state: str,
                      due: dict[str, float]) -> dict | None:

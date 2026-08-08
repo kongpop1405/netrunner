@@ -1,5 +1,5 @@
 {
-  "_comment": "Cookie Run OvenBreak — auto Send-Life from the Mailbox > Lives tab. Different screen/flow from sendlife.json (that one drives the home-screen Friends tab list); this one drives the Mailbox popup instead. Precondition: Mailbox open, Lives tab selected (the 'Received Lives are stored for 3 days.' list with per-friend 'Receive & Send' rows and the green 'Quick Receive & Send Lives' banner at the bottom). One tap on that banner opens a 'Send <name> a free Life?' confirm dialog (some friends show an extra '(+3 Gift Points)' line, some don't — live-verified both variants 2026-08-01); tapping Confirm sends it AND immediately re-opens the same dialog for the next friend in the list — no extra 'Message sent' popup in between. So the loop only needs to keep confirming until the dialog stops reappearing (list exhausted). SPEED-TUNED 2026-08-01: poll_ms and waits trimmed after live timing showed the dialog re-opens within ~500-700ms of a Confirm tap. All coords/templates verified live @1920x1080.",
+  "_comment": "Cookie Run OvenBreak — auto Send-Life from the Mailbox > Lives tab. Different screen/flow from sendlife.json (that one drives the home-screen Friends tab list); this one drives the Mailbox popup instead. Precondition: home screen (the Mailbox is opened and the Lives tab reached automatically — see open_mailbox; it was a manual-open precondition until 2026-08-08, when this config started being chained from boxrun's check_heart via run_config and needed to self-open). Once on Lives tab: the 'Received Lives are stored for 3 days.' list with per-friend 'Receive & Send' rows and the green 'Quick Receive & Send Lives' banner at the bottom. One tap on that banner opens a 'Send <name> a free Life?' confirm dialog (some friends show an extra '(+3 Gift Points)' line, some don't — live-verified both variants 2026-08-01); tapping Confirm sends it AND immediately re-opens the same dialog for the next friend in the list — no extra 'Message sent' popup in between. So the loop only needs to keep confirming until the dialog stops reappearing (list exhausted). SPEED-TUNED 2026-08-01: poll_ms and waits trimmed after live timing showed the dialog re-opens within ~500-700ms of a Confirm tap. All coords/templates verified live @1920x1080.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun/mailbox",
   "poll_ms": [
@@ -7,8 +7,33 @@
     600
   ],
   "match_threshold": 0.85,
-  "start_state": "mailbox_base",
+  "start_state": "open_mailbox",
   "states": {
+    "open_mailbox": {
+      "_note": "Entry point — home screen, Mailbox not open yet. Tap the envelope icon (bottom-right of the friends panel, unread-count badge cropped out of the template so it stays valid regardless of how many notices are pending) to open the Mailbox popup; it opens straight onto the Lives tab already selected (live-verified 2026-08-08 — no separate tab tap needed) so a single tap plus settle is enough to reach mailbox_base's screen. Absent (e.g. the Mailbox was already left open by a prior run that didn't reach 'done' cleanly) -> skip the tap and let mailbox_base's own detect decide what's actually on screen.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "tap_template",
+          "template": "mailbox_home_btn.png"
+        },
+        {
+          "type": "wait",
+          "ms": [
+            900,
+            1400
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "mailbox_base"
+        }
+      ],
+      "on_absent": {
+        "goto": "mailbox_base"
+      },
+      "timeout_ms": 8000
+    },
     "mailbox_base": {
       "_note": "Lives tab visible, no send-life dialog yet — tap the Quick Receive & Send Lives banner once to kick off the confirm chain. tap_template (not a fixed tap_xy) so the tap follows wherever the banner actually renders, and every tap already gets engine-level spatial jitter + randomized delay (src/act.py _jitter) — no two taps land on the exact same pixel or land at the exact same interval.",
       "detect": "lives_tab_marker.png",
@@ -62,7 +87,7 @@
       "timeout_ms": 20000
     },
     "done": {
-      "_note": "List exhausted -> the 'All Lives received and sent!' popup fires (live-verified 2026-08-01, hearts went 495->726 confirming real sends, not a false-absent). Close it via Confirm so the run always ends on a clean Lives-tab screen, not a stray popup blocking the next launch. Absent (e.g. dialog stopped reappearing for some other reason, popup already gone) -> stop directly.",
+      "_note": "List exhausted -> the 'All Lives received and sent!' popup fires (live-verified 2026-08-01, hearts went 495->726 confirming real sends, not a false-absent). Close it via Confirm so the run always ends on a clean Lives-tab screen, not a stray popup blocking the next launch. Absent (e.g. dialog stopped reappearing for some other reason, popup already gone) -> close_mailbox directly (the Mailbox itself is still open either way).",
       "detect": "alldone_marker.png",
       "on_match": [
         {
@@ -75,6 +100,27 @@
             500,
             900
           ]
+        },
+        {
+          "type": "goto",
+          "state": "close_mailbox"
+        }
+      ],
+      "on_absent": {
+        "goto": "close_mailbox"
+      },
+      "timeout_ms": 8000
+    },
+    "close_mailbox": {
+      "_note": "Added 2026-08-08 when this config started being chained from boxrun's check_heart via run_config: a standalone run used to end deliberately parked on Lives tab (see 'done' above — that was fine when a person opened/closed the Mailbox by hand), but a chained run hands control straight back to the parent's own home-screen states, which would find the Mailbox popup sitting in front of everything. close_popup (not a bare tap) so the X actually landing gets verified before stop, same as every other popup-close in this repo. Absent -> the Mailbox was somehow already closed (a stray back-key, a fast tap racing this state) -> stop, nothing left to close.",
+      "detect": "mailbox_close_btn.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1692,
+          "y": 135,
+          "verify": "mailbox_close_btn.png",
+          "settle_ms": 1000
         },
         {
           "type": "stop"

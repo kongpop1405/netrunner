@@ -170,3 +170,46 @@ def test_stuck_without_target_raises(monkeypatch, grabs):
     states = {"a": {"detect": "a.png", "timeout_ms": 0}}
     with pytest.raises(fsm.FsmError, match="stuck"):
         fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=10)
+
+
+def test_run_config_action_drives_a_sub_runner_then_resumes(monkeypatch, grabs):
+    """run_config: loads the target config, runs it to completion on a fresh
+    Runner (same device), then the parent's own loop continues."""
+    _patch_find(monkeypatch, {"a.png", "b.png"})
+    sub_cfg = _cfg({"x": {"detect": "x.png", "on_match": [{"type": "stop"}]}}, "x")
+    monkeypatch.setattr(fsm, "load_config", lambda path: sub_cfg)
+
+    sub_runs = []
+    real_run = fsm.Runner.run
+
+    def spy_run(self, **kwargs):
+        if self.cfg is sub_cfg:
+            sub_runs.append(kwargs)
+            return  # pretend the errand's own `stop` ended it immediately
+        return real_run(self, **kwargs)
+
+    monkeypatch.setattr(fsm.Runner, "run", spy_run)
+
+    states = {
+        "a": {"detect": "a.png",
+              "on_match": [{"type": "run_config", "config": "errand.json"},
+                           {"type": "goto", "state": "b"}]},
+        "b": {"detect": "b.png", "on_match": [{"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=10)
+    assert len(sub_runs) == 1
+
+
+def test_run_config_is_a_noop_in_dry_run(monkeypatch, grabs):
+    """dry_run must never trigger a real sub-run — same guard as tap/swipe/etc."""
+    _patch_find(monkeypatch, {"a.png"})
+    load_calls = []
+    monkeypatch.setattr(fsm, "load_config", lambda path: load_calls.append(path))
+
+    states = {
+        "a": {"detect": "a.png",
+              "on_match": [{"type": "run_config", "config": "errand.json"},
+                           {"type": "stop"}]},
+    }
+    fsm.Runner(_cfg(states, "a"), FakeDevice()).run(dry_run=True, max_cycles=5)
+    assert load_calls == []

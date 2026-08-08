@@ -147,6 +147,7 @@ Shared game actions (behaviour lives in `Actor`, tunable in one place):
 | `close_popup` | `x,y`, `verify?`, `settle_ms?`, `retries?` | tap a close button and, with `verify`, re-read the screen and re-tap while the popup's marker still matches — a dismiss that checks it landed |
 | `restart_app` | — | force-stop + relaunch + stability-verify the game, for screens it cannot recover from itself (a lost connection); no-op with a warning when no Restarter is wired |
 | `solve_cards` | `cells`, `cell_size`, `bail_goto`, `pick?`, `gap_min?`, `confirm_xy?` | odd-cards-out captcha: compare the cells against each other and tap the odd ones — or, when the split is not clearly wider than `gap_min`, tap **nothing** and route to `bail_goto` (a wrong captcha answer risks the account) |
+| `run_config` | `config` (path) | detour into another config's own FSM — loads it fresh, drives it on a new `Runner` sharing this run's device, and returns once that config's own `stop` fires. No webhook/restarter/further-errand passed through. No-op with a warning when no Runner wired it up (e.g. called outside `main.py`/a `Runner`). See boxrun's `check_heart` in [docs/RUN.md](docs/RUN.md) for a worked example (Send-Life + Mailbox errands while hearts regen) |
 
 Taps get small random jitter + delay to avoid a robotic fixed-pixel pattern.
 

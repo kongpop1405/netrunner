@@ -144,6 +144,32 @@ class Actor:
     #: the action degrades to a no-op with a warning rather than crashing.
     restarter: object = None
 
+    #: Callback for the `run_config` action, injected by the Runner as
+    #: Runner._run_errand — takes a config path, runs it to completion (that
+    #: config's own `stop` action ends it), and returns. None means the action
+    #: degrades to a no-op with a warning rather than crashing, same as
+    #: restart_app with no restarter wired.
+    errand_runner: object = None
+
+    def run_config(self, path: str) -> None:
+        """Run another config's FSM to completion, then return control here.
+
+        For a detour that is really a whole separate bot — Send-Life, the
+        mailbox sweep — rather than a few taps this config could own itself.
+        Those already end in their own `stop` action, so nothing here needs
+        to know when they are "done"; the sub-run simply returns.
+        """
+        if self.dry_run:
+            log.info("run_config '%s' [dry]", path)
+            return
+        if self.errand_runner is None:
+            log.warning("run_config '%s' requested but no errand_runner is "
+                        "wired — running via main.py without going through "
+                        "a Runner (e.g. a unit test) skips it", path)
+            return
+        log.info("run_config: %s", path)
+        self.errand_runner(path)
+
     def restart_app(self) -> None:
         """Force-stop and relaunch the game, verifying it stays up.
 
@@ -417,6 +443,9 @@ class Actor:
             )
         if kind == "restart_app":
             self.restart_app()
+            return None
+        if kind == "run_config":
+            self.run_config(str(action["config"]))
             return None
         if kind == "close_popup":
             self.close_popup(
