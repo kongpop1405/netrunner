@@ -8,9 +8,12 @@
   ],
   "match_threshold": 0.85,
   "start_state": "open_mailbox",
+  "progress_states": ["mailbox_base", "confirm_loop", "done", "close_mailbox"],
+  "no_progress_goto": "recover_stuck",
+  "no_progress_s": 30,
   "states": {
     "open_mailbox": {
-      "_note": "Entry point — home screen, Mailbox not open yet. Tap the envelope icon (bottom-right of the friends panel, unread-count badge cropped out of the template so it stays valid regardless of how many notices are pending) to open the Mailbox popup; it opens straight onto the Lives tab already selected (live-verified 2026-08-08 — no separate tab tap needed) so a single tap plus settle is enough to reach mailbox_base's screen. Absent (e.g. the Mailbox was already left open by a prior run that didn't reach 'done' cleanly) -> skip the tap and let mailbox_base's own detect decide what's actually on screen.",
+      "_note": "Entry point — home screen, Mailbox not open yet. Tap the envelope icon (bottom-right of the friends panel, unread-count badge cropped out of the template so it stays valid regardless of how many notices are pending) to open the Mailbox popup; it opens straight onto the Lives tab already selected (live-verified 2026-08-08 — no separate tab tap needed) so a single tap plus settle is enough to reach mailbox_base's screen. Absent (e.g. the Mailbox was already left open by a prior run that didn't reach 'done' cleanly) -> skip the tap and let mailbox_base's own detect decide what's actually on screen.\n\nBUG FOUND LIVE 2026-08-08: home_play_marker found=True every poll (the state's own detect is fine) but tap_template 'mailbox_home_btn.png' scored 0.66 against the 0.85 threshold, raising ActError every single poll — caught and logged by the engine's per-action try/except, so the state never crashed, but it also never left: this state's own timeout_ms only fires on the on_absent path, and 'acted' is set True before the tap is attempted, so the no-action livelock detector never tripped either. Two real runs hung 5477s and 5115s before an unrelated external process restart broke them. Root cause: this state is entered straight from sendlife.json's bottom-of-list retry chain, whose last swipe can still be settling (Android list over-scroll bounce-back) when run_config hands off — src/fsm.py's _run_errand now sleeps 1s before starting any errand's Runner to cover exactly this, but progress_states/no_progress_goto below is the backstop in case some other cause produces the same silent tap-fail loop.",
       "detect": "home_play_marker.png",
       "on_match": [
         {
@@ -132,6 +135,22 @@
         }
       ],
       "timeout_ms": 8000
+    },
+    "recover_stuck": {
+      "_note": "Progress watchdog entry (added 2026-08-08 with the on_match-tap-fail livelock above — no_progress_s 30 is short on purpose: every real progress_states hop happens within a few seconds in normal operation, so 30s of nothing is already well past any legitimate wait, unlike a farm loop's multi-minute run). Re-checks open_mailbox's own detect fresh: if the tap failure was transient (the settle-wait bounce, a slow frame) a second attempt from a clean poll often succeeds. Absent (home_play_marker gone — we're not even on home anymore, something else changed the screen entirely) or a second stall -> stop cleanly rather than let this errand hold the parent boxrun config hostage; the parent's own check_heart loop re-enters this config on its next heart-empty pass regardless, so nothing here is lost, only deferred.",
+      "detect": "home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "open_mailbox"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "stop"
+        }
+      ],
+      "timeout_ms": 5000
     }
   }
 }

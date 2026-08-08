@@ -525,6 +525,18 @@ class Runner:
         misreport which config was running — a failure here surfaces as this
         state's own ActError/log instead.
         """
+        # Settle before the sub-Runner grabs its first frame. Bug found live
+        # 2026-08-08: sendlife.json's bottom-of-list chain ends its last swipe
+        # only ~1.2s before returning here, and Android list views bounce back
+        # from an over-scroll — the sub-Runner's very first capture can land
+        # mid-bounce. sendlife_mailbox's open_mailbox tap_template'd the
+        # envelope icon during that bounce and scored 0.66 against an 0.85
+        # threshold, over and over (ActError caught + logged, never escalated,
+        # never re-tried a different way) — a silent multi-thousand-second
+        # livelock only an external restart broke. A screen that has actually
+        # settled costs nothing extra here; one that hasn't gets the grace it
+        # needed.
+        time.sleep(1.0)
         sub_cfg = load_config(path)
         log.info("errand: starting %s (start_state=%s)", path, sub_cfg.start_state)
         Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)

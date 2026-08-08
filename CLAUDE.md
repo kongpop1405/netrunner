@@ -15,6 +15,7 @@
 - เช็คแต่ละ `.bat` ว่า flag ใหม่ต้อง (a) เพิ่ม prompt ให้ user เลือก หรือ (b) ปล่อยเป็น default เงียบๆ ตาม CLI default ก็พอ — ถามถ้าไม่ชัด
 - พลาดมาแล้ว: เพิ่ม `--relic-mode` เข้า `run_toggle.py` แล้วไม่ได้แก้ `launchers/boxrun_toggle.bat` — user รัน `.bat` ไม่เห็น prompt relic เลยเพราะ `.bat` เขียนก่อน flag นี้มีอยู่ และไม่ได้ pass flag นี้ไปให้ python เลย
 - Launcher คนละตัวที่ไม่ได้เรียก script ที่แก้ (เช่น `boxrun_magnet.bat`/`boxrun_default.bat` ไม่เรียก `run_toggle.py`) — ไม่ต้องแตะ
+- **ลบ helper function (ไม่ใช่แค่ flag) ต้อง `grep -rn "<func_name>" tools/ tests/`** ก่อนปิดงาน — ไม่พอแค่ grep ชื่อ flag ใน `.bat`. พลาดจริง 2026-08-04: ลบ `_strip_relay`/`_is_relay` ออกจาก `run_toggle.py` (relay กลายเป็น always-on ไม่ต้อง strip แล้ว) แต่ `tools/run_episode_loop.py` `from tools.run_toggle import (..., _strip_relay, ...)` ตรงๆ — `pytest` collect error `ImportError` ทันที เพราะ module อื่น import symbol นั้นข้าม file, ไม่ใช่แค่เรียกผ่าน CLI. รันเทสต์ทั้ง suite (`pytest tests/ -q`) หลังลบ symbol เสมอ ไม่ใช่แค่เทสต์ของไฟล์ที่แก้
 
 ## Python override ที่ return ชื่อ state = ข้าม state ที่ splice เข้ามาใหม่
 
@@ -184,6 +185,7 @@ Dialog คนละหน้ามีปุ่ม X คนละที่ — **
 - นี่คือเหตุผลที่ Party Run guard ยิง 38 pass เงียบ ๆ ได้: guard **detect ถูก** แต่ปิดไม่ลงและไม่มีใครรู้
 - **Guard/probe ทุกตัวที่ tap แล้ว goto ตัวเอง ต้องใช้ `close_popup`** เว้นแต่มี `match_timeout_ms` กั้น (เช่น `mb_open` ที่ยิง 3 จุดคนละหน้าที่ = flow ไม่ใช่ guard)
 - ตรงกับกฎ "log ระดับ DEBUG ที่ไม่มีใครอ่าน = บั๊กซ่อนได้นาน" — action ที่เงียบตอนพังคือ action ที่ซ่อนบั๊กได้เป็นชั่วโมง
+- **ข้อยกเว้น: popup ที่ "อาจมีหรือไม่มี" ห้ามใช้ `close_popup`** — `close_popup`'s `verify` ตั้งสมมติฐานว่า popup มีอยู่แน่นอน แค่เช็คว่าปิดสำเร็จไหม ถ้าจริงๆ ไม่มี popup เลย (เช่น boost mode ที่ข้าม shop chain ทั้งยวง) `verify` จะ fail ทุกครั้งและ log.warning ปลอมรัว ๆ ทั้งที่ไม่ใช่บั๊ก — ใช้ `tap_template` + `optional: true` แทน (skip เงียบเมื่อไม่เจอ, ไม่ raise ไม่ log ปลอม) เมื่อโจทย์คือ "ปิดถ้ามี" ไม่ใช่ "ต้องมีแล้วปิดให้สำเร็จ" (`check_heart`'s pre-errand shop-close, `src/act.py` `run_config`)
 
 ## Linter ที่ false-positive ประจำ = linter ที่ไม่มีคนอ่าน
 
@@ -355,6 +357,7 @@ Test ที่ hardcode ค่าของ profile/config ตัวใดตั�
 - dry-run/unit test ไม่พอสำหรับ fix ที่เกี่ยวกับ UI timing, coordinate, หรือ state ของเกมจริง
 - ต้องรันจริงอย่างน้อย 1 รอบเห็นพฤติกรรมที่ fix ตั้งใจแก้ (เช่น relic claim สำเร็จจริง ไม่ใช่แค่ routing ถูกใน dry-run)
 - ถ้า fix ยัง verify ไม่ได้ (ต้องรอ state ที่หายาก เช่น relic ครบ) ให้บอก user ตรง ๆ ว่ายัง unverified แทนที่จะ commit เงียบ ๆ แล้วหวังว่าจะถูก
+- **ข้อยกเว้น: 1 commit มีหลาย item ปนกันได้ ถ้าระบุสถานะแต่ละตัวแยกใน commit message** — ไม่ต้องรอทุก item verified 100% ก่อน commit เสมอไป (พลาดจริง 2026-08-04 เป็นบวก: commit `15aa842` รวม relay fix ที่ยัง unverified + launcher rename/create ที่ verify แล้วจริง (dry-run+pytest ผ่านหมด) — user เลือก commit+push ต่อทันทีเมื่อถูกถามตรง ๆ ว่า "relay ยัง unverified — push ไหม") — เขียน commit body แยกชัดว่าอันไหน live-verify แล้ว อันไหนยังไม่ อย่าเหมาบอกว่า "แก้แล้ว" เท่ากันหมด ให้ user เห็นแล้วตัดสินใจเอง ไม่ใช่ Claude เดาแทน
 
 ### Live test — adb / capture / scan marker
 
@@ -394,6 +397,16 @@ head -c 8 /tmp/now.png | xxd                                  # ต้องเ�
 - **Quit ไม่กลับ home ทันที** — หลัง pause→Quit→confirm, เกมมักโยนไป Result popup ใหม่ แล้ว auto-continue เข้า run ถัดไปเองทันที (ไม่รอ user) แม้เพิ่ง quit ไป. ต้องวน pause→Quit→confirm→OK **หลายรอบ** (เจอมาแล้ว 5+ รอบใน session เดียว) กว่าจะถึง home ที่นิ่งจริง — snap ยืนยันเห็น "Play!" + ไม่มี popup ค้างทุกครั้งก่อนสรุปว่าถึง home แล้ว
 - **Relic fragment ผูกกับจำนวน box ที่ farm สะสมจริง ไม่ใช่ episode หรือเวลา** — เคย verify live: ep1 ใช้ไป 21+ box (~93 นาทีต่อเนื่อง) กว่า relic badge จะโผล่ครั้งแรก. อย่าคาดเวลาที่ relic จะมาโดยดูจาก episode หรือนาฬิกา ต้องดูจากจำนวน box banked แทน (`run_result: N/M session boxes` ใน log)
 - **Blind adb tap บนเกมจริงต้อง snap+verify ทุก step ก่อน tap ต่อไป** — ห้ามไล่ tap รัวๆ ตาม assumption ว่าตำแหน่งเดิมจะยังตรง. พลาดมาแล้ว: tap ปุ่ม "Episode" บน home แต่ไปโดน "Play" แทน เพราะมี panel อื่น (Friends list) เปิดค้างอยู่ทำให้ layout เลื่อน — coordinate ที่เคยถูกอาจผิดทันทีถ้าจอมี state ต่างจากตอน measure
+
+## Errand ที่เรียกข้าม config (`run_config`) — self-contained เสมอ, ปิด popup ที่บังก่อน
+
+`run_config` (`src/act.py`/`src/config.py`/`src/fsm.py`, เพิ่ม 2026-08-08) คือ engine action ให้ config หนึ่ง detour เข้า config อื่นทั้งไฟล์บน `Runner` ใหม่ (share `device` เดิม, **ไม่** share `webhook_url`/`restarter`/`errand_runner` — errand จะ schedule session reset หรือ chain errand ซ้อนไม่ได้) แล้วกลับมาทำงานต่อเมื่อ config นั้นจบด้วย `stop` ของมันเอง. Pattern นี้คือทางที่ถูกสำหรับ "sub-bot ทั้งตัว" (ไม่ใช่แค่ไม่กี่ tap) ที่ config หลักต้องแวะทำระหว่างรอ — ใช้ครั้งแรกกับ `check_heart` heart=0 → `sendlife.json` → `sendlife_mailbox.json` → กลับมาเช็ค heart ต่อ (`docs/RUN.md` §"Heart gate").
+
+- **Config ที่จะถูกเรียกแบบ errand ต้อง self-contained จาก state ที่ parent จะอยู่ตอนเรียก (ปกติคือ home)** — ห้ามพึ่ง precondition ที่ user เปิดมือไว้ก่อน. `sendlife_mailbox.json` เดิมคาดว่า Mailbox popup เปิดอยู่แล้ว (เขียนไว้เป็น standalone bot ที่ user เปิดเอง) — พอเรียกจาก errand chain มันไม่มีทางเปิด popup เองเลย ต้องเพิ่ม `open_mailbox`/`close_mailbox` state ให้เปิด/ปิดจาก home เองครบวงจร ก่อนจะ chain ได้จริง
+- **ก่อนเรียก errand ต้องเคลียร์ popup ที่บังอยู่ก่อนเสมอ** — bug จริงที่เจอ: `check_heart` เดิมไม่ปิด boost shop popup ก่อนเรียก `sendlife_mailbox.json`, shop บัง mailbox icon พอดี ทำ `open_mailbox`'s `tap_template` ค้าง retry 500+ polls (ไม่ crash ไม่ error — แค่หา template ไม่เจอเงียบๆ ตลอด). Fix: `tap_template` + `optional: true` ปิด shop ก่อน (ดู "Action ที่ปิด popup ต้อง verify" ด้านบนสำหรับว่าทำไมไม่ใช่ `close_popup`)
+- **Live-test เจอ bug ที่ dry-run/unit-test ไม่เจอ** — ทั้งสอง bug ข้างบน (switch_episode timing, shop-close missing) เจอจากรัน background live-test ยาวจริงบนเครื่อง ไม่ใช่จาก dry-run หรือ pytest — errand chain ที่ตัดกันหลาย config ต้อง live-verify end-to-end อย่างน้อย 1 full cycle ก่อนเชื่อว่าใช้ได้จริง
+- **`_run_errand` ต้อง settle ก่อน grab frame แรกของ sub-Runner** — sub-Runner ใหม่เริ่มจับภาพทันทีที่ config ก่อนหน้าจบ ไม่รอ animation ของ action สุดท้ายนั้น settle เลย. บั๊กจริง 2026-08-08: `sendlife.json`'s bottom-of-list retry chain จบด้วย swipe แล้ว `run_config` ส่งต่อ `sendlife_mailbox.json` ทันที — list ยังเด้งกลับจาก over-scroll (Android list bounce-back) ตอน `open_mailbox` capture เฟรมแรก ทำ `tap_template` score 0.66 (< threshold 0.85) ซ้ำทุก poll นาน 5477s/5115s สองรอบก่อน external restart ช่วยกู้. Fix: `_run_errand` (`src/fsm.py`) `time.sleep(1.0)` ก่อนสร้าง sub-Runner ทุกครั้ง — ครอบทุก errand ในอนาคตด้วย ไม่ใช่แค่ mailbox
+- **`same_state_streak`/`no_act_streak` watchdog ไม่จับ "on_match เจอ แต่ action ข้างในล้มเหลวซ้ำ ๆ" เลย** — สอง gap ซ้อนกัน: (1) `_run_actions` ตั้ง `acted=True` **ก่อน** ลอง action จริง (`src/fsm.py`) ดังนั้น `tap_template` ที่ raise `ActError` ทุก poll ก็ยังนับเป็น "acted" → `no_act_streak` reset ทุกรอบ ไม่มีวัน trip; (2) `timeout_ms`/`absent_retries` ทำงานเฉพาะ path `on_absent` (`detect` ไม่เจอ marker) เท่านั้น — ถ้า `detect` เจอเสมอ (`on_match` เข้าทุกครั้ง) แต่ action ข้างในพัง `timeout_ms` **ไม่มีผลเลย** ต่อให้ตั้งไว้สั้นแค่ไหน. `same_state_streak >= 100` เป็นเส้นเดียวที่จับได้ แต่ยิง webhook alert ครั้งเดียวแล้วปล่อยค้างต่อ ไม่ auto-recover — และ errand sub-Runner ไม่ได้ pass `webhook_url` ผ่านไปด้วย (ตั้งใจ กัน misreport) เลยไม่มีแม้แต่ alert. **Config ที่มี `tap_template` ธรรมดา (ไม่ `optional`) ใน `on_match` ต้องมี `progress_states`/`no_progress_goto`/`no_progress_s` เป็น backstop เสมอ** ถ้ามีความเสี่ยงที่ tap นั้นจะ miss ซ้ำได้ (target อาจไม่ settle, coordinate อาจขยับ) — `no_progress_s` ตั้งสั้นได้เท่าที่ progress state จริงเกิดขึ้นถี่แค่ไหน (`sendlife_mailbox.json` ใช้ 30s เพราะทุก hop ปกติเสร็จในไม่กี่วินาที)
 
 ## Plan lifecycle — แยกโฟลเดอร์เมื่อเสร็จ
 
