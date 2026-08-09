@@ -445,7 +445,7 @@
       "timeout_ms": 15000
     },
     "probe_friendinfo": {
-      "_note": "SAFETY NET: 'Friend's ___' popup family, which can stack two layers. MEASURED LIVE 2026-08-06 (frames archived as docs/evidence/friendinfo_stacked_2layers.png and docs/evidence/friendinfo_single_layer.png):\n• ONE layer ('Friend's Info' alone) — (1633,107) IS the X and closes it in a single tap, 0.974 -> 0.343.\n• TWO layers ('Friend's Cookie' over 'Friend's Info') — the inner card covers (1633,107) (that pixel reads BGR 85,85,85, a shadow) and the inner X sits at about (1555,125). Tapping the outer coordinate hits nothing, so no retry count clears both layers from one coordinate.\nThat is why the close is a close_popup rather than a bare tap: on the stacked case it reported 'still on screen (score 1.00)' twice and then warned, instead of self-looping on an unchecked tap forever — which is how this state class hid a livelock for 38 passes on the Party Run screen. The absent edge hands to `running`, so a layer left behind is picked up on the next pass through the chain rather than blocking here.\nDo NOT add a second blind tap to 'cover' the inner layer: the earlier version fired (1552,117) and (1633,107) back to back, and on any pass where the dialog was already gone the second tap landed on home, inside the Party Run banner strip — opening a screen nothing in the config could detect. One verified close per pass.",
+      "_note": "SAFETY NET: 'Friend's ___' popup family, which can stack two layers. MEASURED LIVE 2026-08-06 (frames archived as docs/evidence/friendinfo_stacked_2layers.png and docs/evidence/friendinfo_single_layer.png):\n\u2022 ONE layer ('Friend's Info' alone) \u2014 (1633,107) IS the X and closes it in a single tap, 0.974 -> 0.343.\n\u2022 TWO layers ('Friend's Cookie' over 'Friend's Info') \u2014 the inner card covers (1633,107) (that pixel reads BGR 85,85,85, a shadow) and the inner X sits at about (1555,125). Tapping the outer coordinate hits nothing, so no retry count clears both layers from one coordinate.\nLIVELOCK CONFIRMED (2026-08-08, live logs 02:57-03:09 and 12:51-13:04, 34 consecutive WARNINGs each episode, ~12min each): the stacked case scored 0.98 across all 3 close_popup retries because every attempt tapped the SAME outer coordinate \u00b110px \u2014 none ever reached the inner card's X. After exhausting retries the state gave up and jumped to `running`, which polished on relay/jump states for a mid-run screen that was never actually there, then looped back to probe_friendinfo ~15s later and repeated \u2014 an unbounded loop the log never showed as \"stuck\" because each pass did produce activity (taps, transitions), just none of it against the real screen.\nFIX (2026-08-09): the previous note said \"do NOT add a second blind tap\" \u2014 correct for an UNSCOPED tap, which the 2026-08-06 attempt was and which fired on home whenever the popup was already gone (see docs/evidence for why). The fix here is different: a ROI-scoped tap_template against friends/friendcookie_innerclose.png (a generic circular-X crop) restricted to roi=[1520,90,120,80] \u2014 verified live to match the inner X at 1.00 on the stacked frame and score only 0.28 on the single-layer frame at that ROI (the single layer's own X sits at 1653,108, outside this box). optional:true means a pass where only one layer exists is a silent no-op, not an error. Sequence: close_popup(outer, retries=1) \u2192 tap_template(inner, ROI-scoped, optional) \u2192 wait \u2192 close_popup(outer, retries=1) again to clear whatever layer is left \u2014 covers single-layer (first close_popup succeeds, inner tap is a no-op, second close_popup finds nothing and verifies clean) and two-layer (first close_popup fails on the outer coordinate every time, inner tap actually closes the Friend's Cookie card, second close_popup then reaches and closes the now-exposed Friend's Info X) without a blind unscoped tap ever firing.",
       "detect": "friends/friendinfo_marker.png",
       "on_match": [
         {
@@ -458,7 +458,25 @@
           "y": 107,
           "verify": "friends/friendinfo_marker.png",
           "settle_ms": 1200,
-          "retries": 2
+          "retries": 1
+        },
+        {
+          "type": "tap_template",
+          "template": "friends/friendcookie_innerclose.png",
+          "roi": [1520, 90, 120, 80],
+          "optional": true
+        },
+        {
+          "type": "wait",
+          "ms": 900
+        },
+        {
+          "type": "close_popup",
+          "x": 1633,
+          "y": 107,
+          "verify": "friends/friendinfo_marker.png",
+          "settle_ms": 1200,
+          "retries": 1
         },
         {
           "type": "goto",
