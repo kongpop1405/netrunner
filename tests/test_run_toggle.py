@@ -553,3 +553,54 @@ def test_relay_stage1_does_not_wait_for_a_marker_that_never_matches(base_states)
         assert s.get("absent_retries") == 2, f"{name} lost the retry that catches relays"
         assert s.get("threshold") == 0.62, (
             f"{name}: 0.82 sits inside the prompt-present cluster and caught 2 of 11")
+
+
+def test_mystery_box_is_reachable_from_both_chains(base_states):
+    """The reward screen that stalled a run for ten minutes.
+
+    On 2026-08-15 21:38 the screen sat on Mystery Box "Open all" while the log walked
+    the guard chain and the jump chain normally — the bot believed it was mid-run and
+    was tapping jump/slide into a reward screen. tools/screen_watch.py reported it at
+    214s; the wall clock only fired at 601s.
+
+    The state table already had `mystery_box` and `mb_open`, and mb_open taps exactly
+    the right buttons. The bug was reachability: `mystery_box` hangs off `run_result`
+    and `mb_open` only, so once the loop was in the run chain there was no path back,
+    and recover_unknown's twelve-probe walk returned to `running` without touching it.
+
+    Fifth screen to need both halves (news, partyrun, friendinfo, sdkfail, mysterybox).
+    Both entry points hand to the SAME mb_open so there is one dismiss implementation.
+    """
+    for name in ("probe_mysterybox", "guard_not_mysterybox"):
+        s = base_states.get(name)
+        assert s, f"{name} missing"
+        assert s["detect"] == "boxrun/mysterybox_marker.png", s["detect"]
+        target = next(a["state"] for a in s["on_match"] if a.get("type") == "goto")
+        assert target == "mb_open", f"{name} must reuse mb_open, not reimplement it"
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    # probe side: reachable by walking absent edges from the probe chain head.
+    hop, walked = "probe_sdkfail", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop].get("on_absent") or {})
+        if not nxt or nxt in walked or nxt not in base_states:
+            break
+        walked.append(nxt)
+        hop = nxt
+    assert "probe_mysterybox" in walked, walked
+
+    # guard side: in the mid-run chain, ahead of the state that concludes "mid-run".
+    hop, walked = "guard_not_home", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        if not nxt or not nxt.startswith("guard_not_"):
+            break
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        hop = nxt
+    assert "guard_not_mysterybox" in walked, walked
+    assert walked.index("guard_not_mysterybox") < walked.index("guard_not_inactive"), walked

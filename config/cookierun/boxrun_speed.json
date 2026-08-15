@@ -83,7 +83,7 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_sendlife"
+        "goto": "probe_mysterybox"
       },
       "timeout_ms": 8000
     },
@@ -1764,6 +1764,44 @@
         },
         {
           "type": "goto",
+          "state": "guard_not_mysterybox"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "probe_mysterybox": {
+      "_note": "Mystery Box seen from the PROBE side (added 2026-08-15). Fifth instance of the 2026-07-31 News pattern, and the first one caught by tools/screen_watch.py rather than by a watchdog: at 21:38 the screen sat on the Mystery Box 'Open all' page while the log walked the guard chain and the jump chain normally, i.e. the bot believed it was mid-run and was tapping jump/slide into a reward screen. The screen watcher reported it after 214s; the wall clock only fired at 601s, 387s later. The state table already had mystery_box and mb_open, with mb_open tapping exactly the right buttons — but mystery_box is reachable ONLY from run_result and mb_open, so once the loop was inside the run chain there was no path back to it. recover_unknown's probe walk went through all twelve probes and returned to `running` without touching it. Detect is the same marker mb_open uses; on_match hands straight to mb_open, which self-loops until the marker clears and then rejoins via mystery_box_recheck. Sits late in the chain, just before probe_sendlife, because it is a reward screen rather than a blocking popup — the launch-time popups ahead of it stay ahead of it.",
+      "detect": "boxrun/mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "mb_open"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_sendlife"
+      },
+      "timeout_ms": 8000
+    },
+    "guard_not_mysterybox": {
+      "_note": "Mid-run twin of probe_mysterybox (added 2026-08-15), and the side that actually failed on 2026-08-15 21:38: the Mystery Box screen was up while the loop walked guard_not_* and the jump chain, so every guard missed, guard_not_inactive concluded 'genuinely mid-run', and jump/slide fired into a reward screen for ten minutes. probe_mysterybox cannot cover that — probe states are only reachable from the probe side. Hands to mb_open exactly as the probe does; mb_open self-loops on the same marker until it clears, so both entry points converge on one dismiss implementation.",
+      "detect": "boxrun/mysterybox_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "mb_open"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
           "state": "guard_not_inactive"
         }
       ],
@@ -1783,5 +1821,5 @@
   "_blind_lap_comment": "Engine default is 160 polls, measured on boxrun_magnet's 32-state table. This table has 63 states and 19 of them drive off on_absent action lists (the jump chain and both relay polls), so a healthy lap walks far more absent edges per game than magnet ever did. Live 2026-08-14: eight fires in 31 minutes of healthy farming, every one at exactly 160, and fire #2 arriving 181s after fire #1 escalated to recover_unknown_restart and force-quit a run that was going fine — the watchdog was the only thing wrong. Real progress states (run_result -> mystery_box -> home -> check_heart) DO match every game, up to 443s apart, which is the window the ceiling has to clear. 600 is provisional: the engine now logs 'blind-streak peak N polls' whenever a match clears the streak, so replace this with the measured peak plus headroom once a few hours of log exist. Do NOT add 'running' to progress_states to dodge this — it detects result_marker.png by ABSENCE, never matches, and is reachable from probe_friendinfo.on_absent, the same path the 2026-07-31 News livelock rode; resetting on it would hand a stuck bot a fresh budget every lap.",
   "no_progress_escalate_goto": "recover_unknown_restart",
   "package": "com.devsisters.crg",
-  "_no_progress_s_comment": "Raised 300 -> 600 on 2026-08-15 from measurement, not taste. Across 1,610 real inter-progress gaps in this repo's logs: median 64s, p90 302s, p99 439s \u2014 so 300 sat exactly at the p90 and **10.8% of healthy gaps (174 of 1,610) tripped it**. Live example 02:33:23: the wall clock fired on a run that was simply long, the Result popup rendered two seconds later, and the recovery walked the probe chain and reached run_result in 3s \u2014 correct behaviour recovering from a false alarm it should never have raised. 600 clears the p99 with 1.4x headroom and still sits well under the blind detector's reach (600 polls at ~0.48/s is ~1250s), so a genuinely stuck screen is still caught by whichever detector trips first. The 1771s max gap in that dataset was the SDK-handshake dead window, i.e. a real fault, and both detectors should fire on that."
+  "_no_progress_s_comment": "Raised 300 -> 600 on 2026-08-15 from measurement, not taste. Across 1,610 real inter-progress gaps in this repo's logs: median 64s, p90 302s, p99 439s — so 300 sat exactly at the p90 and **10.8% of healthy gaps (174 of 1,610) tripped it**. Live example 02:33:23: the wall clock fired on a run that was simply long, the Result popup rendered two seconds later, and the recovery walked the probe chain and reached run_result in 3s — correct behaviour recovering from a false alarm it should never have raised. 600 clears the p99 with 1.4x headroom and still sits well under the blind detector's reach (600 polls at ~0.48/s is ~1250s), so a genuinely stuck screen is still caught by whichever detector trips first. The 1771s max gap in that dataset was the SDK-handshake dead window, i.e. a real fault, and both detectors should fire on that."
 }
