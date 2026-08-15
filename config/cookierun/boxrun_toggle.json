@@ -2291,7 +2291,9 @@
     "check_heart"
   ],
   "no_progress_goto": "recover_unknown",
-  "no_progress_s": 300,
+  "no_progress_s": 600,
+  "blind_lap_cycles": 600,
   "_no_progress_comment": "Progress watchdog (engine-side, src/fsm.py). Reaching any of ['home', 'run_result', 'mystery_box', 'check_heart'] resets the timer; 300s without one means the screen is something the FSM does not recognise — the 2026-07-31 News livelock jumped 389 times over 13h without tripping either existing livelock detector, because state kept changing and jump/slide count as actions. First fire tries the probe chain (recover_unknown); a second fire means that failed, so it cycles the app (recover_unknown_restart) — proven necessary live against the Events popup, which has no marker and ignores Android BACK.",
-  "no_progress_escalate_goto": "recover_unknown_restart"
+  "no_progress_escalate_goto": "recover_unknown_restart",
+  "_no_progress_s_comment": "Raised 300 -> 600 on 2026-08-15 from measurement, not taste. Across 1,610 real inter-progress gaps in this repo's logs: median 64s, p90 302s, p99 439s \u2014 so 300 sat exactly at the p90 and **10.8% of healthy gaps (174 of 1,610) tripped it**. Live example 02:33:23: the wall clock fired on a run that was simply long, the Result popup rendered two seconds later, and the recovery walked the probe chain and reached run_result in 3s \u2014 correct behaviour recovering from a false alarm it should never have raised. 600 clears the p99 with 1.4x headroom and still sits well under the blind detector's reach (600 polls at ~0.48/s is ~1250s), so a genuinely stuck screen is still caught by whichever detector trips first. The 1771s max gap in that dataset was the SDK-handshake dead window, i.e. a real fault, and both detectors should fire on that."
 }
