@@ -97,7 +97,7 @@ Checker ที่ตรวจ "จำนวน `..` ตรงความลึ�
 | งานแทรกเข้ามาระหว่าง session เดิมกำลังทำ (bug ที่เจอกลางทาง, ฟีเจอร์ย่อยที่ต่อยอด) | branch ของ session นั้นที่กำลังทำอยู่ |
 
 - อย่าแก้โค้ดบน `main` ตรง ๆ
-- ถ้าไม่แน่ใจว่างานนี้ "ใหม่" หรือ "แทรกใน session เดิม" ให้ถามก่อนสร้าง branch
+- ไม่แน่ใจว่างานนี้ "ใหม่" หรือ "แทรกใน session เดิม" → แตกจาก `main` แล้วบอกเหตุผลใน commit/สรุป (ดู §Git autonomy — ไม่ต้องรอถาม)
 
 ### เช็ค branch เก่าก่อนสร้างใหม่
 
@@ -140,14 +140,18 @@ Checker ที่ตรวจ "จำนวน `..` ตรงความลึ�
 - ถ้าพบว่าหาย — เช็คว่าเนื้อหานั้นมาจาก commit ไหน (`git log --all -- <file>`) แล้วกู้กลับผ่าน `git show <commit>:<file>` หรือ cherry-pick ส่วนที่หาย ไม่ใช่พิมพ์จำจากบทสนทนา
 - ป้องกันไว้ก่อน: ถ้ารู้ตัวว่าจะสลับ branch ระหว่างมี uncommitted work — commit ให้เสร็จก่อนสลับดีกว่า stash ข้าม branch เมื่อเป็นไปได้
 
-## Merge เข้า main — ห้ามทำเอง
+## Git autonomy (repo นี้เท่านั้น)
 
-**การ merge เข้า `main` เป็นสิทธิ์ user เท่านั้น** ไม่ว่ากรณีใด:
+**User อนุญาตเต็ม 2026-08-15**: commit · push · สร้าง branch · ติด tag · merge เข้า `main` — **ทำได้เองตามสมควร ไม่ต้องถาม**. ทับกฎ global CLAUDE.md §Git permission policy เฉพาะ repo นี้ (repo อื่นยังใช้กฎเดิม อย่าขยาย scope).
 
-- ห้าม `git merge` เข้า `main` เอง แม้เป็น fast-forward ที่ไม่มี conflict
-- ห้าม `git checkout main` แล้ว merge branch อื่นเข้ามาโดยไม่ขอก่อน
-- เตรียม branch/commit ให้พร้อม แล้ว**เสนอ** user ให้ merge เอง หรือขอ confirm ก่อนทำแทน — อย่าตัดสินใจ merge เงียบ ๆ ระหว่างทำงาน แม้จะดูเป็นงานเล็กหรือไม่มีความเสี่ยงทางเทคนิคก็ตาม
-- **หลัง merge เข้า `main` สำเร็จ (ไม่ว่าใครทำ) → เช็ค `git tag --points-at main` ทันทีในเทิร์นถัดไปที่แตะ repo นี้** ก่อนทำอะไรอื่น ถ้าไม่มี tag ที่จุด merge นั้น ให้ tag ตาม pattern เดิม (สล็อกจาก commit message ล่าสุดจริงบน main ตอนนั้น) แล้วถาม user ก่อน push — **อย่ารอจนกว่าจะมี "งานถัดไป" มาเจอเองเหมือนที่พลาดมาแล้ว 2026-08-08**: `main` เดินหน้าไป 28 commits ข้ามหลายวัน (2-8 ส.ค., รวม merge จาก `feature/cookie-relay-chain`) โดยไม่มี tag กำกับเลย เพราะไม่มี session ไหนกลับมาเช็คหลัง merge จนกว่าจะบังเอิญเจอตอน commit อื่นที่ไม่เกี่ยวกัน — ทุก merge คือจุดที่ต้อง tag-check ทันที ไม่ใช่แค่ตอนจะแตก branch ใหม่
+ยังคงเดิมทุกข้อ — autonomy คือไม่ต้องขออนุญาต ไม่ใช่ข้ามขั้นตอน:
+
+- **ซอย commit ตามงานจริง** 1 commit = 1 fix ที่ verify แล้ว (ดู §Progress reporting & commits)
+- **Stage เจาะจงไฟล์** ห้าม `git add -A` · เช็ค `git diff --cached --stat` ก่อนเขียน message
+- **แตก branch ก่อนแก้โค้ด** ตาม §Branching — ไม่แก้บน `main` ตรง ๆ
+- **หลัง merge เข้า `main` สำเร็จ (ไม่ว่าใครทำ) → เช็ค `git tag --points-at main` ทันทีในเทิร์นถัดไปที่แตะ repo นี้** ก่อนทำอะไรอื่น ถ้าไม่มี tag ที่จุด merge นั้น ให้ tag ตาม pattern เดิม (สล็อกจาก commit message ล่าสุดจริงบน main ตอนนั้น) แล้ว push ได้เลย — **อย่ารอจนกว่าจะมี "งานถัดไป" มาเจอเองเหมือนที่พลาดมาแล้ว 2026-08-08**: `main` เดินหน้าไป 28 commits ข้ามหลายวัน (2-8 ส.ค., รวม merge จาก `feature/cookie-relay-chain`) โดยไม่มี tag กำกับเลย เพราะไม่มี session ไหนกลับมาเช็คหลัง merge จนกว่าจะบังเอิญเจอตอน commit อื่นที่ไม่เกี่ยวกัน — ทุก merge คือจุดที่ต้อง tag-check ทันที ไม่ใช่แค่ตอนจะแตก branch ใหม่
+
+**ยังต้องขอก่อน** — destructive ที่กู้ยาก: `reset --hard` · `push --force` · `branch -D` · rewrite history (`rebase -i`, `filter-branch`, `amend` ที่ push แล้ว)
 
 ## Livelock ที่ log อ่านเหมือนปกติ — จอที่ไม่มี marker เลย
 

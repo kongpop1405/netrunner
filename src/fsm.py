@@ -65,6 +65,16 @@ _NO_PROGRESS_DEFAULT_S = 300
 #   Events popup (no marker, survives BACK) .... 229 polls before escalation
 # 160 sits comfortably above the first and below the second, and still cuts in
 # 2-3x faster than the 300s wall clock did.
+#
+# Both numbers came off boxrun_magnet's 32-state table, so this is the DEFAULT,
+# not a universal ceiling: a longer table walks proportionally more absent edges
+# per lap. Live on 2026-08-14 boxrun_speed (63 states, 19 of them driven by
+# on_absent action lists) tripped it eight times in 31 minutes of healthy
+# farming, every one at exactly 160, and the second fire in a 3-minute window
+# escalated to restart_app and force-quit a run that was going fine. Configs
+# past that size must set `blind_lap_cycles` to something measured on their own
+# healthy run. Raising the ceiling only delays the trip — it never disables the
+# detector, which is what keeps the 2026-07-31 News livelock covered.
 _BLIND_LAP_CYCLES = 160
 
 # Extra seconds a recovery gets before the watchdog may judge it. `restart_app`
@@ -127,6 +137,7 @@ class Runner:
         # transition, which is precisely what a chain walking 30 states in a row
         # does, so it can never see a lap that matched nothing anywhere.
         blind_streak = 0
+        blind_peak = 0           # highest streak a match ever cleared, for sizing
         adb_fail_streak = 0      # consecutive cycles lost to adb errors
         perceive_fail_streak = 0  # consecutive cycles lost to perceive-layer OOM
         no_act_streak = 0        # consecutive polls without any screen-affecting action
@@ -137,14 +148,16 @@ class Runner:
         # tapping, which is exactly the blind spot the News livelock lived in.
         last_progress_at = time.monotonic()
         no_progress_s = self.cfg.no_progress_s
+        blind_lap_cycles = self.cfg.blind_lap_cycles or _BLIND_LAP_CYCLES
         progress_watchdog = (self.cfg.no_progress_goto is not None
                              and bool(self.cfg.progress_states))
         # Consecutive fires with no progress in between. The cheap recovery runs
         # first; if it had worked, a progress state would have reset this to 0.
         no_progress_fires = 0
         if progress_watchdog:
-            log.info("progress watchdog: %.0fs without %s -> goto '%s'",
-                     no_progress_s, sorted(self.cfg.progress_states),
+            log.info("progress watchdog: %.0fs (or %d blind polls) without %s -> goto '%s'",
+                     no_progress_s, blind_lap_cycles,
+                     sorted(self.cfg.progress_states),
                      self.cfg.no_progress_goto)
         gotos_on_frame = 0       # pure-goto transitions served by the cached frame
         frame = None  # reused across pure-goto transitions; None = must re-grab
@@ -225,6 +238,15 @@ class Runner:
                         acted = False
                     elif m.found:
                         absent_streak = 0
+                        # How high the streak climbed before something matched IS
+                        # the measurement blind_lap_cycles has to be sized off, and
+                        # it is invisible unless recorded here: a fire only ever
+                        # reports the threshold it tripped, never the healthy peak.
+                        if blind_streak > blind_peak:
+                            blind_peak = blind_streak
+                            log.info("blind-streak peak %d polls (cleared by '%s'); "
+                                     "trip line is %d", blind_peak, state,
+                                     blind_lap_cycles)
                         blind_streak = 0  # something on screen was recognised
                         entered_at = time.monotonic()
                         on_match = spec.get("on_match", [])
@@ -389,8 +411,8 @@ class Runner:
                         # cheap one has to come first or it never gets to speak:
                         # the wall clock cannot tell a long run from a stuck one,
                         # while a miss streak far past what a healthy run produces
-                        # (measured at 70 — see _BLIND_LAP_CYCLES) means nothing on
-                        # screen is recognised.
+                        # means nothing on screen is recognised. What "far past"
+                        # is depends on the table — see blind_lap_cycles.
                         #
                         # A recovery in flight is exempt from BOTH. The grace window
                         # pushes last_progress_at into the future, which held the
@@ -399,7 +421,7 @@ class Runner:
                         # the streak sails past the trip line and stacks a second
                         # recovery on the one still running — the exact failure
                         # _RECOVERY_GRACE_S exists to prevent, arriving by a new door.
-                        blind = blind_streak >= _BLIND_LAP_CYCLES and stalled_s >= 0
+                        blind = blind_streak >= blind_lap_cycles and stalled_s >= 0
                         if blind or stalled_s >= no_progress_s:
                             no_progress_fires += 1
                             # Which detector spoke is the whole diagnosis, so it
@@ -409,7 +431,7 @@ class Runner:
                             # markers work but the loop is not banking anything.
                             why = (f"{blind_streak} consecutive polls matched nothing "
                                    f"across {len(self.cfg.states)} state(s) — well past "
-                                   f"the {_BLIND_LAP_CYCLES} a healthy run stays under, so "
+                                   f"the {blind_lap_cycles} a healthy run stays under, so "
                                    f"the screen is unrecognised rather than slow (only "
                                    f"{stalled_s:.0f}s of {no_progress_s:.0f}s elapsed)"
                                    if blind else

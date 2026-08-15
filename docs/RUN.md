@@ -143,15 +143,17 @@ loop is on the probe side, and the loop was in the `running` guard chain.
 - **Progress watchdog** (`src/fsm.py`) — the class fix, since News was the 14th
   popup patched this way. Configs declare `progress_states` (arrivals that prove
   the loop got somewhere: `home`, `run_result`, `mystery_box`, `check_heart`) and
-  `no_progress_goto`. Reaching none of them for `no_progress_s` (300s) means the
-  screen is something the FSM cannot name, whatever it looks like. Opt-in: configs
-  without the keys behave exactly as before.
-- **Blind-screen detector** (`_BLIND_LAP_CYCLES`, 160 — added 2026-08-06) — the
-  same recovery, reached without waiting out the wall clock. `no_progress_s` alone
-  cannot tell a long run from a stuck one; a streak of polls where *nothing*
-  matched can. It counts across state changes, unlike `absent_streak`, which resets
-  on every transition and so never sees a chain walking thirty states in a row.
-  The threshold is measured, not derived — see the live numbers below.
+  `no_progress_goto`. Reaching none of them for `no_progress_s` means the screen is
+  something the FSM cannot name, whatever it looks like. Opt-in: configs without the
+  keys behave exactly as before. **`no_progress_s` was 300 and is now 600** — see
+  [the wall clock had the same sizing bug](#the-wall-clock-had-the-same-sizing-bug-2026-08-15).
+- **Blind-screen detector** (`blind_lap_cycles` per config, engine default 160 —
+  added 2026-08-06, made per-config 2026-08-14) — the same recovery, reached without
+  waiting out the wall clock. `no_progress_s` alone cannot tell a long run from a
+  stuck one; a streak of polls where *nothing* matched can. It counts across state
+  changes, unlike `absent_streak`, which resets on every transition and so never
+  sees a chain walking thirty states in a row. The threshold is measured, not
+  derived, **and it is table-length-dependent** — see the live numbers below.
 - **Two-step recovery, escalating** — `recover_unknown` spends one cheap pass
   through the probe chain (free, and it fixes every *known* popup); a second fire
   means that failed, so `recover_unknown_restart` cycles the app and re-auths via
@@ -172,7 +174,146 @@ Applied to all five guard-chain configs (`boxrun_default`, `boxrun_magnet`,
 not *recognised* — each watchdog fire archives its frame to `unknown_screens/` and
 posts it to Discord precisely so the marker can be cropped afterwards.
 
-##### Why `_BLIND_LAP_CYCLES` is 160 and not "one and a half laps"
+##### The wall clock had the same sizing bug (2026-08-15)
+
+Fixing the blind detector left its twin mis-sized in exactly the same way. Measured over
+**1,610 real inter-progress gaps** in this repo's logs (arrivals at `run_result`,
+`mystery_box`, `home`, `check_heart`):
+
+| statistic | gap |
+|---|---|
+| median | 64s |
+| p90 | **302s** |
+| p99 | **439s** |
+| max | 1771s (the SDK dead window — a real fault) |
+
+`no_progress_s` was **300**, i.e. sitting exactly on the p90, so **10.8% of healthy gaps
+(174 of 1,610) tripped it** — a false recovery roughly every ninth game. Caught live at
+02:33:23: the wall clock fired on a run that was merely long, the Result popup rendered two
+seconds later, and the recovery walked the probe chain and reached `run_result` in three
+seconds. Textbook correct handling of an alarm that should never have been raised.
+
+Raised to **600** in all eight configs: clears the p99 with 1.4× headroom, and still speaks
+before the blind detector's reach (600 polls at the measured 0.48 polls/s is ~1250s), so the
+two detectors keep covering different failure shapes instead of one shadowing the other.
+`tests/test_run_toggle.py::test_wall_clock_clears_a_long_but_healthy_game` locks it against
+the measured p99 and against becoming slower than the blind detector — mutant-verified by
+setting it back to 300, which fails the test.
+
+**The general lesson, now paid for three times** (48 → 160 → 300): every threshold in this
+watchdog must be sized off a *measured distribution of healthy behaviour*, and re-measured
+whenever the state table or the game's pacing changes. A number that was right for a
+32-state table and a 4-minute game is not right for a 66-state table and a 7-minute one.
+
+##### The dialog that cost ten hours: `probe_sdkfail` + `guard_not_sdkfail` (2026-08-15)
+
+Counting warnings per hourly log across 2026-08-14 turned up a window nobody had noticed:
+
+| hours | blind fires/hr | `restart_app`/hr | games banked |
+|---|---|---|---|
+| 00:00-07:00 | 11-12 | 0 | 10-12 |
+| **08:00-17:00** | 14-17 | **6-9** | **0** |
+| 19:00-22:00 | 7-19 | 0-5 | 7-151 |
+| 00:00-01:32 (after the 600 fix) | **0** | 0 | 12 |
+
+Ten hours, zero games, a forced game restart every seven minutes. The cause is a dialog
+with no marker anywhere in the config: **"Failed to connect to server. SDK Code:0"**, the
+server-handshake failure that lands on the title screen. **166 of the 313 frames archived
+that day are this dialog.** Every state missed it, the blind watchdog escalated to
+`restart_app`, the client came back up, failed the handshake again, and the loop repeated.
+
+⚠️ **`probe_connectionlost` does not cover it.** That marker is the *"Connection lost!"*
+text and scores **0.648** on this frame — below the 0.82 threshold. The two dialogs share a
+frame style and a green Confirm button but not a single word of text (template cross-scores
+0.156 / 0.235), which is exactly why one marker cannot serve both.
+
+The fix is the now-familiar pair, in all eight farm configs:
+
+| piece | what |
+|---|---|
+| `home/sdkfail_marker.png` | the "Failed to connect to server. SDK" line cropped tight (50×770 at 575,405). **1.000** on 30/30 sampled positives, max **0.321** across 60 negatives — margin 0.679 |
+| `probe_sdkfail` | **head** of the probe chain, ahead of `probe_connectionlost` — nothing further down the chain can work while the client is offline. `home` and `recover_unknown_probe` both route into it |
+| `guard_not_sdkfail` | mid-run chain, `partyrun → friendinfo → **sdkfail** → inactive`. **This is the side that actually failed**: the archived frames came from `relay_stage2_jump_3`, `jump_2` and `running` |
+| both `on_match` | tap Confirm (959,687 — inside the measured HSV blob bbox 744,614,431,147), then `restart_app` + `recover_login`. Confirm drops to the title screen rather than dismissing, so resuming `running` or `home` would resume a session that no longer exists |
+
+**Fourth screen to need a probe *and* a guard** — News (2026-07-31), Party Run (08-06),
+Friend's Info (08-14), SDK-failure (08-15). The lesson has now cost four incidents: a
+probe-side fix cannot catch a popup that opens mid-run, because `probe_*` states are only
+reachable from the probe side. When adding a marker for any new screen, add both halves at
+once unless you can show the screen cannot appear during a run.
+
+**Not every archived frame is a bug — check before cropping a marker for it.** The
+wall-clock detector fired once on 2026-08-14 at 23:48:29 (`no progress for 301s`) and
+archived `20260814_234830_relay_stage1_jump_4.png`. Nothing in the config matched it
+(best score 0.547), which looks exactly like an unnamed-popup livelock. It was not:
+the frame is the **"Save the Cookie" Pit Lift revive prompt** during BONUS TIME — the
+game offering to sell a revive after the cookie falls. That screen clears itself when
+the cookie dies, and the run banked normally right through it (`run_result` 23:48:55 →
+`mystery_box` 23:48:58 → `home` 23:49:42 → next game 23:50:11). The recovery spent one
+cheap probe-chain pass and never escalated. One fire in four hours of log, not a
+pattern.
+
+Do **not** add a marker and a guard for it. The config's own `_comment` already warns
+that this screen can render *the same instant as the Cookie Relay prompt*, so a guard
+closing it risks eating the relay — the failure the 2026-08-09 `absent_retries` fix
+exists to prevent. A screen that resolves itself and costs nothing is correctly handled
+by the watchdog noticing and moving on.
+
+##### Relay stage 1 was waiting on a marker that never matches (2026-08-15)
+
+The Cookie Relay is worth chasing: over 202 runs in one day, runs that fired a relay lasted
+**280s median against 226s without — +54s, +24%**. Only 77 of those 202 caught one.
+
+The prompt window is 2-3s and the bot was re-checking every **13.0s**, so roughly three
+relays in four were never even looked at. The time was going somewhere specific:
+`relay_stage1_*` and `relay_poll1_*` — five states — each carried `absent_retries: 2` plus
+`absent_wait_ms: 400`, about **5s per visit**, waiting for `relay_prompt_marker`.
+
+That marker has never matched. **Zero hits across 1,414 archived frames, best 0.673** — and
+the frame holding that best score is the Mailbox *"Send a free Life"* dialog, not a relay
+prompt at all. The commit that built the two-stage chain had already written it down: *"its
+green Continue pill never passed 0.40."* This build's mid-run relay prompt has **no
+Continue/Quit pair**; it shows the text plus the partner cookie's card, and tapping the
+**card** is what fires it — stage 2's job, which works (threshold 0.62, 72 relays caught).
+
+So five states were spending ~25s of every 13s check cycle on a guaranteed miss, while the
+thing they were guarding lasts three seconds.
+
+Fix: strip `absent_retries` / `absent_wait_ms` from stage 1 and poll 1 in all seven configs.
+**The states stay** — if a build ever restores the two-button dialog this is where it gets
+caught; they simply no longer wait around for it. Stage 2 is untouched: it matches, so its
+retry and its 0.62 threshold both earn their keep.
+
+Measured after the change: `relay_poll1_running` **5.0s → 0.0s**, check interval **13.0s →
+9.0s**, catch chance ~23% → ~33%.
+
+⚠️ **Counting relay taps by coordinate gives 16,840; the true number is 72.** The Fast Start
+spam taps (985,515) with ±5px jitter, which lands on the relay card at (980,515). Only the
+surrounding state tells them apart — count taps that occur inside `relay_poll2` / `relay_stage2`
+`on_match`, never by pixel.
+
+##### Watching the screen, not just the log (2026-08-15)
+
+`tools/screen_watch.py` grabs a frame every 20s, compares consecutive frames with an 8×8
+aHash, and when the screen holds still past a threshold it identifies it against every
+template and saves the frame. `IDLE_SCREENS` gives the screens that are *supposed* to sit
+still — heart regen (1800s), home (600s) — longer patience.
+
+It exists because the log has a blind spot the SDK dialog walked straight through: for ten
+hours the log looked busy (`restart_app` every ~7 minutes) while the screen never changed,
+and nobody knew what was on it until a frame was opened by hand. The log reports what the bot
+*believes*; this reports what is actually on the glass.
+
+Proven both ways before being trusted, which is the only way a watcher like this is worth
+anything: silent for 70s while the bot played normally, then — with the bot killed so the
+screen genuinely froze — `SCREEN stuck 28s on mailbox/dialog_buttons_marker.png (1.00)` plus
+the saved frame.
+
+```bash
+python tools/screen_watch.py --interval 20 --stuck-after 180
+```
+
+##### Why the blind threshold is per-config (and was 160)
 
 Sizing it off the state table (32 states → 48) looked reasonable and was wrong.
 Live on 2026-08-06, `boxrun_magnet` measured **70 consecutive misses while running
@@ -188,10 +329,126 @@ at the moment the detector fired on it.
 | healthy `boxrun_magnet` run (measured twice: 70, 68) | **70** |
 | Events popup — no marker, survives BACK | **229** before escalation |
 
-160 clears the first with 2.3× headroom and still beats the 300s clock by 2-3×.
+160 cleared the first with 2.3× headroom and still beat the 300s clock by 2-3×.
 Re-tested after the change: **0 fires** across 200 cycles, peak streak 68, and the
-run finished at 58.1M. `tests/test_observability.py` locks both bounds so the next
-person to touch the number has to argue with the measurement.
+run finished at 58.1M.
+
+**Then the tables grew, and 160 became the false positive it replaced
+(2026-08-14).** Both numbers above came off a **32-state** `boxrun_magnet`. Every
+boxrun config has since roughly doubled — `speed`/`magnet` 63 states, `relay`/
+`coinrun` 65, `toggle` **88** — with 19-28 of them driven by `on_absent` action
+lists. A longer table walks proportionally more absent edges per lap, so a ceiling
+fitted to 32 states fires mid-run on 63.
+
+Live on `boxrun_speed`: **eight fires in 31 minutes** of healthy farming, every one
+at exactly streak 160, and the eighth (`21:46:37`, streak 190, *"only 1s of 300s
+elapsed"*) escalated to `recover_unknown_restart` and force-quit a run that was
+going fine. Archived frames were ordinary mid-run gameplay. Real progress states do
+match every game (`run_result` → `mystery_box` → `home` → `check_heart` arriving as
+a set) but up to **443s apart**, and `blind_streak` resets only on an actual marker
+match — so a healthy game legitimately spends that whole window blind.
+
+Fix: **`blind_lap_cycles` is now a per-config field**, falling back to the engine's
+160 when unset. All eight boxrun/coinrun/xpstat configs set **600**. The engine also
+logs `blind-streak peak N polls (cleared by '<state>')` whenever a match clears the
+streak — the measurement that was never recorded before, since a fire only ever
+reported the threshold it tripped.
+
+First readings on the restarted `boxrun_speed` (2026-08-14 23:32 onward):
+
+| peak | cleared by | note |
+|---|---|---|
+| 4 | `await_shop` | startup, before the first run |
+| **172** | `jump_2` | 4 min in — **above the old 160 threshold** |
+| **176** | `relay_stage2_jump_3` | 15 min in |
+| **177** | `relay_stage2_jump_3` | 22 min in, 6 games — *looked* like a plateau (+4, then +1) |
+| **187** | `jump_2` | 3 h in |
+| **201** | `running` | 3 h in |
+| **205** | `running` | 3.2 h in |
+| **227** | `jump_2` | 4.5 h in — **past the 229 that used to separate stuck from healthy** |
+| **401** | `check_shop_after_run` | 14 h in — one 486s run, the longest of 224 that day. **67% of the 600 trip line** |
+
+172 already settles the diagnosis: a run doing nothing wrong exceeds 160, so the old
+ceiling sat below what healthy play produces and **every config still on 160 would
+fire mid-run**, not just `boxrun_speed`. The `cleared by` column shows what actually
+resets the streak — a different mid-run state each time (`await_shop`, `jump_2`,
+`relay_stage2_jump_3`), never a progress state, which is why the count swings with
+the rhythm of a game instead of climbing monotonically.
+
+Same run, measured across the restart at 23:32:51:
+
+| | window | watchdog fires | rate |
+|---|---|---|---|
+| before (160) | 18.4 min | 3 | **9.8/hr** |
+| after (600) | 15 min | **0** | 0 |
+
+Four Mystery Boxes banked in that window with no recovery and no forced restart.
+
+**600 is the right number — and waiting for data is what proved it.** At 22 minutes the
+peak read 177 and looked settled (+4, then +1), which made `300` look like the obvious
+tightening: 1.7× headroom, and it would let the blind detector speak in ~10 minutes
+instead of ~21. Three hours later the peak was **205**. Against that, `300` gives only
+**1.46×** headroom — thin enough to start false-firing on the slowest games, which is the
+exact failure being fixed. `600` gives 2.9×.
+
+What the numbers settled:
+
+- Measured poll rate: **0.48/s** (632 transitions over 1,312s).
+- Healthy peak **205** polls ≈ 427s blind — right up against the p99 healthy gap of 439s
+  measured independently from 1,610 progress arrivals. Two different measurements of the
+  same underlying thing agreeing is the strongest evidence available here.
+- `600` ≈ 1250s before the blind detector speaks, and the wall clock now fires at 600s,
+  so **the wall clock is the fast detector and the blind streak is the backstop**. That
+  ordering is deliberate: a screen with no marker at all is caught by the clock, while the
+  streak catches the case where markers exist but nothing is banking.
+
+⚠️ **A plateau over 20 minutes is not a plateau.** 177 → 187 → 201 → 205 → 227 kept climbing
+for four and a half hours. The value only logs on a new record, so a quiet stretch reads
+identically to a converged one. Anyone re-tightening this should watch for a full session,
+include heart-empty waits and boost-shop detours, and keep at least 2× over the highest
+reading.
+
+**Second day of data (2026-08-15, 224 gaps, errand detours excluded):** median 240s, p90
+301s, p99 327s, **max 486s**. Against that distribution the 600s wall clock fired **zero**
+times, while the old 300 would have fired on **12.9%** of them — the same verdict the
+1,610-gap dataset gave, reached independently.
+
+That 486s run is what produced the 401 peak, so **the two knobs are not equally comfortable**:
+the wall clock has 1.2× headroom over the worst observed gap, the blind streak only
+**1.5×** (401 of 600). Watch the peak rather than the fire count — a run at 0 fires can
+still be one long game away from tripping. If the peak reaches ~480, raise
+`blind_lap_cycles` before it fires, not after.
+
+⚠️ **Exclude errand detours when measuring gaps.** `periodic_routines` hand off to another
+config through `run_config` (sendlife, then sendlife_mailbox), and the farm loop reaches no
+progress state for as long as that takes — 1,466s on 2026-08-15 at 11:45. That is correct
+behaviour, not a stall, and the watchdog rightly stayed quiet. But a naive gap measurement
+counts it as one enormous healthy gap and inflates every percentile. Filter on the
+`run_config:` line before computing anything from arrival timestamps.
+
+⚠️ **The old healthy/stuck boundary is gone.** The table at the top of this section says a
+healthy `boxrun_magnet` run peaked at 70 and the Events popup — a genuinely stuck screen —
+reached 229 before escalating, and 160 was chosen to sit between them. On the 66-state
+configs a *healthy* run now reaches **227**. There is no longer a gap between the two
+measurements to put a threshold in, which is why the wall clock (600s) is now the fast
+detector and the blind streak (600 polls, ~1250s) is the backstop rather than the other way
+round. Do not resurrect "somewhere between 70 and 229" as a sizing rule; both numbers belong
+to a state table that no longer exists.
+
+`tests/test_observability.py` locks the default's bounds *and* the override in both
+directions — a config may raise the line, and a raised line must still trip.
+Mutant-verified: ignoring the override fails both new tests, hardcoding
+`blind = False` fails the second.
+
+⚠️ **Do not add absence-checked states to `progress_states`.** A first attempt at
+this fix added `"running"` to all eight configs, reasoning that `running` is real
+gameplay being misread as "no progress". It cannot work and is unsafe:
+`progress_states` membership resets only `last_progress_at`, never `blind_streak`
+(which resets at `fsm.py`'s `elif m.found:` and nowhere else), so the wall clock was
+never what fired; `running` detects `result_marker.png` by **absence** and so never
+matches anyway; and `running` is reachable from `probe_friendinfo.on_absent` — the
+exact path the 2026-07-31 News livelock rode, meaning a stuck bot would have had its
+budget refreshed every lap.
 
 Both detectors are exempt during a recovery. The grace window works by pushing
 `last_progress_at` into the future, which silences the wall clock but says nothing
@@ -441,7 +698,7 @@ Two fixes:
 
 | fix | what |
 |---|---|
-| `probe_friendinfo` closes **once** per pass | one verified close at (1633,107). No tap is ever fired on a screen the state has not just confirmed |
+| `probe_friendinfo` never taps **blind** | every tap is either verified (`close_popup` re-reads the frame) or template-matched inside a ROI. Superseded the original "closes once per pass" rule on 2026-08-09 — see below, one coordinate cannot clear two layers |
 | new **`guard_not_partyrun`** in the guard chain | `guard_not_news` → `guard_not_partyrun` → `guard_not_inactive`. Detects `home/partyrun_marker.png`, closes at (1820,135), falls through when clear. In all eight farm configs and, since 2026-08-06, the three home-screen errand configs too |
 
 `partyrun_marker.png` is the purple **"Select a Mode" title bar cropped with its background colour** — 1.000 on the screen itself, ≤0.403 on every other frame captured. That 0.6 margin is the difference from `relay_prompt2_marker`, a text-only crop over live gameplay whose margin collapsed to 0.02.
@@ -470,22 +727,63 @@ transition probe_friendinfo -> running
 It said so, then moved on rather than spinning. Measuring that frame corrected a
 claim this document used to make:
 
-| dialog | its X | (1633,107) is |
-|---|---|---|
-| **Friend's Info** alone | (1637,108) | the button — closes in one tap, 0.974 → 0.343 |
-| **Friend's Cookie** stacked over it | ~(1555,125), the inner card's | covered by that card — BGR(85,85,85), a shadow |
+| dialog | its X | (1633,107) is | frames seen |
+|---|---|---|---|
+| **Friend's Info** alone | (1638,107), bbox (1598,68,80,78) | the button — the white glyph itself, closes in one tap, 0.974 → 0.343 | 1 |
+| **Friend's Cookie** over it | (1570,127), bbox (1500,101,76,79) | covered by that card — BGR(85,85,85), a shadow | 1 (the 08-06 evidence frame) |
+| **Friend's Treasure** over it | (1423,88), bbox (1368,50,80,76) | covered the same way | **11** — the common case |
 
 So (1552,117) was never a dead coordinate; it is the *inner* layer's button, and
 the earlier measurement that dismissed it was taken on a single-layer dialog where
-that point lands on the card. No retry count clears two layers from one
-coordinate — but the state does not livelock either: it warns, hands to `running`,
-and the next pass finds whichever layer is left. Both frames are in
-`docs/evidence/` (`friendinfo_stacked_2layers.png`, `friendinfo_single_layer.png`);
-neither alone describes the dialog, which is how the original measurement went
-wrong.
+that point lands on the card. No retry count clears two layers from one coordinate.
 
-Do **not** re-add a second blind tap to "cover" the inner layer. That is exactly
-the shape that opened Party Run in the first place.
+The third row is new on 2026-08-14 and came from scanning **all 1,401** archived
+`unknown_screens/` frames for `friendinfo_marker`: 12 hits, all hashes distinct, so
+11 separate events between 08-03 and 08-11 plus one on 08-14. Every one of the 11
+is Friend's **Treasure** over Info at *identical* coordinates. The ROI that shipped
+on 2026-08-09 was measured against the single Cookie frame in `docs/evidence/` and
+covered only that layout — it scored **0.453 on Treasure, below the 0.82
+threshold**, so the inner-X fallback never fired on the variant that actually keeps
+happening. `roi=[1360,50,240,110]` now covers both stacked layouts (0.997 Treasure,
+1.000 Cookie), ignores the single-layer frame (0.252, and `optional: true` makes
+that a silent no-op), and produced **0 false positives across 178 random
+non-friendinfo frames**.
+
+⚠️ **Measure a candidate ROI by calling `perceive.find(frame, tmpl, roi=...)`, never
+by slicing the frame yourself.** A first attempt at `[1350,50,240,80]` passed a
+hand-written slice that padded the box by the template size; `find` crops to exactly
+`(x,y,w,h)` and needs the whole 55×55 template to fit *inside* it, so that box
+scored 0.169 on the Cookie layout — silently reintroducing the bug it was meant to
+fix. `tests/test_run_toggle.py::test_probe_friendinfo_never_taps_blind` now asserts
+the template fits around both measured centres, and that assertion is
+mutant-verified against the bad box.
+
+Do **not** re-add a second *blind* tap to "cover" the inner layer. That is exactly
+the shape that opened Party Run in the first place — the inner tap is legitimate
+only because it is ROI-scoped and template-matched.
+
+##### The same popup, third time: `guard_not_friendinfo` (2026-08-14)
+
+`probe_friendinfo`'s hit count across four hours of live log was **zero** while the
+player kept reporting the dialog on screen. The reason is the 2026-07-31 News bug
+verbatim, for the third popup in a row: Friend's Info opens *mid-run*, where the
+loop is walking the `running` guard chain, and `probe_*` states are only reachable
+from the probe side. All seven guards missed, `guard_not_inactive.on_absent`
+concluded "genuinely mid-run", and the hop taps landed on the dialog.
+
+The archived frames say so directly — the 11 Treasure hits were captured in
+`running`, `jump_3`, `relay_stage2_*`: mid-run states, every one.
+
+Fixed by the same shape as `guard_not_news`: a `guard_not_friendinfo` in the chain,
+`guard_not_partyrun` → **`guard_not_friendinfo`** → `guard_not_inactive`, carrying
+the identical close sequence and ROI as the probe-side state but ending at `running`
+rather than `home`, because the run is still live behind the dialog. Added to all
+eight farm configs.
+
+The previous version of this section said the state "warns, hands to `running`, and
+the next pass finds whichever layer is left". That was wrong about *which* pass:
+mid-run there is no next probe pass, which is why the dialog survived for minutes at
+a time. The guard is what makes that sentence true.
 
 ##### The errand configs got the same guard (2026-08-06)
 
@@ -632,6 +930,10 @@ python main.py --config config/cookierun/boxrun_relay.json
 ```
 
 **Precondition**: same as `boxrun_magnet.bat` — any episode selected on home before starting.
+
+**STUCK-POPUP FIX (2026-08-13)** — `probe_congrats` (the "Congratulations! Episode N Stage M / 1 Cookie Relay Boost" level-up ticket popup, distinct from the mid-run Cookie Relay Boost prompt) used the engine default `popup_retries=1` (2 taps, 4s @ settle_ms=2000) then blindly went to `home` regardless of whether the close actually took. Live-caught: the marker still scored 1.00 after both attempts, `home`'s own probe missed too (Play! covered by the still-open popup), and the run fell into the 63-state probe chain for ~229s before the 160-poll livelock detector recovered it — this is the "popup takes forever to close" symptom reported live. Fixed: `retries` raised to 3 (4 taps, ~8s, matching giftdraw's rescue-chain grace), and the blind goto-home replaced with a 2-hop `congrats_recheck` / `congrats_recheck2` chain that re-verifies the marker before deciding — one more blind tap on hop 1, then bail to `home` on hop 2 regardless, so a popup that genuinely never closes still can't loop forever. `congrats_recheck`/`congrats_recheck2` are unverified live (no popup was on screen during the fix session to exercise the `on_match` branch) — confirm on the next real hit.
+
+**Watchdog false-positive restarts** — this config's 65-state table outgrew the engine's blind-screen threshold; see [Why the blind threshold is per-config](#why-the-blind-threshold-is-per-config-and-was-160).
 
 ## Preconditions (cookierun run-grind)
 

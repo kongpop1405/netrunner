@@ -84,6 +84,12 @@ class Config:
     #: where to go on the SECOND consecutive fire — the first recovery having
     #: failed to produce any progress. None repeats `no_progress_goto` forever.
     no_progress_escalate_goto: str | None = None
+    #: consecutive polls where every state missed before the screen is called
+    #: unrecognised. Must exceed what a HEALTHY run of this config produces:
+    #: chains that drive off absent edges (jump chains, relay polls) match
+    #: nothing by design, so a long table needs a higher ceiling than a short
+    #: one. None uses the engine default measured on a 32-state config.
+    blind_lap_cycles: int | None = None
 
     def poll_delay_s(self) -> float:
         """Seconds to sleep for one poll — jittered when a range was configured."""
@@ -180,6 +186,8 @@ def load(path: str | Path) -> Config:
         no_progress_goto=raw.get("no_progress_goto"),
         no_progress_s=float(raw.get("no_progress_s", 300)),
         no_progress_escalate_goto=raw.get("no_progress_escalate_goto"),
+        blind_lap_cycles=(int(raw["blind_lap_cycles"])
+                          if raw.get("blind_lap_cycles") is not None else None),
     )
     _validate(cfg)
     return cfg
@@ -240,6 +248,8 @@ def _validate(cfg: Config) -> None:
         raise ConfigError(f"no_progress_escalate_goto '{esc}' is not a defined state")
     if esc is not None and cfg.no_progress_goto is None:
         raise ConfigError("no_progress_escalate_goto set without no_progress_goto")
+    if cfg.blind_lap_cycles is not None and cfg.blind_lap_cycles <= 0:
+        raise ConfigError("blind_lap_cycles must be positive (polls)")
     names = set(cfg.states)
     for sname, state in cfg.states.items():
         _validate_state(sname, state, names, tdir)
