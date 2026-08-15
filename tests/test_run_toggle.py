@@ -239,27 +239,75 @@ def test_party_run_is_guarded_and_closes_on_its_own_button(base_states):
         return next((a["state"] for a in block if a.get("type") == "goto"), None)
 
     assert goto(g["on_match"]) == "home", "a verified close lands back home"
-    assert goto(g["on_absent"]) == "guard_not_inactive", "must fall through the chain"
+
+    # Falls through the chain and ends at guard_not_inactive — the state that
+    # concludes "genuinely mid-run" and jumps. Walking to it rather than asserting
+    # the immediate next hop leaves room for guards added between the two later
+    # (guard_not_friendinfo went in on 2026-08-14) while still catching the thing
+    # that matters: a guard that dead-ends, self-loops, or skips the fall-through.
+    hop, walked = "guard_not_partyrun", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        assert nxt, f"{hop} has no absent fall-through"
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        if not nxt.startswith("guard_not_"):
+            break
+        hop = nxt
+    assert "guard_not_inactive" in walked, (
+        f"must fall through to guard_not_inactive, walked {walked}")
 
     reachable = [k for k, v in base_states.items()
                  if k != "guard_not_partyrun" and "guard_not_partyrun" in str(v)]
     assert reachable, "nothing routes into guard_not_partyrun"
 
 
-def test_probe_friendinfo_taps_once_per_pass(base_states):
-    """It used to fire (1552,117) then (1633,107) before re-checking. Live:
-    (1552,117) does not close the dialog, (1633,107) does — so on a pass where
-    the dialog was already gone the second tap hit home, where (1633,107) is
-    inside the Party Run banner strip, opening the undetectable screen above.
+def test_probe_friendinfo_never_taps_blind(base_states):
+    """No BLIND tap in this state, ever.
 
-    One tap per pass, and that tap verified: a stacked second layer is the
-    retry's job inside close_popup, which re-reads the frame between attempts."""
+    It used to fire (1552,117) then (1633,107) before re-checking. On a pass where
+    the dialog was already gone the second tap hit home, where (1633,107) is inside
+    the Party Run banner strip, opening the undetectable screen guarded above. Every
+    tap here must therefore be either verified (close_popup re-reads the frame) or
+    template-matched inside a ROI — never an unconditional tap_xy.
+
+    This once asserted exactly ONE close_popup, on the theory that close_popup's own
+    retries would clear a stacked second layer. Live logs from 2026-08-08 killed that
+    theory: all retries tap the SAME coordinate, which the inner card covers (BGR
+    85,85,85, a shadow), so 34 consecutive passes closed nothing. The sequence is now
+    close → ROI-scoped inner tap → close, i.e. two closes by design.
+    """
     on_match = base_states["probe_friendinfo"]["on_match"]
     assert not [a for a in on_match if a.get("type") == "tap_xy"], on_match
+
     closes = [a for a in on_match if a.get("type") == "close_popup"]
-    assert len(closes) == 1, on_match
-    assert (closes[0]["x"], closes[0]["y"]) == (1633, 107), closes
-    assert closes[0]["verify"] == "friends/friendinfo_marker.png", closes
+    assert closes, on_match
+    for c in closes:
+        assert (c["x"], c["y"]) == (1633, 107), closes
+        assert c["verify"] == "friends/friendinfo_marker.png", closes
+
+    # The inner-layer tap is what the outer coordinate cannot reach. It must stay
+    # ROI-scoped (an unscoped match would fire on home) and optional (a single-layer
+    # pass has no inner X, and that is not an error).
+    inner = [a for a in on_match if a.get("type") == "tap_template"]
+    assert len(inner) == 1, on_match
+    assert inner[0].get("optional") is True, inner
+
+    # Measured inner-X template centres: (1423,88) Friend's Treasure over Info — the
+    # variant in 11 of 12 archived frames — and (1570,127) Friend's Cookie over Info.
+    # The pre-2026-08-14 ROI [1520,90,120,80] covered only the second and scored 0.453
+    # on the first, below threshold, so the fallback never fired on the common case.
+    #
+    # perceive.find crops the frame to exactly (x,y,w,h), so the whole template must
+    # fit inside the box — a centre-inside-ROI check passes boxes that cannot actually
+    # match, which is how [1350,50,240,80] shipped scoring 0.169 on the Cookie layout.
+    x, y, w, h = inner[0]["roi"]
+    tw = th = 55  # friendcookie_innerclose.png
+    for cx, cy in ((1423, 88), (1570, 127)):
+        assert x <= cx - tw // 2 and cx + tw // 2 <= x + w, (
+            f"ROI {inner[0]['roi']} cannot fit the template around x={cx}")
+        assert y <= cy - th // 2 and cy + th // 2 <= y + h, (
+            f"ROI {inner[0]['roi']} cannot fit the template around y={cy}")
 
 
 def test_continue_run_target_follows_the_config_edge(states):
@@ -390,3 +438,118 @@ def test_arming_needs_a_box_that_run():
         pass
     assert r._stop_at_home is False
     assert r._session_boxes == 0
+
+
+def test_sdk_connect_failure_is_guarded_on_both_sides(base_states):
+    """The dialog that cost a whole day.
+
+    On 2026-08-14 the bot banked ZERO games between 08:00 and 17:00 while calling
+    restart_app 6-9x/hr: "Failed to connect to server. SDK Code:0" sat on the title
+    screen, no marker matched it, the blind watchdog escalated to a restart, the client
+    came back and failed the handshake again. 166 of the 313 frames archived that day
+    are this dialog.
+
+    probe_connectionlost does NOT cover it — that marker is the "Connection lost!" text
+    and scores 0.648 here, below threshold. Same-looking dialog, different words.
+
+    Both sides are required, and the mid-run one is the side that actually failed: the
+    archived frames came from relay_stage2_jump_3 / jump_2 / running, where probe_*
+    states are unreachable. This is the fourth screen to need that pair.
+    """
+    for name in ("probe_sdkfail", "guard_not_sdkfail"):
+        s = base_states.get(name)
+        assert s, f"{name} missing"
+        assert s["detect"] == "home/sdkfail_marker.png", s["detect"]
+
+        # Confirm drops to the title screen rather than dismissing, so the only correct
+        # continuation is a restart plus a re-auth — returning to `running` or `home`
+        # would resume a session that no longer exists.
+        types = [a.get("type") for a in s["on_match"]]
+        assert "restart_app" in types, s["on_match"]
+        target = next(a["state"] for a in s["on_match"] if a.get("type") == "goto")
+        assert target == "recover_login", target
+
+        tap = next(a for a in s["on_match"] if a.get("type") == "tap_xy")
+        # Green Confirm button, HSV blob bbox (744,614,431,147) on the live frame.
+        assert 744 <= tap["x"] <= 744 + 431, tap
+        assert 614 <= tap["y"] <= 614 + 147, tap
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    # probe side must be the HEAD of the chain: nothing else in it can work offline.
+    assert goto(base_states["home"]["on_absent"]) == "probe_sdkfail"
+    assert goto(base_states["probe_sdkfail"]["on_absent"]) == "probe_connectionlost"
+
+    # guard side must sit in the mid-run chain and still fall through to inactive.
+    hop, walked = "guard_not_home", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        if not nxt or not nxt.startswith("guard_not_"):
+            break
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        hop = nxt
+    assert "guard_not_sdkfail" in walked, walked
+    assert walked.index("guard_not_sdkfail") < walked.index("guard_not_inactive"), walked
+
+
+def test_wall_clock_clears_a_long_but_healthy_game(base_states):
+    """`no_progress_s` has to sit above the SLOWEST healthy game, not the average.
+
+    Measured 2026-08-15 over 1,610 real inter-progress gaps in this repo's logs
+    (arrivals at run_result / mystery_box / home / check_heart): median 64s, p90 302s,
+    p99 439s. The old 300 sat exactly at the p90, so **10.8% of healthy gaps tripped
+    it** — one false recovery every nine games. Seen live at 02:33:23: the wall clock
+    fired on a run that was merely long, the Result popup rendered two seconds later,
+    and the recovery walked the probe chain to run_result in three seconds.
+
+    600 clears the p99 with 1.4x headroom. This asserts the config, not the engine
+    default, because the gap distribution belongs to the farm loop these configs run.
+    """
+    cfg = cfgmod.load(CONFIG)
+    p99_healthy_gap_s = 439
+    assert cfg.no_progress_s > p99_healthy_gap_s, (
+        f"{cfg.no_progress_s}s would fire during the slowest healthy games")
+    # Still has to be a watchdog, not a no-op: the blind detector's reach at the
+    # measured 0.48 polls/s is ~1250s, and the wall clock should speak before that.
+    assert cfg.no_progress_s < 1250, (
+        "slower than the blind detector makes the wall clock pointless")
+
+
+def test_relay_stage1_does_not_wait_for_a_marker_that_never_matches(base_states):
+    """Stage 1 must cost one poll, not five seconds.
+
+    The two-stage relay chain assumes a Continue/Quit dialog. This game build's mid-run
+    relay prompt has no such pair — it shows the text plus the partner cookie's card, and
+    tapping the CARD is what fires the relay, which is stage 2's job. Evidence: across
+    1,414 archived frames and every log in the repo, relay_prompt_marker has **zero**
+    matches, best 0.673 — and that best frame is the Mailbox "Send a free Life" dialog.
+    The commit that added the chain recorded the same thing ("its green Continue pill
+    never passed 0.40").
+
+    With absent_retries=2 + absent_wait_ms=400 each of those five states burned ~5s per
+    visit on a guaranteed miss. The relay-check lap measured ~13s while the prompt window
+    is only 2-3s, so the retries were spending the very budget the relay needed.
+
+    Stage 2 is the opposite case and must KEEP its retries: it matches, it fires the
+    relay, and a marginal frame is worth a second look.
+    """
+    stage1 = {k: v for k, v in base_states.items()
+              if "relay" in k and ("stage1" in k or "poll1" in k)}
+    stage2 = {k: v for k, v in base_states.items()
+              if "relay" in k and ("stage2" in k or "poll2" in k)}
+    assert stage1 and stage2, sorted(base_states)
+
+    for name, s in stage1.items():
+        assert "absent_retries" not in s, f"{name} waits for a marker that never matches"
+        assert "absent_wait_ms" not in s, name
+        # The state itself stays — a future build could restore the two-button dialog.
+        assert s["detect"] == "boxrun/relay_prompt_marker.png", name
+
+    for name, s in stage2.items():
+        assert s.get("absent_retries") == 2, f"{name} lost the retry that catches relays"
+        assert s.get("threshold") == 0.62, (
+            f"{name}: 0.82 sits inside the prompt-present cluster and caught 2 of 11")
