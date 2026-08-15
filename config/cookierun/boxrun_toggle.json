@@ -647,18 +647,13 @@
           "type": "close_popup",
           "x": 956,
           "y": 846,
-          "verify": "boxrun/congrats_marker.png"
-        },
-        {
-          "type": "wait",
-          "ms": [
-            1700,
-            2400
-          ]
+          "verify": "boxrun/congrats_marker.png",
+          "settle_ms": 2000,
+          "retries": 3
         },
         {
           "type": "goto",
-          "state": "home"
+          "state": "congrats_recheck"
         }
       ],
       "on_absent": {
@@ -2407,6 +2402,39 @@
         }
       ],
       "timeout_ms": 8000
+    },
+    "congrats_recheck": {
+      "_note": "Verifies the close_popup above actually worked instead of assuming it. Marker gone -> home as before. Marker still up (close_popup exhausted its retries) -> one last blind tap at the same Confirm spot, then congrats_recheck2 re-verifies once more before giving up — two recheck hops max so a popup that genuinely never closes still bails to home instead of looping forever.",
+      "detect": "boxrun/congrats_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 956,
+          "y": 846
+        },
+        {
+          "type": "goto",
+          "state": "congrats_recheck2"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 15000
+    },
+    "congrats_recheck2": {
+      "_note": "Second and final recheck hop (see congrats_recheck). Marker gone -> home. Marker still up after 6 total taps across ~14s -> give up and fall through to home anyway; a popup this stubborn is better handled by home's own probe chain (or a human) than by burning more of the run on it.",
+      "detect": "boxrun/congrats_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "home"
+      },
+      "timeout_ms": 15000
     }
   },
   "inter_game_delay_s": [
