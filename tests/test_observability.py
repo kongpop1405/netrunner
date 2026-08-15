@@ -295,13 +295,72 @@ class TestProgressWatchdog:
         2026-08-06, and the recovery cost a heart and a 7.3M-point run. The Events
         popup — a genuinely unrecognised screen — reached 229 before escalating.
         Anything inside that gap is safe; 48 was not.
+
+        Both bounds belong to THAT table — 32 states, boxrun_magnet as it stood on
+        2026-08-06. They still bracket the engine default, which is all this test
+        claims. They do not generalise, and by 2026-08-15 they had stopped describing
+        reality at all: a 66-state boxrun_speed measured a healthy peak that climbed
+        172 → 187 → 205 → **227** over four and a half hours, i.e. past the 229 that
+        was supposed to mark a *stuck* screen. There is no gap left between the two
+        numbers to put a threshold in, which is why blind_lap_cycles became per-config
+        (600 there) and why the wall clock is now the fast detector with the blind
+        streak as backstop. Do not read a passing assertion here as "160 is safe for
+        any config", and do not resurrect "between 70 and 229" as a sizing rule.
         """
-        healthy_run_misses = 70      # measured, healthy boxrun_magnet
+        healthy_run_misses = 70      # measured, healthy boxrun_magnet at 32 states
         stuck_screen_misses = 229    # measured, Events popup
         assert fsm._BLIND_LAP_CYCLES > healthy_run_misses, (
             "would fire during a normal run and forfeit it")
         assert fsm._BLIND_LAP_CYCLES < stuck_screen_misses, (
             "would never beat the wall clock it exists to pre-empt")
+
+    def test_a_config_may_raise_the_blind_threshold(self, monkeypatch):
+        """Both numbers above were measured on a 32-state table, so the default
+        cannot be the ceiling for every config.
+
+        boxrun_speed carries 63 states, 19 of them driven by on_absent action
+        lists, and on 2026-08-14 it tripped the 160 default eight times in 31
+        minutes of healthy farming — the second fire in one 181s window escalated
+        to restart_app and force-quit a run that was going fine. A longer table
+        walks proportionally more absent edges per lap, so the limit has to be
+        settable per config or the detector fires on exactly the configs it was
+        never measured against.
+        """
+        monkeypatch.setattr(fsm, "_BLIND_LAP_CYCLES", 6)
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_s = 3600      # the wall clock must not be what fires
+        cfg.blind_lap_cycles = 10_000  # far past anything this short run reaches
+        fires = []
+        real = fsm.Runner._archive_unknown
+        fsm.Runner._archive_unknown = lambda self, f, s: fires.append(s)
+        try:
+            self._run(cfg, cycles=30)
+        finally:
+            fsm.Runner._archive_unknown = real
+        assert not fires, (
+            f"config override must raise the trip line, fired {len(fires)}x")
+        assert "NetRunner: unrecognised screen" not in self.alerts, self.alerts
+
+    def test_a_config_override_still_fires_once_reached(self, monkeypatch):
+        """The override raises the ceiling; it must not remove it.
+
+        Without this the previous test passes for the wrong reason — a bug that
+        ignored blind_lap_cycles entirely and disabled the detector would look
+        identical.
+        """
+        monkeypatch.setattr(fsm, "_BLIND_LAP_CYCLES", 10_000)
+        cfg = self._cfg_with_watchdog()
+        cfg.no_progress_s = 3600
+        cfg.blind_lap_cycles = 6  # lower than the default: the config must win
+        fires = []
+        real = fsm.Runner._archive_unknown
+        fsm.Runner._archive_unknown = lambda self, f, s: fires.append(s)
+        try:
+            self._run(cfg, cycles=30)
+        finally:
+            fsm.Runner._archive_unknown = real
+        assert fires, "a config-set threshold must still trip the recovery"
+        assert "NetRunner: unrecognised screen" in self.alerts, self.alerts
 
     def test_blind_lap_fires_before_the_wall_clock(self, monkeypatch):
         """Nothing matching anywhere is a stuck screen, and knowing that does not
