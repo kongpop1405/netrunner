@@ -426,6 +426,20 @@ behaviour, not a stall, and the watchdog rightly stayed quiet. But a naive gap m
 counts it as one enormous healthy gap and inflates every percentile. Filter on the
 `run_config:` line before computing anything from arrival timestamps.
 
+The same blocking detour also shows up as a `match_timeout` warning, and that one is
+**expected, not a bug**. `run_config` runs the errand's FSM to completion inside the calling
+state, so the host state's `entered_at` keeps running the whole time. Seen once on
+2026-08-16: `state 'check_heart' stuck 1554406ms >= timeout 1500000ms -> goto 'running'`
+after a Send-Life sweep that had been dispatching to a long friend list since 00:02. The
+errand was healthy throughout (`scan → confirm_dialog → message_sent`, one friend at a time)
+and the timeout recovered in 13s — `check_heart → running → guard_not_home → home`.
+
+Once in every log in the repo, against a median errand of 117s (max 156s), so do **not**
+"fix" it by resetting `state_entered_at` when the errand returns: that would blind the
+timeout to a host state that genuinely hangs after a detour, trading a 13-second false
+alarm for a real stall that nothing catches. If it ever becomes frequent, raise
+`check_heart`'s `timeout_ms` above the worst observed errand instead.
+
 ⚠️ **The old healthy/stuck boundary is gone.** The table at the top of this section says a
 healthy `boxrun_magnet` run peaked at 70 and the Events popup — a genuinely stuck screen —
 reached 229 before escalating, and 160 was chosen to sit between them. On the 66-state
