@@ -604,3 +604,42 @@ def test_mystery_box_is_reachable_from_both_chains(base_states):
         hop = nxt
     assert "guard_not_mysterybox" in walked, walked
     assert walked.index("guard_not_mysterybox") < walked.index("guard_not_inactive"), walked
+
+
+def test_congrats_close_is_rechecked_not_assumed(base_states):
+    """Two taps and a blind `goto home` is not enough for this popup.
+
+    Live 2026-08-15: `close_popup` warned "still on screen after 2 attempt(s)" five
+    times, and the screen watcher measured the dialog holding the screen for 212s
+    (cleared at 250s) while probe_congrats had already declared victory and moved to
+    `home` — where the popup was still covering Play!, so the loop went round again.
+    The coordinate is not the problem: Confirm measures bbox (740,776,432,147),
+    centre (956,849), and the configured tap at (956,846) lands on white glyph.
+
+    The dialog simply queues — one Congratulations per reward — and every layer
+    carries the SAME marker, so a verify against that marker cannot tell "failed to
+    close" from "closed, next one underneath". More retries plus a recheck chain
+    handles both: re-read the frame and decide, rather than assuming the close took.
+    """
+    probe = base_states["probe_congrats"]
+    closes = [a for a in probe["on_match"] if a.get("type") == "close_popup"]
+    assert closes, probe["on_match"]
+    assert closes[0].get("retries", 0) >= 3, (
+        "2 attempts is what shipped and what failed five times in one evening")
+    assert closes[0]["verify"] == "boxrun/congrats_marker.png", closes
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    assert goto(probe["on_match"]) == "congrats_recheck", (
+        "a blind goto home cannot tell a cleared popup from a queued one")
+
+    # Bounded: recheck -> recheck2 -> out. A dialog that never clears must not loop.
+    r1, r2 = base_states["congrats_recheck"], base_states["congrats_recheck2"]
+    assert goto(r1["on_match"]) == "congrats_recheck2", r1
+    assert goto(r2["on_match"]) not in ("congrats_recheck", "congrats_recheck2"), (
+        "second recheck must give up rather than cycle")
+    for s in (r1, r2):
+        assert s["detect"] == "boxrun/congrats_marker.png", s
