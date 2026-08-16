@@ -1758,6 +1758,29 @@
         }
       ],
       "on_absent": {
+        "goto": "probe_loginfailed"
+      },
+      "timeout_ms": 8000
+    },
+    "probe_loginfailed": {
+      "_note": "Login failed! Please try again. (added 2026-08-16, live-verified 2026-08-16 17:32-17:33) Appears after restart_app relaunches the client and the auto-login handshake fails once (observed once so far, immediately after a routine session reset). recover_login used to catch this by accident — its tap at (960,950) lands on the DevPlay Login button below this dialog, which happens to retry the login — but that only works because the dialog does not cover that button in this layout; nothing guarantees that stays true. This state taps the dialog's own Confirm button directly instead of relying on the coincidence. MEASURED: loginfailed_marker.png is the 'Login failed! Please try again.' text line cropped tight (50x720 at 600,440); scores 1.000 on the one live frame captured so far. Confirm button centre measured at (958,700) on that frame. Confirm retries the login and returns to the title/picker, same outcome as recover_login — so this hands off to recover_login to finish the sequence (idempotent: if login already completed, recover_login's own on_absent chain just falls through to home).",
+      "detect": "home/loginfailed_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 958,
+          "y": 700
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
         "goto": "probe_connectionlost"
       },
       "timeout_ms": 8000
@@ -1777,6 +1800,39 @@
         },
         {
           "type": "restart_app"
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "guard_not_loginfailed"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "guard_not_loginfailed": {
+      "_note": "Mid-run twin of probe_loginfailed (added 2026-08-16), following the same pattern as guard_not_sdkfail: a probe-only fix cannot catch this dialog if it is seen while the recovery loop is mid-retry through the guard chain rather than the probe chain (the 2026-07-31 News pattern, repeated for SDK-fail on 2026-08-15 and now for this dialog). Same detect and same Confirm as the probe-side state. Like guard_not_sdkfail this canNOT return to running — the dialog only shows on the title screen, so the run is already lost and the only correct move is recover_login (not restart_app: the client is already up, just stuck on a failed login attempt, so cycling the process again would be redundant).",
+      "detect": "home/loginfailed_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 958,
+          "y": 700
+        },
+        {
+          "type": "wait",
+          "ms": 2000
         },
         {
           "type": "goto",
