@@ -481,7 +481,15 @@ def test_sdk_connect_failure_is_guarded_on_both_sides(base_states):
 
     # probe side must be the HEAD of the chain: nothing else in it can work offline.
     assert goto(base_states["home"]["on_absent"]) == "probe_sdkfail"
-    assert goto(base_states["probe_sdkfail"]["on_absent"]) == "probe_connectionlost"
+    hop, walked = "probe_sdkfail", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        if not nxt or not nxt.startswith("probe_"):
+            break
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        hop = nxt
+    assert "probe_connectionlost" in walked, walked
 
     # guard side must sit in the mid-run chain and still fall through to inactive.
     hop, walked = "guard_not_home", []
@@ -494,6 +502,55 @@ def test_sdk_connect_failure_is_guarded_on_both_sides(base_states):
         hop = nxt
     assert "guard_not_sdkfail" in walked, walked
     assert walked.index("guard_not_sdkfail") < walked.index("guard_not_inactive"), walked
+
+
+def test_login_failed_dialog_is_guarded_on_both_sides(base_states):
+    """"Login failed! Please try again." — live-verified 2026-08-16, once, right after a
+    routine restart_app relaunch.
+
+    Before this state existed, recover_login's own tap at (960,950) happened to retry
+    the login anyway, because that coordinate lands on the DevPlay Login button sitting
+    below this dialog rather than on its own Confirm — the dialog does not cover that
+    button in the one layout observed. That is a coincidence of two buttons' positions,
+    not a guarantee, so this state taps the dialog's own Confirm directly instead of
+    depending on what happens to be underneath it.
+
+    Same reasoning as probe_sdkfail/guard_not_sdkfail requires both sides: a probe-only
+    fix cannot catch a dialog that the watchdog's retries surface while walking the
+    mid-run guard chain rather than the probe chain (the repeating 2026-07-31 News
+    pattern).
+    """
+    for name in ("probe_loginfailed", "guard_not_loginfailed"):
+        s = base_states.get(name)
+        assert s, f"{name} missing"
+        assert s["detect"] == "home/loginfailed_marker.png", s["detect"]
+
+        target = next(a["state"] for a in s["on_match"] if a.get("type") == "goto")
+        assert target == "recover_login", target
+
+        tap = next(a for a in s["on_match"] if a.get("type") == "tap_xy")
+        # Confirm button centre measured at (958,700) on the one live frame captured.
+        assert 900 <= tap["x"] <= 1020, tap
+        assert 650 <= tap["y"] <= 750, tap
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    assert goto(base_states["probe_sdkfail"]["on_absent"]) == "probe_loginfailed"
+    assert goto(base_states["probe_loginfailed"]["on_absent"]) == "probe_connectionlost"
+
+    hop, walked = "guard_not_home", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        if not nxt or not nxt.startswith("guard_not_"):
+            break
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        hop = nxt
+    assert "guard_not_loginfailed" in walked, walked
+    assert walked.index("guard_not_loginfailed") < walked.index("guard_not_inactive"), walked
 
 
 def test_wall_clock_clears_a_long_but_healthy_game(base_states):
