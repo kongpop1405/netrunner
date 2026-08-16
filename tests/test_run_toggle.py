@@ -553,6 +553,39 @@ def test_login_failed_dialog_is_guarded_on_both_sides(base_states):
     assert walked.index("guard_not_loginfailed") < walked.index("guard_not_inactive"), walked
 
 
+def test_login_picker_marker_is_tight_enough_to_actually_match(base_states):
+    """recover_pick's OLD detect (home/login_marker.png, a 220x720 crop with the
+    CookieRun logo and both text lines) scored only 0.512 against threshold 0.82 on
+    the one live picker frame captured — it never matched. The picker held the
+    screen live for ~16 minutes (2026-08-16 17:44-18:00, across a bot restart) with
+    every guard/relay/jump state transitioning normally the whole time, because none
+    of them verify the screen actually changed, until the user tapped the saved
+    account row by hand.
+
+    loginpicker_marker.png is a tighter crop of just the "an account!" text with no
+    logo. Scores 1.000 on all 3 live positives captured (2026-08-14, twice on
+    2026-08-16), 0.589 max noise across 1,418 archived frames — a 0.41 margin.
+    threshold 0.75 sits well inside that gap, not just above the old dialog's own
+    0.512, so a marker swap alone wouldn't have been enough without the wider crop.
+    """
+    for name in ("recover_pick", "recover_unknown_pick"):
+        s = base_states.get(name)
+        assert s, f"{name} missing"
+        assert s["detect"] == "home/loginpicker_marker.png", s["detect"]
+        assert s["threshold"] >= 0.6, s["threshold"]  # clear of the 0.589 noise ceiling
+        assert s["threshold"] < 1.0, s["threshold"]   # clear of the 1.0 positive floor
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    # recover_unknown_probe must check the picker before falling into the normal
+    # probe walk, since the picker is otherwise only reachable via recover_login.
+    assert goto(base_states["recover_unknown_probe"]["on_absent"]) == "recover_unknown_pick"
+    assert goto(base_states["recover_unknown_pick"]["on_match"]) == "recover_pick"
+
+
 def test_wall_clock_clears_a_long_but_healthy_game(base_states):
     """`no_progress_s` has to sit above the SLOWEST healthy game, not the average.
 
