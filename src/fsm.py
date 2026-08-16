@@ -259,6 +259,17 @@ class Runner:
                         if next_state is not None:
                             state = next_state
                             did_transition = True
+                            # entered_at was stamped above for THIS (matched) state,
+                            # before on_match ran. A goto lands on a DIFFERENT state,
+                            # so it needs its own stamp taken now — not the one from
+                            # before actions like restart_app/run_config, which can
+                            # themselves run for 90s+. Without this, that whole
+                            # blocking duration gets billed to the new state's own
+                            # timeout_ms before it has been on screen for even one
+                            # poll (observed live: recover_login timing out at
+                            # ~93,400ms against its own 30,000ms budget, immediately
+                            # on arrival, three times with the same duration).
+                            entered_at = time.monotonic()
                     else:
                         absent_streak += 1
                         blind_streak += 1

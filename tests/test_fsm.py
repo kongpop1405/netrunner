@@ -200,6 +200,60 @@ def test_run_config_action_drives_a_sub_runner_then_resumes(monkeypatch, grabs):
     assert len(sub_runs) == 1
 
 
+def test_entered_at_resets_for_the_state_a_goto_lands_on(monkeypatch, grabs, caplog):
+    """A goto after a slow blocking action (restart_app, run_config) must stamp
+    entered_at for the NEW state, not leave the old state's stamp behind.
+
+    Live 2026-08-17: probe_connectionlost's on_match ran tap -> wait -> restart_app
+    (relaunch + 3 stability checks, ~93s wall clock) -> goto recover_login.
+    entered_at was set once at the top of the match branch, before those blocking
+    actions ran, and never re-stamped for recover_login on arrival. The very next
+    poll computed recover_login's own timeout_ms (30,000ms) against that 93-second-
+    old stamp and fired immediately: "state 'recover_login' stuck 93406ms >= timeout
+    30000ms" the instant it arrived, observed identically three separate times
+    (93375ms, 93406ms, 93531ms — the same restart_app duration each time, not
+    noise). The fallback target happened to also work, which is why this went
+    unnoticed for a day: the log line was lying about what actually happened.
+
+    Reproduced here with run_config as the slow action: advance the fake clock by
+    93s inside the mocked sub-run, then land on a state with its own short
+    timeout_ms. If entered_at still carried the pre-action stamp, that state's
+    very first poll would already be "stuck" and log the same false warning.
+    """
+    _patch_find(monkeypatch, {"a.png"})  # "landed" never matches -> stays on on_absent
+    sub_cfg = _cfg({"x": {"detect": "x.png", "on_match": [{"type": "stop"}]}}, "x")
+    monkeypatch.setattr(fsm, "load_config", lambda path: sub_cfg)
+
+    clock = {"t": 1_000_000.0}
+    monkeypatch.setattr(fsm.time, "monotonic", lambda: clock["t"])
+
+    real_run = fsm.Runner.run
+
+    def slow_sub_run(self, **kwargs):
+        if self.cfg is sub_cfg:
+            clock["t"] += 93.4  # the measured restart_app+stability duration
+            return
+        return real_run(self, **kwargs)
+
+    monkeypatch.setattr(fsm.Runner, "run", slow_sub_run)
+
+    states = {
+        "a": {"detect": "a.png",
+              "on_match": [{"type": "run_config", "config": "errand.json"},
+                           {"type": "goto", "state": "landed"}]},
+        "landed": {"detect": "landed.png",
+                   "on_absent": {"goto": "escaped"}, "timeout_ms": 30_000},
+        "escaped": {"detect": "escaped.png", "on_match": [{"type": "stop"}]},
+    }
+    with caplog.at_level("WARNING"):
+        fsm.Runner(_cfg(states, "a"), FakeDevice()).run(max_cycles=10)
+
+    stuck_warnings = [r.message for r in caplog.records if "stuck" in r.message]
+    assert not stuck_warnings, (
+        f"'landed' should read as freshly-entered, not already stuck: {stuck_warnings}"
+    )
+
+
 def test_run_config_is_a_noop_in_dry_run(monkeypatch, grabs):
     """dry_run must never trigger a real sub-run — same guard as tap/swipe/etc."""
     _patch_find(monkeypatch, {"a.png"})

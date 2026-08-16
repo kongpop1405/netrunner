@@ -777,3 +777,46 @@ def test_congrats_close_is_rechecked_not_assumed(base_states):
         "second recheck must give up rather than cycle")
     for s in (r1, r2):
         assert s["detect"] == "boxrun/congrats_marker.png", s
+
+
+def test_run_result_recheck_uses_a_different_tap_not_a_repeat(base_states):
+    """The Result dialog has (at least) two layouts sharing one marker.
+
+    Live 2026-08-17: a run that collected a bonus Mystery Box (x2) landed on a
+    single-button "Confirm" layout instead of the usual two-button "OK / Show Off"
+    layout. The configured tap (702,940) — correct for 925 prior runs, all on the
+    two-button layout — landed on empty space between two buttons that don't exist
+    here. Screen watcher confirmed the identical result numbers (177,639,304 /
+    9,618 / 6,452) held the screen for 219s+ while the FSM cycled run_result ->
+    mystery_box -> home -> probe chain -> boost_shop -> running -> run_result every
+    ~7-8s, believing each lap was a fresh win.
+
+    Unlike probe_congrats (queued popups, same coordinate works every layer),
+    retrying the SAME tap here would just miss the single-button layout again —
+    close_popup's own retries only help against a slow-to-register tap, not a
+    wrong-target one. The recheck hop must therefore try a DIFFERENT coordinate
+    (959,961, the single-button layout's own measured Confirm centre) rather than
+    repeating (702,940).
+    """
+    rr = base_states["run_result"]
+    closes = [a for a in rr["on_match"] if a.get("type") == "close_popup"]
+    assert closes, rr["on_match"]
+    assert closes[0]["x"] == 702 and closes[0]["y"] == 940, closes[0]
+    assert closes[0]["verify"] == "boxrun/result_marker.png", closes[0]
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    assert goto(rr["on_match"]) == "run_result_recheck", (
+        "a blind goto mystery_box cannot tell a cleared dialog from a stuck one")
+
+    recheck = base_states["run_result_recheck"]
+    assert recheck["detect"] == "boxrun/result_marker.png", recheck
+    tap = next(a for a in recheck["on_match"] if a.get("type") == "tap_xy")
+    assert (tap["x"], tap["y"]) != (702, 940), (
+        "repeating the same tap does nothing against a layout it already missed"
+    )
+    assert goto(recheck["on_match"]) == "mystery_box", recheck
+    assert goto(recheck["on_absent"]) == "mystery_box", recheck

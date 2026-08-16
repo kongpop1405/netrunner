@@ -788,13 +788,35 @@
       "timeout_ms": 15000
     },
     "run_result": {
-      "_note": "Result popup after a run. Tap OK (702,940) — NOT 'Show Off'. After OK the Mystery Box screen appears on runs that collected a '?' box — the whole point of this bot — handled by mystery_box.",
+      "_note": "Result popup after a run. Tap OK (702,940) — NOT 'Show Off'. After OK the Mystery Box screen appears on runs that collected a '?' box — the whole point of this bot — handled by mystery_box. RECHECK ADDED 2026-08-17: the (702,940) tap only fires on the usual two-button layout (OK left / Show Off right). A single-button 'Confirm' layout was caught live livelocking for 5+ minutes (run_result -> mystery_box -> home -> probe chain -> boost_shop -> running -> run_result, every ~7-8s, same result numbers every frame) because that tap landed on empty space between the two buttons that don't exist in this layout. on_match now verifies with close_popup before assuming the tap worked, same pattern as probe_congrats.",
+      "detect": "boxrun/result_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 702,
+          "y": 940,
+          "verify": "boxrun/result_marker.png",
+          "settle_ms": 2500,
+          "retries": 2
+        },
+        {
+          "type": "goto",
+          "state": "run_result_recheck"
+        }
+      ],
+      "on_absent": {
+        "goto": "mystery_box"
+      },
+      "timeout_ms": 8000
+    },
+    "run_result_recheck": {
+      "_note": "Verifies run_result's close_popup actually worked. Marker gone -> mystery_box as before. Marker still up (the (702,940) two-button tap exhausted its retries, most likely the single-button 'Confirm' layout) -> try the single-button layout's own Confirm centre (959,961, measured live 2026-08-17) instead of repeating a tap that has already proven it doesn't land on anything here.",
       "detect": "boxrun/result_marker.png",
       "on_match": [
         {
           "type": "tap_xy",
-          "x": 702,
-          "y": 940
+          "x": 959,
+          "y": 961
         },
         {
           "type": "wait",
@@ -808,7 +830,7 @@
       "on_absent": {
         "goto": "mystery_box"
       },
-      "timeout_ms": 8000
+      "timeout_ms": 15000
     },
     "mystery_box": {
       "_note": "After Result-OK we either land on home, or the 'Mystery Box' screen blocks it. Detect the BOX screen positively. Present -> tap the closed box (960,540) and read the reward. Absent -> home (or a modal; home's probe chain handles it).",
