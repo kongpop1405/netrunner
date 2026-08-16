@@ -553,6 +553,50 @@ def test_login_failed_dialog_is_guarded_on_both_sides(base_states):
     assert walked.index("guard_not_loginfailed") < walked.index("guard_not_inactive"), walked
 
 
+def test_connection_lost_dialog_is_guarded_on_both_sides(base_states):
+    """"Connection lost! Please check your LTE/5G or Wi-Fi connection." — live-verified
+    2026-08-16: held the screen 630s+ while await_shop/running/relay/guard/verify_no_*/home
+    all transitioned normally on their usual ~7s cadence, exactly like a healthy farm,
+    because none of them check that the screen actually changed underneath.
+
+    probe_connectionlost already existed (added around the same time as sdkfail/loginfailed)
+    but had no guard-side twin — the third instance of the 2026-07-31 News pattern within a
+    day of the first two. connectionlost_marker.png scores 0.993 on the live stuck frame,
+    comfortably above the global 0.82 threshold, so no per-state override was needed here
+    (unlike loginpicker_marker's 0.512).
+    """
+    for name in ("probe_connectionlost", "guard_not_connectionlost"):
+        s = base_states.get(name)
+        assert s, f"{name} missing"
+        assert s["detect"] == "home/connectionlost_marker.png", s["detect"]
+
+        types = [a.get("type") for a in s["on_match"]]
+        assert "restart_app" in types, s["on_match"]
+        target = next(a["state"] for a in s["on_match"] if a.get("type") == "goto")
+        assert target == "recover_login", target
+
+        tap = next(a for a in s["on_match"] if a.get("type") == "tap_xy")
+        # Confirm button centre measured at (960,700) on the live frame.
+        assert 900 <= tap["x"] <= 1020, tap
+        assert 650 <= tap["y"] <= 750, tap
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    hop, walked = "guard_not_home", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        if not nxt or not nxt.startswith("guard_not_"):
+            break
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        hop = nxt
+    assert "guard_not_connectionlost" in walked, walked
+    assert walked.index("guard_not_connectionlost") < walked.index("guard_not_inactive"), walked
+
+
 def test_login_picker_marker_is_tight_enough_to_actually_match(base_states):
     """recover_pick's OLD detect (home/login_marker.png, a 220x720 crop with the
     CookieRun logo and both text lines) scored only 0.512 against threshold 0.82 on
