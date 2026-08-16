@@ -1866,6 +1866,42 @@
         },
         {
           "type": "goto",
+          "state": "guard_not_connectionlost"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "guard_not_connectionlost": {
+      "_note": "Mid-run twin of probe_connectionlost (added 2026-08-16, live-verified: the dialog held the screen for 630s+ while every guard/relay/jump state transitioned normally the whole time -- await_shop/running/verify_no_*/home cycled every ~7s exactly as a healthy farm would, because none of them check the screen actually changed). Same 2026-07-31 News pattern as guard_not_sdkfail and guard_not_loginfailed: a probe-only fix cannot catch a dialog the watchdog's retries surface while walking the mid-run guard chain. Same detect (connectionlost_marker.png, scores 0.993 on the live frame -- well clear of the global 0.82 threshold, no per-state override needed here unlike loginpicker_marker) and same Confirm tap as the probe-side state. Cannot return to running -- Confirm restarts the client, so the run is already lost; same escape as probe_connectionlost (restart_app + recover_login).",
+      "detect": "home/connectionlost_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 700
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "restart_app"
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
           "state": "guard_not_mysterybox"
         }
       ],
