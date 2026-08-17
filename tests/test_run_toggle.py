@@ -479,17 +479,20 @@ def test_sdk_connect_failure_is_guarded_on_both_sides(base_states):
             return block.get("goto")
         return next((a["state"] for a in block if a.get("type") == "goto"), None)
 
-    # probe side must be the HEAD of the chain: nothing else in it can work offline.
-    assert goto(base_states["home"]["on_absent"]) == "probe_sdkfail"
-    hop, walked = "probe_sdkfail", []
+    # probe side must sit near the HEAD of the chain: nothing else in it can work
+    # offline. (Not required to be the literal first hop off home — probe_events
+    # sits ahead of it and that is fine, since probe_events itself falls through
+    # to probe_sdkfail rather than skipping it.)
+    hop, walked = goto(base_states["home"]["on_absent"]), []
     for _ in range(len(base_states)):
-        nxt = goto(base_states[hop]["on_absent"])
-        if not nxt or not nxt.startswith("probe_"):
+        if not hop or not hop.startswith("probe_"):
             break
-        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
-        walked.append(nxt)
-        hop = nxt
+        assert hop not in walked, f"absent chain loops: {walked} -> {hop}"
+        walked.append(hop)
+        hop = goto(base_states[hop]["on_absent"])
+    assert "probe_sdkfail" in walked, walked
     assert "probe_connectionlost" in walked, walked
+    assert walked.index("probe_sdkfail") < walked.index("probe_connectionlost"), walked
 
     # guard side must sit in the mid-run chain and still fall through to inactive.
     hop, walked = "guard_not_home", []
@@ -820,3 +823,72 @@ def test_run_result_recheck_uses_a_different_tap_not_a_repeat(base_states):
     )
     assert goto(recheck["on_match"]) == "mystery_box", recheck
     assert goto(recheck["on_absent"]) == "mystery_box", recheck
+
+
+def test_events_panel_is_guarded_on_both_sides(base_states):
+    """The Events panel — no marker existed for this before 2026-08-17, even though
+    it was archived stuck at least once before, on 2026-08-01 ('Welcome Event Day
+    30', jump_3/jump_2/running/probe_levelup all logged transitioning normally
+    while the real screen sat frozen on it).
+
+    Confirmed live again 2026-08-17 ('Fruits of Practice'): screen watcher measured
+    538s held before a human closed it. events_marker.png (the 'Events' title,
+    present regardless of which event is showing) scores 1.000 on both the 2026-08-01
+    and 2026-08-17 captures and every archived frame in between — a 200-frame random
+    sample plus a full scan for high scorers turned up zero false positives, so the
+    global 0.82 threshold is used as-is.
+
+    Same 2026-07-31 News pattern as every other probe+guard pair: a probe-only fix
+    cannot catch a panel the watchdog's retries surface while walking the mid-run
+    guard chain. Unlike sdkfail/loginfailed/connectionlost, this one returns to
+    `running` on the guard side — the panel doesn't end the session, it just needs
+    closing.
+    """
+    for name, resume in (("probe_events", "home"), ("guard_not_events", "running")):
+        s = base_states.get(name)
+        assert s, f"{name} missing"
+        assert s["detect"] == "home/events_marker.png", s["detect"]
+
+        taps = [a for a in s["on_match"] if a.get("type") == "tap_xy"]
+        assert len(taps) == 2, (
+            "needs both the inner reward popup's close X (can be stacked on top) "
+            "and the panel's own close X — a single tap only closes what happens "
+            "to be on top"
+        )
+        # Panel's own close X: constant regardless of which event is showing.
+        assert (taps[1]["x"], taps[1]["y"]) == (1704, 68), taps[1]
+
+        def goto(block):
+            if isinstance(block, dict):
+                return block.get("goto")
+            return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+        assert goto(s["on_match"]) == resume, s
+
+    def goto(block):
+        if isinstance(block, dict):
+            return block.get("goto")
+        return next((a["state"] for a in block if a.get("type") == "goto"), None)
+
+    # probe side sits ahead of the existing chain, not replacing any of it.
+    hop, walked = goto(base_states["home"]["on_absent"]), []
+    for _ in range(len(base_states)):
+        if not hop or not hop.startswith("probe_"):
+            break
+        assert hop not in walked, f"absent chain loops: {walked} -> {hop}"
+        walked.append(hop)
+        hop = goto(base_states[hop]["on_absent"])
+    assert "probe_events" in walked, walked
+    assert "probe_sdkfail" in walked, walked
+    assert walked.index("probe_events") < walked.index("probe_sdkfail"), walked
+
+    hop, walked = "guard_not_home", []
+    for _ in range(len(base_states)):
+        nxt = goto(base_states[hop]["on_absent"])
+        if not nxt or not nxt.startswith("guard_not_"):
+            break
+        assert nxt not in walked, f"absent chain loops: {walked} -> {nxt}"
+        walked.append(nxt)
+        hop = nxt
+    assert "guard_not_events" in walked, walked
+    assert walked.index("guard_not_events") < walked.index("guard_not_inactive"), walked
