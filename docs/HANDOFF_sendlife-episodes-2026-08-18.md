@@ -3,7 +3,9 @@
 Repo: `C:\dev\netrunner` — CookieRun OvenBreak farming bot (LDPlayer CV+ADB FSM).
 Branch `main`, clean, synced with `origin/main` (`git rev-list --left-right --count origin/main...main` = `0 0`).
 Tests: **405 passed** (`python -m pytest -q`).
-Bot at handoff time: running, PID may differ — see *Restarting the bot* below.
+Bot at handoff time: running `config/cookierun/boxrun_speed.json` (PID will
+differ) — see *Restarting the bot* below.
+Monitors: **armed overnight** (log filter + `tools/screen_watch.py`).
 
 Everything below was verified against the live device or the repo, not recalled.
 Where something is **unproven**, it says so explicitly — do not upgrade those to
@@ -54,11 +56,19 @@ On match, in order:
 
 ```
 tap boostshop close (optional)
-run_config sendlife.json        episodes=[1,2,3,4,5,6,7]
 run_config sendlife_mailbox.json  (no episodes — single pass)
-goto check_heart                (re-check; a regenerated heart falls through to Play)
+goto mailbox_count_gate
 timeout_ms = 5,700,000  (95 min)
+
+mailbox_count_gate  (visits_under: confirm_loop < 30)
+  on_match  (drained)  -> run_config sendlife.json episodes=[1..7] -> check_heart
+  on_absent (hit cap)  -> check_heart
 ```
+
+**Order flipped 2026-08-19** (user request): the sweep runs first and Send-Life
+only follows when it came up short. The count cannot be known before opening the
+Mailbox, so it has to come from confirms actually made — see §"Why a confirm
+count" below, which is now the mechanism the gate reads, not just a cap.
 
 **The `<30` rule** lives in `config/cookierun/sendlife_mailbox.json`:
 `confirm_loop` has `max_visits: 30` → `max_visits_goto: "done"`.
@@ -172,7 +182,7 @@ Enter (`HOME_AFTER_ENTER_S = 12.0`) instead of a single grab at a fixed 2.0s.
 | `tools/switch_episode.py` | the map navigation + the home-wait fix |
 | `config/cookierun/sendlife.json` | Friends-tab Send-Life (19 states); timing trimmed today |
 | `config/cookierun/sendlife_mailbox.json` | Mailbox Lives sweep; holds the 30-confirm cap |
-| `config/cookierun/*.json` (8 farm configs) | each carries `check_heart` with the same chain |
+| `config/cookierun/*.json` (8 farm configs) | each carries `check_heart` + `mailbox_count_gate` with the same chain |
 | `tests/test_switch_episode.py` | new; the home-precondition and post-Enter polling |
 | `templates/cookierun/home/episode_label_marker.png` | re-cropped today; see §8 |
 
@@ -187,15 +197,19 @@ Artifacts.**
 Config changes are read from disk per `run_config`, so a config-only edit needs no
 restart. **Any change under `src/` does** — Python loads modules once.
 
+The bot was switched to **`boxrun_speed`** at the end of this session (user
+request, 2026-08-18 ~22:50) — it was on `coinrun` for most of the work above.
+Both configs carry every fix; `check_heart` + `mailbox_count_gate` are identical across all 8.
+
 ```powershell
-# find and stop
+# find and stop (match either config — the running one may differ)
 $p = Get-CimInstance Win32_Process -Filter "Name like '%python%'" |
-     Where-Object { $_.CommandLine -like '*coinrun*' }
-if ($p) { Stop-Process -Id $p.ProcessId -Force }
+     Where-Object { $_.CommandLine -like '*boxrun_speed*' -or $_.CommandLine -like '*coinrun*' }
+if ($p) { $p | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } }
 
 # start (omit --launch when LDPlayer is already up)
 Start-Process -FilePath "C:\Users\kongp\AppData\Local\Microsoft\WindowsApps\python.exe" `
-  -ArgumentList "main.py","--config","config/cookierun/coinrun.json" `
+  -ArgumentList "main.py","--config","config/cookierun/boxrun_speed.json" `
   -WorkingDirectory "C:\dev\netrunner" -WindowStyle Hidden
 ```
 
