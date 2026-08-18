@@ -453,9 +453,39 @@ def _validate_action(state: str, action: dict, state_names: set[str], tdir: Path
         parse_range(action["ms"], f"state '{state}': wait.ms", integer=True)
     if kind == "text":
         _validate_text_value(state, action["value"])
-    if kind == "run_config" and not Path(action["config"]).is_file():
+    if kind == "run_config":
+        if not Path(action["config"]).is_file():
+            raise ConfigError(
+                f"state '{state}': run_config target not found: {action['config']}")
+        _validate_episodes(state, action.get("episodes"))
+
+
+#: Episode numbers the game actually has, and which switch_episode has banner
+#: templates for. A number outside this range can only be a typo, and it would
+#: not surface until the errand ran and the switch failed mid-run.
+_EPISODE_RANGE = range(1, 8)
+
+
+def _validate_episodes(state: str, episodes: object) -> None:
+    """Optional `episodes` on run_config: clear the errand once per episode.
+
+    Omitted means the errand runs once against whatever episode is already
+    selected, which is the original behaviour and stays the default.
+    """
+    if episodes is None:
+        return
+    if not isinstance(episodes, list) or not episodes:
         raise ConfigError(
-            f"state '{state}': run_config target not found: {action['config']}")
+            f"state '{state}': run_config.episodes must be a non-empty list of "
+            f"episode numbers")
+    for ep in episodes:
+        if not isinstance(ep, int) or isinstance(ep, bool) or ep not in _EPISODE_RANGE:
+            raise ConfigError(
+                f"state '{state}': run_config.episodes has invalid episode {ep!r} "
+                f"— expected ints {_EPISODE_RANGE.start}-{_EPISODE_RANGE.stop - 1}")
+    if len(set(episodes)) != len(episodes):
+        raise ConfigError(
+            f"state '{state}': run_config.episodes repeats an episode: {episodes}")
 
 
 #: `adb shell input text` only carries printable ASCII, and the string still

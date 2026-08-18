@@ -267,3 +267,92 @@ def test_run_config_is_a_noop_in_dry_run(monkeypatch, grabs):
     }
     fsm.Runner(_cfg(states, "a"), FakeDevice()).run(dry_run=True, max_cycles=5)
     assert load_calls == []
+
+
+class TestErrandPerEpisode:
+    """Send-Life's friend list is per-Episode: one pass only ever reaches the
+    friends of whichever Episode home had selected, so `episodes` on run_config
+    clears each in turn. The farm loop that called it never picks an Episode
+    itself — it taps Play! and farms whatever is selected — so the Episode in
+    effect when control returns decides what gets farmed for the rest of the
+    session. That makes restoring it part of the feature, not a nicety.
+    """
+
+    def _runner(self, monkeypatch, *, detected, switch_fails=()):
+        """Runner with switch_episode/detect stubbed, recording the call order."""
+        events = []
+        sub_cfg = _cfg({"x": {"detect": "x.png", "on_match": [{"type": "stop"}]}}, "x")
+        monkeypatch.setattr(fsm, "load_config", lambda path: sub_cfg)
+        monkeypatch.setattr(fsm, "detect_current_episode",
+                            lambda device, store: detected)
+        monkeypatch.setattr(fsm.time, "sleep", lambda s: None)
+
+        import tools.switch_episode as se
+
+        def fake_switch(device, store, episode, **kw):
+            if episode in switch_fails:
+                raise se.SwitchEpisodeError(f"map did not open for {episode}")
+            events.append(("switch", episode))
+
+        monkeypatch.setattr(se, "switch_episode", fake_switch)
+
+        real_run = fsm.Runner.run
+
+        def spy_run(self, **kwargs):
+            if self.cfg is sub_cfg:
+                events.append(("run", None))
+                return
+            return real_run(self, **kwargs)
+
+        monkeypatch.setattr(fsm.Runner, "run", spy_run)
+
+        parent = _cfg({"a": {"detect": "a.png"}}, "a")
+        runner = fsm.Runner(parent, FakeDevice())
+        # run() normally sets this; these tests drive _run_errand directly.
+        runner._errand_dry_run = False
+        return runner, events
+
+    def test_clears_each_episode_then_restores_the_original(self, monkeypatch):
+        runner, events = self._runner(monkeypatch, detected=3)
+        runner._run_errand("errand.json", [1, 2])
+        assert events == [
+            ("switch", 1), ("run", None),
+            ("switch", 2), ("run", None),
+            ("switch", 3),          # back to where the farm loop left off
+        ], events
+
+    def test_refuses_to_switch_when_the_episode_cannot_be_read(self, monkeypatch, caplog):
+        """Switching with no way back would silently change what the farm loop
+        farms — skipping the errand is the lesser harm."""
+        runner, events = self._runner(monkeypatch, detected=None)
+        with caplog.at_level("WARNING"):
+            runner._run_errand("errand.json", [1, 2])
+        assert events == [], events
+        assert any("cannot read the current Episode" in r.message for r in caplog.records)
+
+    def test_one_failed_switch_does_not_abandon_the_rest(self, monkeypatch, caplog):
+        runner, events = self._runner(monkeypatch, detected=5, switch_fails={2})
+        with caplog.at_level("WARNING"):
+            runner._run_errand("errand.json", [1, 2, 3])
+        # episode 2 never runs, 1 and 3 still do, 5 is still restored
+        assert events == [
+            ("switch", 1), ("run", None),
+            ("switch", 3), ("run", None),
+            ("switch", 5),
+        ], events
+
+    def test_alerts_when_the_original_episode_cannot_be_restored(self, monkeypatch):
+        alerts = []
+        monkeypatch.setattr(fsm, "send_alert", lambda *a, **k: alerts.append(a))
+        runner, events = self._runner(monkeypatch, detected=6, switch_fails={6})
+        runner._run_errand("errand.json", [1])
+        assert ("run", None) in events
+        assert alerts, "a farm loop left on the wrong Episode must not be silent"
+        assert any("episode" in str(a).lower() for a in alerts), alerts
+
+    def test_without_episodes_the_errand_runs_once_and_never_switches(self, monkeypatch):
+        """The original behaviour has to stay the default: the mailbox sweep and
+        every other errand must not start navigating the Episode picker."""
+        runner, events = self._runner(monkeypatch, detected=4)
+        runner._run_errand("errand.json")
+        assert events == [("run", None)], events

@@ -71,9 +71,20 @@ def test_unknown_action_raises(actor):
 
 def test_run_config_calls_injected_errand_runner(actor):
     calls = []
-    actor.errand_runner = calls.append
+    actor.errand_runner = lambda path, episodes: calls.append((path, episodes))
     assert actor.run({"type": "run_config", "config": "config/x.json"}, FRAME) is None
-    assert calls == ["config/x.json"]
+    assert calls == [("config/x.json", None)]
+
+
+def test_run_config_passes_episodes_through(actor):
+    """Send-Life's friend list is per-Episode, so the errand has to be told which
+    Episodes to clear — the Actor only forwards it; the switching itself belongs
+    to the Runner (see Runner._run_errand_per_episode)."""
+    calls = []
+    actor.errand_runner = lambda path, episodes: calls.append((path, episodes))
+    actor.run({"type": "run_config", "config": "config/x.json",
+               "episodes": [1, 2, 3]}, FRAME)
+    assert calls == [("config/x.json", [1, 2, 3])]
 
 
 def test_run_config_without_errand_runner_is_a_noop(actor):

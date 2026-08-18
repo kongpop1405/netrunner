@@ -42,45 +42,8 @@ from tools.run_toggle import (
     _strip_slide,
     _yn,
 )
-from src.capture import grab
-from src.perceive import PerceiveError, find_named, read_counter
+from src.episode import detect_current_episode
 from tools.switch_episode import SwitchEpisodeError, switch_episode
-
-#: Home screen's "Episode N" label — top-left corner of the word "Episode"
-#: itself, which sits before the episode name and so does not shift with the
-#: name's length (unlike relic_get_marker, which sits after variable text).
-EPISODE_LABEL_MARKER = "home/episode_label_marker.png"
-
-#: Digit box relative to the marker's top-left (dx, dy, w, h) — measured live
-#: off a 1920x1080 frame at Episode 4 (marker top-left (352,113), digit ink at
-#: x 492-520, y 113-142). Same measure-don't-guess approach as
-#: BoxQuitRunner.COUNTER_OFFSET.
-EPISODE_DIGIT_OFFSET = (140, 0, 28, 29)
-
-
-def _detect_current_episode(device, store) -> int | None:
-    """Read the Episode number off the home screen's "Episode N" label.
-
-    Returns None when home isn't showing cleanly (a popup is up) or the
-    digit can't be read — the caller must fail loud rather than guess, since
-    a wrong episode number would farm the wrong content silently.
-    """
-    frame = grab(device)
-    if not find_named(frame, store, "home/home_play_marker.png", threshold=0.82).found:
-        return None
-    m = find_named(frame, store, EPISODE_LABEL_MARKER, threshold=0.82)
-    if not m.found:
-        return None
-    dx, dy, w, h = EPISODE_DIGIT_OFFSET
-    x = m.x - m.w // 2 + dx
-    y = m.y - m.h // 2 + dy
-    try:
-        n = read_counter(frame, (max(0, x), max(0, y), w, h))
-    except PerceiveError:
-        return None
-    if n is None or not (1 <= n <= 7):
-        return None
-    return n
 
 
 def _episode_list(v: str) -> list[int]:
@@ -199,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     auto_detect = args.order is None
     if auto_detect:
         log.info("no --order given, reading current episode from home")
-        detected = _detect_current_episode(device, store)
+        detected = detect_current_episode(device, store)
         if detected is None:
             msg = "could not read episode number from home — pass --order explicitly"
             log.error("%s", msg)

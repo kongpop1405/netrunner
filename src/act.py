@@ -151,24 +151,31 @@ class Actor:
     #: restart_app with no restarter wired.
     errand_runner: object = None
 
-    def run_config(self, path: str) -> None:
+    def run_config(self, path: str, episodes: list[int] | None = None) -> None:
         """Run another config's FSM to completion, then return control here.
 
         For a detour that is really a whole separate bot — Send-Life, the
         mailbox sweep — rather than a few taps this config could own itself.
         Those already end in their own `stop` action, so nothing here needs
         to know when they are "done"; the sub-run simply returns.
+
+        With `episodes`, the errand is run once per episode in that list,
+        switching the home screen's selected Episode in between — Send-Life's
+        friend list is per-Episode, so one pass only ever reaches the friends
+        of whichever Episode happened to be selected. The caller's own episode
+        is restored afterwards; see Runner._run_errand.
         """
         if self.dry_run:
-            log.info("run_config '%s' [dry]", path)
+            log.info("run_config '%s'%s [dry]", path,
+                     f" episodes={episodes}" if episodes else "")
             return
         if self.errand_runner is None:
             log.warning("run_config '%s' requested but no errand_runner is "
                         "wired — running via main.py without going through "
                         "a Runner (e.g. a unit test) skips it", path)
             return
-        log.info("run_config: %s", path)
-        self.errand_runner(path)
+        log.info("run_config: %s%s", path, f" episodes={episodes}" if episodes else "")
+        self.errand_runner(path, episodes)
 
     def restart_app(self) -> None:
         """Force-stop and relaunch the game, verifying it stays up.
@@ -445,7 +452,7 @@ class Actor:
             self.restart_app()
             return None
         if kind == "run_config":
-            self.run_config(str(action["config"]))
+            self.run_config(str(action["config"]), episodes=action.get("episodes"))
             return None
         if kind == "close_popup":
             self.close_popup(

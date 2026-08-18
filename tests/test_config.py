@@ -264,3 +264,37 @@ def test_run_config_accepted_when_target_exists(tmp_path, tdir):
     ]
     cfg = cfgmod.load(_write(tmp_path, data))
     assert cfg.states["a"]["on_match"][0]["config"] == str(errand)
+
+
+def _run_config_with_episodes(tmp_path, tdir, episodes):
+    errand = tmp_path / "errand.json"
+    errand.write_text("{}", encoding="utf-8")
+    data = _minimal(tdir)
+    action = {"type": "run_config", "config": str(errand)}
+    if episodes is not _OMITTED:
+        action["episodes"] = episodes
+    data["states"]["a"]["on_match"] = [action, {"type": "stop"}]
+    return cfgmod.load(_write(tmp_path, data))
+
+
+_OMITTED = object()
+
+
+def test_run_config_episodes_accepts_a_valid_list(tmp_path, tdir):
+    cfg = _run_config_with_episodes(tmp_path, tdir, [1, 2, 7])
+    assert cfg.states["a"]["on_match"][0]["episodes"] == [1, 2, 7]
+
+
+def test_run_config_without_episodes_stays_valid(tmp_path, tdir):
+    """Omitted is the default and means "run once against whatever Episode is
+    selected" — the mailbox sweep and every other errand rely on it."""
+    cfg = _run_config_with_episodes(tmp_path, tdir, _OMITTED)
+    assert "episodes" not in cfg.states["a"]["on_match"][0]
+
+
+@pytest.mark.parametrize("bad", [[], "1,2", [0], [8], [1, "2"], [True], [1, 1]])
+def test_run_config_episodes_rejects_bad_values(tmp_path, tdir, bad):
+    """An out-of-range or duplicated episode would not surface until the errand
+    ran and the switch failed mid-session, so it has to fail at load."""
+    with pytest.raises(cfgmod.ConfigError, match="episodes"):
+        _run_config_with_episodes(tmp_path, tdir, bad)
