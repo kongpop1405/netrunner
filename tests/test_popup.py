@@ -7,6 +7,7 @@ import pytest
 
 import src.act as actmod
 from src import config as cfgmod
+from src.config import goto_targets
 from src.act import Actor
 from src.perceive import Match
 
@@ -311,6 +312,64 @@ class TestGuardParity:
             # 7 episodes x ~358s measured + 8 switches + the mailbox sweep budgets
             # to ~2,844s; run_config blocks in this state so it is all billed here.
             assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"
+
+
+class TestPartyRunnersSeasonScreen:
+    """Live 01:20 on 2026-08-19: the "Best Party Runners / The season is over!"
+    leaderboard held the screen while the farm loop walked its guard chain
+    normally. Nothing in the config matched it — the best-scoring template across
+    the whole repo was friendcookie_innerclose at 0.97, a generic round X that
+    hits on any dialog with a close button, so every guard missed and
+    guard_not_inactive concluded the run was live."""
+
+    def _farm_configs(self):
+        out = {}
+        for path in sorted(CONFIG_DIR.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            st = raw.get("states", {})
+            # The farm loops, not the errand configs: addfriend carries a
+            # guard_not_partyrun too but has no probe chain to hang the twin off.
+            if "guard_not_partyrun" in st and "probe_rankingrewards" in st:
+                out[path.stem] = raw
+        return out
+
+    def test_handled_on_both_chains(self):
+        """A probe-only fix looks complete until the screen appears mid-run,
+        where the probe states are unreachable — the 2026-07-31 News bug."""
+        for name, raw in self._farm_configs().items():
+            st = raw["states"]
+            for side in ("probe_partyrunners", "guard_not_partyrunners"):
+                assert side in st, f"{name}: {side} missing"
+                assert st[side]["detect"] == "home/partyrunners_marker.png", st[side]
+
+    def test_reachable_from_both_chains(self):
+        """A state nothing points at never runs, however correct it is."""
+        for name, raw in self._farm_configs().items():
+            st = raw["states"]
+            for target in ("probe_partyrunners", "guard_not_partyrunners"):
+                inbound = [k for k, v in st.items()
+                           if k != target and target in goto_targets(v)]
+                assert inbound, f"{name}: nothing reaches {target}"
+
+    def test_guard_returns_to_the_run_and_probe_to_home(self):
+        for name, raw in self._farm_configs().items():
+            st = raw["states"]
+            gotos = lambda k: [a.get("state") for a in st[k]["on_match"]
+                               if a.get("type") == "goto"]
+            assert gotos("probe_partyrunners") == ["home"], name
+            assert gotos("guard_not_partyrunners") == ["running"], name
+
+    def test_closes_with_close_popup_not_a_blind_tap(self):
+        """A blind tap cannot tell a wrong coordinate from a slow fade — the
+        mistake that let the Party Run banner sit for 38 passes in silence."""
+        for name, raw in self._farm_configs().items():
+            for side in ("probe_partyrunners", "guard_not_partyrunners"):
+                act = raw["states"][side]["on_match"][0]
+                assert act["type"] == "close_popup", f"{name}/{side}: {act}"
+                assert act.get("verify") == "home/partyrunners_marker.png", act
+
+    def test_marker_exists(self):
+        assert (Path("templates/cookierun/home/partyrunners_marker.png").exists())
 
 
 class TestMailboxCapClosesItsDialog:

@@ -765,9 +765,31 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_giftdraw"
+        "goto": "probe_partyrunners"
       },
       "timeout_ms": 15000
+    },
+    "probe_partyrunners": {
+      "_note": "'Best Party Runners' season-results leaderboard (added 2026-08-19, caught live 01:20 holding the screen while the farm loop walked its guard chain normally). It appears on its own when a Party Run season ends, over home, and NOTHING in the config matched it: the highest-scoring template across every marker in the repo was friendcookie_innerclose at 0.97 -- a generic round X that scores high on any dialog with a close button -- and picker_marker at 0.871, both false positives on a screen neither belongs to. So every guard missed, guard_not_inactive concluded 'genuinely mid-run', and the hop taps landed on a leaderboard. partyrunners_marker.png is the purple title ribbon cropped WITH its background (140x720 at 600,40): 1.000 here, max 0.403 across 231 archived frames -- a 0.60 margin, and the nearest miss is probe_rankingrewards' own screen, which is a different leaderboard. Close via the grey X at (1671,134), measured from the button's own blob (bbox 81x81, centre pixel reads white, i.e. the glyph). close_popup rather than a blind tap: it re-reads the frame and warns if the marker never clears.",
+      "detect": "home/partyrunners_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1671,
+          "y": 134,
+          "verify": "home/partyrunners_marker.png",
+          "settle_ms": 1200,
+          "retries": 3
+        },
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": {
+        "goto": "probe_giftdraw"
+      },
+      "timeout_ms": 8000
     },
     "probe_giftdraw": {
       "_note": "SAFETY NET: 'Gift Draw' popup over home. Tap X (1685,170) — never Draw; the farm loop must not auto-consume gift draws.",
@@ -1349,7 +1371,7 @@
         }
       ],
       "on_absent": {
-        "goto": "guard_not_partyrun"
+        "goto": "guard_not_partyrunners"
       },
       "timeout_ms": 6000
     },
@@ -1764,6 +1786,38 @@
       "threshold": 0.62,
       "absent_retries": 2,
       "absent_wait_ms": 400
+    },
+    "guard_not_partyrunners": {
+      "_note": "Mid-run twin of probe_partyrunners — the season-results screen can surface while a run is in progress, where the probe states are unreachable. Same detect and same X. goto running rather than home: closing it drops back to whatever was underneath, which mid-run is the run itself.",
+      "detect": "home/partyrunners_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1671,
+          "y": 134,
+          "verify": "home/partyrunners_marker.png",
+          "settle_ms": 1200,
+          "retries": 3
+        },
+        {
+          "type": "goto",
+          "state": "running"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "wait",
+          "ms": [
+            260,
+            380
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "guard_not_partyrun"
+        }
+      ],
+      "timeout_ms": 8000
     },
     "guard_not_partyrun": {
       "_note": "Close Party Run's 'Select a Mode' screen (added 2026-08-06). This screen had NO marker anywhere in the config, so the bot livelocked on it: every state missed, the guard chain and relay polls kept transitioning normally, and the hop taps landed on a menu instead of a run — a log that reads perfectly healthy while nothing progresses. It is reachable by accident because probe_friendinfo's blind tap (1633,107) lands in the Party Run banner strip when Friend's Info is not actually up (see that state's note). partyrun_marker.png is the purple 'Select a Mode' title bar cropped WITH its background colour — scores 1.000 here and <=0.403 on every other captured frame, unlike a text-only crop whose score would swing with the scene. on_match closes via the X at (1820,135) — the grey circle at the top-right of the SCREEN (area 4919, bbox 80x80 on a live Party Run frame). An earlier version tapped (1638,108), measured off the Friend's Info dialog by mistake; on the Party Run frame that point is dark background (BGR 93,53,51), so the guard detected the screen 38 passes in a row and never closed it. Measure the button on the screen you are closing, not a similar-looking one. CLOSE VERIFIED (2026-08-06): this used tap_xy + goto self, which is how those 38 passes stayed silent — a blind tap cannot tell a wrong coordinate from a slow fade, and self-looping on it produces no log line either way. close_popup re-reads the frame after the settle, taps again while the marker is still up, and log.warning()s if it never clears, exactly like guard_not_news does.",
