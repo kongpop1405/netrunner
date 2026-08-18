@@ -114,8 +114,13 @@ class Runner:
         # Injected so the FSM needs no LDPlayer knowledge; built by main.py when
         # the config asks for session resets.
         self.restarter = restarter
+        # What the most recent `run_config` errand got through, keyed by state
+        # name — read by `visits_under` gates. Empty until an errand has run, so
+        # a gate reached before one reads 0 and takes its on_absent branch.
+        self._last_errand_visits: dict[str, int] = {}
 
-    def run(self, *, dry_run: bool = False, max_cycles: int | None = None) -> None:
+    def run(self, *, dry_run: bool = False,
+            max_cycles: int | None = None) -> dict[str, int]:
         self.actor = Actor(
             self.device, self.store,
             dry_run=dry_run, default_threshold=self.cfg.match_threshold,
@@ -139,6 +144,11 @@ class Runner:
         # measures: both ask "has the bot stopped making progress", and a sweep
         # working through a long list is progressing the whole time.
         visits: dict[str, int] = {}
+        # `visits` is reset to 0 when a state hits its max_visits, so it cannot
+        # answer "how many items did this errand actually get through" — the
+        # very question a caller deciding what to do next needs answered. Keep a
+        # separate running total that nothing resets, and return that instead.
+        total_visits: dict[str, int] = {}
         absent_streak = 0        # consecutive absent polls in the current state
         # Same count, but it survives state changes: absent_streak resets on every
         # transition, which is precisely what a chain walking 30 states in a row
@@ -208,11 +218,42 @@ class Runner:
             while True:
                 if max_cycles is not None and cycles >= max_cycles:
                     log.info("reached max_cycles=%d, stopping", max_cycles)
-                    return
+                    return total_visits
                 cycles += 1
 
                 spec = self.cfg.states[state]
                 try:
+                    gate = spec.get("visits_under")
+                    if gate is not None:
+                        # A pure decision state: it asks how far the last errand
+                        # got, not what is on screen, so it must not spend a
+                        # capture. Counting in items is the only way to size an
+                        # errand whose list has no total anywhere before it is
+                        # opened (the Lives tab shows rows; the home envelope
+                        # badge counts Notices+Rewards, a different quantity that
+                        # only ever grows).
+                        got = self._last_errand_visits.get(gate["state"], 0)
+                        under = got < int(gate["count"])
+                        branch = "on_match" if under else "on_absent"
+                        log.info("visits_under: '%s' ran %d/%d -> %s",
+                                 gate["state"], got, gate["count"], branch)
+                        actions = spec.get(branch, [])
+                        if isinstance(actions, dict):
+                            actions = [actions]
+                        next_state, _ = self._run_actions(actions, None, state)
+                        if next_state == _STOP:
+                            return total_visits
+                        if next_state is None or next_state == state:
+                            raise FsmError(
+                                f"state '{state}': visits_under '{branch}' must "
+                                f"go somewhere else — a gate that decides nothing "
+                                f"spins on itself without ever grabbing a frame")
+                        total_visits[state] = total_visits.get(state, 0) + 1
+                        state = next_state
+                        entered_at = time.monotonic()
+                        state_entered_at = entered_at
+                        frame = None
+                        continue
                     if frame is None:
                         frame = grab(self.device)
                         gotos_on_frame = 0
@@ -262,7 +303,7 @@ class Runner:
                         next_state, acted = self._run_actions(on_match, frame, state)
                         if next_state == _STOP:
                             log.info("stop action reached, ending run")
-                            return
+                            return total_visits
                         if next_state is not None:
                             state = next_state
                             did_transition = True
@@ -284,7 +325,7 @@ class Runner:
                             state, spec, entered_at, frame, absent_streak
                         )
                         if next_state == _STOP:
-                            return
+                            return total_visits
                         if next_state is not None:
                             state = next_state
                             entered_at = time.monotonic()
@@ -342,6 +383,7 @@ class Runner:
 
                 if did_transition:
                     visits[state] = visits.get(state, 0) + 1
+                    total_visits[state] = total_visits.get(state, 0) + 1
                     cap = self.cfg.states[state].get("max_visits")
                     if cap is not None and visits[state] >= cap:
                         target = self.cfg.states[state]["max_visits_goto"]
@@ -564,7 +606,8 @@ class Runner:
             )
             raise
 
-    def _run_errand(self, path: str, episodes: list[int] | None = None) -> None:
+    def _run_errand(self, path: str,
+                    episodes: list[int] | None = None) -> dict[str, int]:
         """Run another config's FSM to completion (its own `stop` action ends
         it), then return control to this one — the `run_config` action.
 
@@ -592,10 +635,14 @@ class Runner:
         sub_cfg = load_config(path)
         if episodes:
             self._run_errand_per_episode(path, sub_cfg, episodes)
-            return
+            return {}
         log.info("errand: starting %s (start_state=%s)", path, sub_cfg.start_state)
-        Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)
+        visits = Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)
         log.info("errand: %s finished, resuming", path)
+        # Kept so a `visits_under` gate in the calling config can branch on what
+        # this errand actually got through — see Runner.run's total_visits.
+        self._last_errand_visits = visits
+        return visits
 
     def _run_errand_per_episode(self, path: str, sub_cfg: Config,
                                 episodes: list[int]) -> None:

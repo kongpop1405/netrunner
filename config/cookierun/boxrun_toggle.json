@@ -357,7 +357,7 @@
       "timeout_ms": 8000
     },
     "check_heart": {
-      "_note": "SINGLE Play gate, reached from await_shop/boost_shop (Play at 1365,931). boxrun/heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> close the boost shop popup IF one is open (this state is reached via await_shop -> probe_speed with the shop possibly still open — its own tap-Play path tolerates that because Play shows through the fade, but the errands below need a clean home screen or their own detects miss everything behind the shop; live-verified 2026-08-08, the very first run through this path hung for 500+ polls on sendlife_mailbox's open_mailbox because the shop was still covering the mailbox icon). tap_template with optional=true, not close_popup: this state is also reached with --boost none (boost_skip_goto skips the shop chain entirely), where no shop popup exists at all and close_popup's unconditional blind tap at the shop's X coordinate would land on whatever home element happens to sit there instead — optional means absent is a normal outcome, not a retry target. Then run the Send-Life and mailbox-sweep errands (their own configs, each ending in their own `stop`) instead of idling here: 0 hearts means 25+ min of dead air before regen, so the wait is put to use on friend-list upkeep rather than burned sitting on a 30s self-loop. Send-Life only clears the Episode already selected on home (no episode switching — that would leave the wrong Episode selected when boxrun resumes); the mailbox sweep runs its own full loop. Then re-check check_heart: still 0 -> another errand pass; a heart regenerated meanwhile -> falls straight through to the on_absent Play path below. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short). SEND-LIFE REMOVED 2026-08-16 (user request): check_heart used to run sendlife.json (home-screen Friends tab, 19 states, one Send-Life tap per visible row) before sendlife_mailbox.json. Only the mailbox sweep runs now. The Friends-tab pass was also the expensive one — it walks a scrollable list one friend at a time and measured 1411s (23.5 min) on 2026-08-16, which together with the 138s mailbox sweep that follows it summed to 1549s and tripped this state's own match_timeout (1,554,406ms >= 1,500,000ms): run_config blocks inside the calling state, so every errand second is billed to check_heart. Post-removal the same night, the mailbox sweep alone measured 138s across a 4h39m window — an order of magnitude under the 1,500,000ms ceiling, so the ceiling now has real headroom instead of sitting just above the observed worst case. SEND-LIFE RE-ADDED 2026-08-18 (user request): run sendlife.json before sendlife_mailbox.json again so friends get sent lives during the heart-empty wait, not just passively received via mailbox. timeout_ms raised to 3,000,000 (50 min) — sendlife.json alone measured 1411s (23.5 min) on 2026-08-16 and mailbox measured 138s, summing to 1549s which left almost no margin under the old 1,500,000ms (25 min) ceiling. EPISODES ADDED 2026-08-18 (user request): the sendlife call now carries episodes 1-7. Send-Life's friend list is per-Episode, so the single pass only ever reached the friends of whichever Episode home happened to have selected — the rest never got a life and so had no reason to send one back. Runner._run_errand reads the current Episode off home first and refuses to switch at all if it cannot (switching with no way back would silently change what the farm loop farms), clears each Episode in turn, then re-selects the original and alerts if that restore fails. timeout_ms raised to 5,700,000 (95 min) when episodes 1-7 was added: 7 episodes x 358s measured per episode + 8 switch_episode round trips (~25s each, one per episode plus the restore) + the 138s mailbox sweep budgets to ~2,844s (47 min), and run_config blocks inside this state so every second of it is billed here. The previous 3,000,000ms ceiling left only 1.05x headroom over that estimate — the same too-tight margin that made this state trip its own timeout on 2026-08-16 (1,554,406ms against 1,500,000ms) and got Send-Life removed. 2x the estimate leaves room for episodes with fuller friend lists than the 53-send one that was measured.",
+      "_note": "SINGLE Play gate, reached from await_shop/boost_shop (Play at 1365,931). boxrun/heart_empty.png = separator '|' + FIRST (leftmost) heart gray, cropped live at 0 hearts — hearts deplete right-to-left, so slot 1 is gray ONLY at 0 hearts. CV: 0 hearts=1.000; 1-3 hearts ~0.75 (thin margin, don't raise match_threshold). Present -> close the boost shop popup IF one is open (this state is reached via await_shop -> probe_speed with the shop possibly still open — its own tap-Play path tolerates that because Play shows through the fade, but the errands below need a clean home screen or their own detects miss everything behind the shop; live-verified 2026-08-08, the very first run through this path hung for 500+ polls on sendlife_mailbox's open_mailbox because the shop was still covering the mailbox icon). tap_template with optional=true, not close_popup: this state is also reached with --boost none (boost_skip_goto skips the shop chain entirely), where no shop popup exists at all and close_popup's unconditional blind tap at the shop's X coordinate would land on whatever home element happens to sit there instead — optional means absent is a normal outcome, not a retry target. Then run the Send-Life and mailbox-sweep errands (their own configs, each ending in their own `stop`) instead of idling here: 0 hearts means 25+ min of dead air before regen, so the wait is put to use on friend-list upkeep rather than burned sitting on a 30s self-loop. Send-Life only clears the Episode already selected on home (no episode switching — that would leave the wrong Episode selected when boxrun resumes); the mailbox sweep runs its own full loop. Then re-check check_heart: still 0 -> another errand pass; a heart regenerated meanwhile -> falls straight through to the on_absent Play path below. Absent (>=1 heart) -> tap Play then SPAM-TAP the Fast Start spot (985,515) across the prompt window into the run (blind spam, ported from boxrun_magnet — more robust than detect+tap which missed when the prompt window was short). SEND-LIFE REMOVED 2026-08-16 (user request): check_heart used to run sendlife.json (home-screen Friends tab, 19 states, one Send-Life tap per visible row) before sendlife_mailbox.json. Only the mailbox sweep runs now. The Friends-tab pass was also the expensive one — it walks a scrollable list one friend at a time and measured 1411s (23.5 min) on 2026-08-16, which together with the 138s mailbox sweep that follows it summed to 1549s and tripped this state's own match_timeout (1,554,406ms >= 1,500,000ms): run_config blocks inside the calling state, so every errand second is billed to check_heart. Post-removal the same night, the mailbox sweep alone measured 138s across a 4h39m window — an order of magnitude under the 1,500,000ms ceiling, so the ceiling now has real headroom instead of sitting just above the observed worst case. SEND-LIFE RE-ADDED 2026-08-18 (user request): run sendlife.json before sendlife_mailbox.json again so friends get sent lives during the heart-empty wait, not just passively received via mailbox. timeout_ms raised to 3,000,000 (50 min) — sendlife.json alone measured 1411s (23.5 min) on 2026-08-16 and mailbox measured 138s, summing to 1549s which left almost no margin under the old 1,500,000ms (25 min) ceiling. EPISODES ADDED 2026-08-18 (user request): the sendlife call now carries episodes 1-7. Send-Life's friend list is per-Episode, so the single pass only ever reached the friends of whichever Episode home happened to have selected — the rest never got a life and so had no reason to send one back. Runner._run_errand reads the current Episode off home first and refuses to switch at all if it cannot (switching with no way back would silently change what the farm loop farms), clears each Episode in turn, then re-selects the original and alerts if that restore fails. timeout_ms raised to 5,700,000 (95 min) when episodes 1-7 was added: 7 episodes x 358s measured per episode + 8 switch_episode round trips (~25s each, one per episode plus the restore) + the 138s mailbox sweep budgets to ~2,844s (47 min), and run_config blocks inside this state so every second of it is billed here. The previous 3,000,000ms ceiling left only 1.05x headroom over that estimate — the same too-tight margin that made this state trip its own timeout on 2026-08-16 (1,554,406ms against 1,500,000ms) and got Send-Life removed. 2x the estimate leaves room for episodes with fuller friend lists than the 53-send one that was measured. ORDER FLIPPED 2026-08-18 (user request): the mailbox sweep now runs FIRST and Send-Life only follows when that sweep came up short. How many Lives are waiting cannot be known before opening the Mailbox — the Lives tab shows rows with no total, and the home envelope badge counts Notices+Rewards (observed 46 -> 53 -> 58 across one session while the sweep only ever confirmed 2-5 items, and it never dropped after a sweep), so the count has to come from confirms actually made. mailbox_count_gate reads that count and decides.",
       "detect": "boxrun/heart_empty.png",
       "on_match": [
         {
@@ -371,23 +371,6 @@
         },
         {
           "type": "run_config",
-          "config": "config/cookierun/sendlife.json",
-          "episodes": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ]
-        },
-        {
-          "type": "wait",
-          "ms": 1000
-        },
-        {
-          "type": "run_config",
           "config": "config/cookierun/sendlife_mailbox.json"
         },
         {
@@ -396,7 +379,7 @@
         },
         {
           "type": "goto",
-          "state": "check_heart"
+          "state": "mailbox_count_gate"
         }
       ],
       "on_absent": [
@@ -423,6 +406,42 @@
         }
       ],
       "timeout_ms": 5700000
+    },
+    "mailbox_count_gate": {
+      "_note": "Decides whether Send-Life runs, from what the mailbox sweep just got through rather than from the screen. confirm_loop caps at 30 (max_visits), so 30 means the list was long and still had more waiting — collect and get back to farming. Fewer than 30 means the sweep drained the list, so there is idle heart-wait time worth spending on sending Lives across every Episode. Reached only from check_heart, immediately after the sweep, so _last_errand_visits still holds that sweep's counts.",
+      "visits_under": {
+        "state": "confirm_loop",
+        "count": 30
+      },
+      "on_match": [
+        {
+          "type": "run_config",
+          "config": "config/cookierun/sendlife.json",
+          "episodes": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "goto",
+          "state": "check_heart"
+        }
+      ]
     },
     "running": {
       "_note": "In-run (auto-play). Result popup up -> run over. Not up -> we MIGHT still be running, but could equally be on home or in the shop, so DON'T tap yet: hand off to the guard chain.",

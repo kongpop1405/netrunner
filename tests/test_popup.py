@@ -260,29 +260,54 @@ class TestGuardParity:
             esc = raw.get("no_progress_escalate_goto")
             assert esc in raw["states"], f"{name}: escalation points at missing {esc}"
 
-    def test_check_heart_runs_sendlife_before_mailbox_with_headroom(self):
-        """User request 2026-08-18: send lives to friends during the heart-empty
-        wait (not just passively receive via mailbox), sendlife.json first so
-        friends have time to send back before the mailbox sweep collects them.
-
-        sendlife.json alone measured 1411s (23.5 min) on 2026-08-16; mailbox
-        measured 138s; summed 1549s left almost no margin under the old
-        1,500,000ms (25 min) check_heart timeout — raised to 3,000,000ms (50 min)
-        when sendlife was re-added so the ceiling has real headroom again."""
+    def test_check_heart_sweeps_mailbox_then_gates_sendlife(self):
+        """User request 2026-08-18: only send lives when the mailbox came up
+        short. How many Lives are waiting cannot be read before opening the
+        Mailbox — the Lives tab shows rows with no total, and the home envelope
+        badge counts Notices+Rewards (seen going 46 -> 53 -> 58 in one session
+        while sweeps confirmed 2-5 items, never dropping afterwards). So the
+        sweep runs first and mailbox_count_gate branches on confirms actually
+        made: 30 (the confirm_loop cap) means more were waiting, so get back to
+        farming; fewer means the list drained and the idle heart-wait is worth
+        spending on Send-Life across every Episode."""
         for name, raw in self._home_configs().items():
             st = raw["states"].get("check_heart")
             if not st:
                 continue
             runs = [a for a in st["on_match"] if a.get("type") == "run_config"]
             calls = [a["config"] for a in runs]
-            assert calls == [
-                "config/cookierun/sendlife.json",
-                "config/cookierun/sendlife_mailbox.json",
-            ], f"{name}: {calls}"
-            # Send-Life's friend list is per-Episode, so it must clear all of
-            # them; the mailbox sweep is one popup and must NOT switch episodes.
-            assert runs[0].get("episodes") == [1, 2, 3, 4, 5, 6, 7], runs[0]
-            assert runs[1].get("episodes") is None, runs[1]
+            assert calls == ["config/cookierun/sendlife_mailbox.json"], (
+                f"{name}: check_heart itself must only sweep the mailbox; "
+                f"Send-Life belongs behind the gate. got {calls}")
+            # The sweep is one popup chain and must never switch episodes.
+            assert runs[0].get("episodes") is None, runs[0]
+
+            gate_name = st["on_match"][-1].get("state")
+            assert gate_name, f"{name}: check_heart must end by going to the gate"
+            gate = raw["states"][gate_name]
+            under = gate["visits_under"]
+            assert under["state"] == "confirm_loop", gate
+            # The gate's count and the sweep's own cap are the same quantity —
+            # if they drift, "hit the cap" and "counted as many" stop agreeing.
+            sweep = json.loads(
+                (CONFIG_DIR / "sendlife_mailbox.json").read_text(encoding="utf-8"))
+            cap = sweep["states"]["confirm_loop"]["max_visits"]
+            assert under["count"] == cap, (
+                f"{name}: gate counts {under['count']} but confirm_loop caps at {cap}")
+
+            # Fewer than the cap -> Send-Life across every Episode, then back.
+            few = gate["on_match"]
+            sl = [a for a in few if a.get("type") == "run_config"]
+            assert [a["config"] for a in sl] == ["config/cookierun/sendlife.json"], sl
+            assert sl[0].get("episodes") == [1, 2, 3, 4, 5, 6, 7], sl[0]
+            assert few[-1] == {"type": "goto", "state": "check_heart"}, few[-1]
+
+            # At the cap -> straight back, no Send-Life on this pass.
+            many = gate["on_absent"]
+            many = many if isinstance(many, list) else [many]
+            assert not [a for a in many if a.get("type") == "run_config"], (
+                f"{name}: the mailbox-had-more branch must not run Send-Life")
+
             # 7 episodes x ~358s measured + 8 switches + the mailbox sweep budgets
             # to ~2,844s; run_config blocks in this state so it is all billed here.
             assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"

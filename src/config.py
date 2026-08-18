@@ -312,6 +312,38 @@ def unreachable_states(states: dict[str, dict], start_state: str,
 
 
 def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> None:
+    gate = state.get("visits_under")
+    if gate is not None:
+        if state.get("detect") is not None:
+            raise ConfigError(
+                f"state '{sname}': 'visits_under' decides from the last errand's "
+                f"item count, never from the screen — it must not also 'detect'")
+        if not isinstance(gate, dict):
+            raise ConfigError(
+                f"state '{sname}': 'visits_under' must be an object with "
+                f"'state' and 'count'")
+        target = gate.get("state")
+        if not isinstance(target, str) or not target:
+            raise ConfigError(
+                f"state '{sname}': 'visits_under' needs 'state' — the errand "
+                f"state whose visits are counted")
+        count = gate.get("count")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+            raise ConfigError(
+                f"state '{sname}': 'visits_under' 'count' must be a positive integer")
+        for branch in ("on_match", "on_absent"):
+            acts = state.get(branch)
+            if not acts:
+                raise ConfigError(
+                    f"state '{sname}': 'visits_under' needs both 'on_match' "
+                    f"(ran fewer than {count}) and 'on_absent' (ran at least "
+                    f"{count}) — a gate with one exit decides nothing")
+            if isinstance(acts, dict):
+                acts = [acts]
+            for a in acts:
+                _validate_action(sname, a, names, tdir)
+        return
+
     detect = state.get("detect")
     dnames = detect_names(state)
     if not dnames or not all(isinstance(d, str) for d in dnames):
