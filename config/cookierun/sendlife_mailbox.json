@@ -79,7 +79,7 @@
       "timeout_ms": 15000
     },
     "confirm_loop": {
-      "_note": "Marker is the Cancel+Confirm button ROW, not the dialog text — text-based detection broke live: some friends' dialog has no '(+3 Gift Points)' line at all, so a marker cropped from that line scored 0.42 (absent) on those and the bot falsely concluded the list was exhausted after 0 sends (caught 2026-08-01, wint3r's dialog had no Gift Points line). The button row is identical across every dialog variant (name-agnostic AND gift-points-agnostic) — scores 1.000 on both. Present -> tap Confirm via tap_template (jittered position + delay, per-poll fresh timing from poll_ms range) -> the same dialog re-opens for the next friend within ~500-700ms, so we just loop back and re-check. absent_retries tolerates the brief re-open gap without falsely concluding the list is done. CAPPED AT 30 CONFIRMS 2026-08-18 (user request: \"ถ้าจดหมายมีไม่ถึง 30 ให้ส่งหัวใจเลย ไม่ต้องรอจดหมายหมด\"). The list is not counted anywhere before opening it — the Lives tab shows rows, not a total, and the envelope badge on home counts Notices+Rewards, not Lives to receive — so the cap is expressed in confirms actually made, which is the same quantity one item at a time. Under 30 waiting Lives the loop still ends on its own the way it always did (measured live: 3 confirms, 19s end to end, including opening and closing the Mailbox); at 30 it stops collecting and hands off to `done` so the Send-Life pass starts instead of draining a long list first. Neither watchdog could express this: both ask whether the bot has stopped progressing, and a sweep working through a long list is progressing on every single pass.",
+      "_note": "Marker is the Cancel+Confirm button ROW, not the dialog text — text-based detection broke live: some friends' dialog has no '(+3 Gift Points)' line at all, so a marker cropped from that line scored 0.42 (absent) on those and the bot falsely concluded the list was exhausted after 0 sends (caught 2026-08-01, wint3r's dialog had no Gift Points line). The button row is identical across every dialog variant (name-agnostic AND gift-points-agnostic) — scores 1.000 on both. Present -> tap Confirm via tap_template (jittered position + delay, per-poll fresh timing from poll_ms range) -> the same dialog re-opens for the next friend within ~500-700ms, so we just loop back and re-check. absent_retries tolerates the brief re-open gap without falsely concluding the list is done. CAPPED AT 30 CONFIRMS 2026-08-18 (user request: \"ถ้าจดหมายมีไม่ถึง 30 ให้ส่งหัวใจเลย ไม่ต้องรอจดหมายหมด\"). The list is not counted anywhere before opening it — the Lives tab shows rows, not a total, and the envelope badge on home counts Notices+Rewards, not Lives to receive — so the cap is expressed in confirms actually made, which is the same quantity one item at a time. Under 30 waiting Lives the loop still ends on its own the way it always did (measured live: 3 confirms, 19s end to end, including opening and closing the Mailbox); at 30 it stops collecting and hands off to `done` so the Send-Life pass starts instead of draining a long list first. Neither watchdog could express this: both ask whether the bot has stopped progressing, and a sweep working through a long list is progressing on every single pass. CAP EXIT FIXED 2026-08-19: max_visits_goto used to point straight at `done`, which leaks the dialog that is STILL on screen when the cap fires — the sweep stops mid-list, so item 31's 'Send X a free Life?' is open. `done` looks for alldone_marker (0.474 on that frame, absent), falls to close_mailbox, whose X at (1692,135) is covered by the dialog, so close_popup warned twice and `stop` handed control back to the farm loop with the dialog still up. The farm loop then walked its guard chain normally against a screen none of its guards match (sendlife_marker scores 0.598 there, under the 0.82 threshold) until the progress watchdog fired 601s later. Caught live 00:24-00:33. Now the cap exits through cap_close_dialog, which dismisses what is open before anything else runs.",
       "detect": "dialog_buttons_marker.png",
       "on_match": [
         {
@@ -105,7 +105,29 @@
       },
       "timeout_ms": 20000,
       "max_visits": 30,
-      "max_visits_goto": "done"
+      "max_visits_goto": "cap_close_dialog"
+    },
+    "cap_close_dialog": {
+      "_note": "Closes the Send-Life dialog left open when confirm_loop hits its cap. Reached only from max_visits_goto, i.e. only when the sweep stopped with items still waiting. MEASURED LIVE 2026-08-19 on the stuck frame (Lives badge 70): the dialog's own X at (1432,270) is the only tap that LEAVES the queue — Cancel (727,687) accepts the current friend's Life and immediately re-opens the dialog for the next one (12 Cancel taps ran the badge 70 -> 37 and the heart counter up by 32, then the 'All Lives received and sent!' popup appeared), so Cancel drains the list rather than stopping, which is exactly what the cap exists to prevent. Confirm would do the same and send a Life besides. dialog_buttons_marker is the Cancel+Confirm button row (1.000 on that frame, 0.528 right after the X tap), the same marker confirm_loop detects, so absent means the dialog is already gone. close_popup re-reads the frame and taps again while the marker is still up, then warns if it never clears — a blind tap cannot tell a missed coordinate from a slow fade. Leaving this dialog open was the live bug: `done` looks for alldone_marker (0.474 there), fell through to close_mailbox, whose X at (1692,135) the dialog covers, and `stop` handed the farm loop a screen none of its guards match (sendlife_marker 0.598 < 0.82) until the progress watchdog fired 601s later.",
+      "detect": "dialog_buttons_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 1432,
+          "y": 270,
+          "verify": "dialog_buttons_marker.png",
+          "settle_ms": 700,
+          "retries": 3
+        },
+        {
+          "type": "goto",
+          "state": "done"
+        }
+      ],
+      "on_absent": {
+        "goto": "done"
+      },
+      "timeout_ms": 10000
     },
     "done": {
       "_note": "List exhausted -> the 'All Lives received and sent!' popup fires (live-verified 2026-08-01, hearts went 495->726 confirming real sends, not a false-absent). Close it via Confirm so the run always ends on a clean Lives-tab screen, not a stray popup blocking the next launch. Absent (e.g. dialog stopped reappearing for some other reason, popup already gone) -> close_mailbox directly (the Mailbox itself is still open either way).",

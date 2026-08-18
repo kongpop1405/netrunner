@@ -284,6 +284,12 @@ def goto_targets(state: dict) -> set[str]:
     omt = state.get("on_match_timeout")
     if isinstance(omt, dict) and "goto" in omt:
         outs.add(omt["goto"])
+    # The engine jumps here on its own when the visit cap fires — no `goto`
+    # action names it, so without this the target reads as an orphan and a real
+    # orphan gets lost next to the false one.
+    cap_goto = state.get("max_visits_goto")
+    if cap_goto:
+        outs.add(cap_goto)
     for actions in lists:
         for a in actions:
             if a.get("type") == "goto":

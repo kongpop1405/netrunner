@@ -313,6 +313,68 @@ class TestGuardParity:
             assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"
 
 
+class TestMailboxCapClosesItsDialog:
+    """Live 00:24-00:33 on 2026-08-19: confirm_loop hit max_visits 30 and went
+    straight to `done`, leaving item 31's "Send X a free Life?" dialog open.
+    `done` looks for alldone_marker (measured 0.474 on that frame — absent), so
+    it fell to close_mailbox, whose X at (1692,135) the dialog covers; close_popup
+    warned twice and `stop` handed control back to the farm loop with the dialog
+    still up. Nothing in the farm loop matches that screen (sendlife_marker scores
+    0.598, under the 0.82 threshold), so it walked its guard chain looking healthy
+    until the progress watchdog fired 601s later."""
+
+    def _sweep(self):
+        return json.loads(
+            (CONFIG_DIR / "sendlife_mailbox.json").read_text(encoding="utf-8"))
+
+    def test_cap_exits_through_a_state_that_closes_the_dialog(self):
+        st = self._sweep()["states"]
+        target = st["confirm_loop"]["max_visits_goto"]
+        assert target != "done", (
+            "the cap must not hand straight to `done` — the dialog that stopped "
+            "the sweep is still on screen")
+        gate = st[target]
+        # It must key off the same marker confirm_loop uses, or it cannot tell
+        # whether a dialog is actually there.
+        assert gate["detect"] == st["confirm_loop"]["detect"], gate
+        closes = [a for a in gate["on_match"]
+                  if a.get("type") in ("close_popup", "tap_template", "tap_xy")]
+        assert closes, f"{target} does not dismiss anything: {gate['on_match']}"
+        # close_popup, not a blind tap: it re-reads the frame and warns if the
+        # marker never clears.
+        assert closes[0]["type"] == "close_popup", closes[0]
+        assert closes[0].get("verify") == gate["detect"], closes[0]
+
+    def test_cap_exit_leaves_the_queue_instead_of_working_it(self):
+        """Measured live 2026-08-19 on the stuck frame (Lives badge 70): only the
+        dialog's own X leaves the queue. Cancel accepts the current Life and
+        re-opens the dialog for the next friend — 12 Cancel taps took the badge
+        70 -> 37 and the heart counter up 32 before "All Lives received and sent!"
+        appeared. Confirm does the same and sends a Life besides. Either button
+        drains the list, which is what the cap exists to prevent."""
+        st = self._sweep()["states"]
+        gate = st[st["confirm_loop"]["max_visits_goto"]]
+        buttons = {"Cancel": 727, "Confirm": 1192}  # measured button centres
+        for a in gate["on_match"]:
+            x, y = a.get("x"), a.get("y")
+            if x is None:
+                continue
+            for label, bx in buttons.items():
+                on_button_row = y is not None and abs(y - 687) < 60
+                assert not (abs(x - bx) < 100 and on_button_row), (
+                    f"tap at ({x},{y}) lands on {label} ({bx},687), which works "
+                    f"the queue instead of leaving it")
+
+    def test_cap_target_is_reachable(self):
+        """`max_visits_goto` is an engine jump with no goto naming it, so the
+        reachability walk has to know about it or this state reads as an orphan."""
+        from src.config import goto_targets
+        st = self._sweep()["states"]
+        target = st["confirm_loop"]["max_visits_goto"]
+        assert target in goto_targets(st["confirm_loop"]), (
+            "goto_targets does not follow max_visits_goto")
+
+
 class TestMailboxBaseHandlesEmptyFriendList:
     """Live 2026-08-18: 'No Lives received! Send Lives to friends...' — the Quick
     Receive & Send banner never renders when nobody's on the list, but the old
