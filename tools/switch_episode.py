@@ -40,6 +40,18 @@ MAP_SWIPE_LEFT = ((1500, 540), (400, 540))   # drags map content rightward
 MAP_SWIPE_RIGHT = ((400, 540), (1700, 540))  # drags map content leftward
 
 OPEN_MAP_ATTEMPTS = 3  # home may still be fading in when the first tap lands
+
+#: How long to wait for home to come back after entering an Episode. Generous
+#: because the screen genuinely reloads and the cost is not fixed; a single grab
+#: at 2.0s reported failure on switches that had actually succeeded.
+HOME_AFTER_ENTER_S = 12.0
+
+#: How long to wait for home BEFORE tapping the Episode button. The map tap is
+#: blind, so a caller arriving on any other screen (a previous switch still
+#: loading, a popup) burns all OPEN_MAP_ATTEMPTS against the wrong screen and
+#: reports "Episode Map did not open" — which reads as a marker problem and is
+#: not one.
+HOME_BEFORE_TAP_S = 15.0
 RESET_SWIPES = 10      # upper bound only — the reset stops on LEFT_EDGE_MARKER
 MAX_STEP_SWIPES = 6    # generous: more than the farthest episode is steps away
 MATCH_THRESHOLD = 0.82
@@ -68,6 +80,20 @@ def switch_episode(device, store: TemplateStore, episode: int,
         raise SwitchEpisodeError(f"no {banner_name} — crop one first (see module docstring)")
 
     actor = Actor(device, store, default_threshold=threshold)
+
+    # Wait for home before tapping anything. The Episode-button tap is blind, so
+    # arriving on any other screen (a previous switch's home reload still in
+    # flight, a popup that queued while Send-Life ran) spends every attempt
+    # tapping the wrong screen and then blames the map marker.
+    for _ in range(int(HOME_BEFORE_TAP_S / 0.5)):
+        if find_named(grab(device), store, "home/home_play_marker.png",
+                      threshold=threshold).found:
+            break
+        time.sleep(0.5)
+    else:
+        raise SwitchEpisodeError(
+            f"not on home after {HOME_BEFORE_TAP_S:.0f}s — refusing to tap the "
+            f"Episode button blind")
 
     # A tap landing while home is still fading in (right after a previous switch,
     # say) is swallowed, so re-tap rather than failing on the first miss.
@@ -128,12 +154,24 @@ def switch_episode(device, store: TemplateStore, episode: int,
         raise SwitchEpisodeError(f"confirm dialog for {banner_name} did not open as expected")
 
     actor.tap(enter.x, enter.y)
-    time.sleep(2.0)
 
-    frame = grab(device)
-    m3 = find_named(frame, store, "home/home_play_marker.png", threshold=threshold)
-    if not m3.found:
-        raise SwitchEpisodeError("home_play_marker not visible after Enter — check manually")
+    # Poll rather than grabbing once after a fixed 2.0s wait. Entering an Episode
+    # reloads the home screen and that is not a fixed cost: live 2026-08-18 a
+    # switch that had actually WORKED raised here anyway because home was still
+    # loading at the 2.0s mark. The caller then treated the episode as failed —
+    # and worse, the game was left mid-load, so the NEXT switch tapped the Episode
+    # button on a screen that was not home and failed with "Episode Map did not
+    # open", cascading to every remaining episode (observed: Episode 2 raised
+    # here, then 4/5/6/7 all failed at map-open while Episode 3, which happened to
+    # land cleanly, switched fine).
+    for _ in range(int(HOME_AFTER_ENTER_S / 0.5)):
+        time.sleep(0.5)
+        if find_named(grab(device), store, "home/home_play_marker.png",
+                      threshold=threshold).found:
+            return
+    raise SwitchEpisodeError(
+        f"home_play_marker not visible {HOME_AFTER_ENTER_S:.0f}s after Enter — "
+        f"check manually")
 
 
 def main() -> int:
