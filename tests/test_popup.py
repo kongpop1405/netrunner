@@ -273,12 +273,19 @@ class TestGuardParity:
             st = raw["states"].get("check_heart")
             if not st:
                 continue
-            calls = [a["config"] for a in st["on_match"] if a.get("type") == "run_config"]
+            runs = [a for a in st["on_match"] if a.get("type") == "run_config"]
+            calls = [a["config"] for a in runs]
             assert calls == [
                 "config/cookierun/sendlife.json",
                 "config/cookierun/sendlife_mailbox.json",
             ], f"{name}: {calls}"
-            assert st["timeout_ms"] >= 3_000_000, f"{name}: timeout_ms {st['timeout_ms']}"
+            # Send-Life's friend list is per-Episode, so it must clear all of
+            # them; the mailbox sweep is one popup and must NOT switch episodes.
+            assert runs[0].get("episodes") == [1, 2, 3, 4, 5, 6, 7], runs[0]
+            assert runs[1].get("episodes") is None, runs[1]
+            # 7 episodes x ~358s measured + 8 switches + the mailbox sweep budgets
+            # to ~2,844s; run_config blocks in this state so it is all billed here.
+            assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"
 
 
 class TestMailboxBaseHandlesEmptyFriendList:

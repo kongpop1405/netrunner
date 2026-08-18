@@ -14,6 +14,7 @@ from .capture import grab
 from .config import Config, detect_names
 from .config import load as load_config
 from .device import AdbError, Device
+from .episode import detect_current_episode
 from .perceive import Match, PerceiveError, TemplateStore, find_named
 from .session import Restarter, SessionError
 
@@ -545,7 +546,7 @@ class Runner:
             )
             raise
 
-    def _run_errand(self, path: str) -> None:
+    def _run_errand(self, path: str, episodes: list[int] | None = None) -> None:
         """Run another config's FSM to completion (its own `stop` action ends
         it), then return control to this one — the `run_config` action.
 
@@ -571,9 +572,69 @@ class Runner:
         # needed.
         time.sleep(1.0)
         sub_cfg = load_config(path)
+        if episodes:
+            self._run_errand_per_episode(path, sub_cfg, episodes)
+            return
         log.info("errand: starting %s (start_state=%s)", path, sub_cfg.start_state)
         Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)
         log.info("errand: %s finished, resuming", path)
+
+    def _run_errand_per_episode(self, path: str, sub_cfg: Config,
+                                episodes: list[int]) -> None:
+        """Run an errand once per Episode, then put the original Episode back.
+
+        Send-Life's friend list is per-Episode: a single pass only ever reaches
+        the friends of whatever Episode home happened to have selected, so
+        "send a life to everyone" needs the switch. The parent config is a farm
+        loop that taps Play! without ever choosing an Episode, so it farms
+        whatever is selected when control returns — leaving the last Episode in
+        the list selected would silently change what the bot farms for the rest
+        of the session. Hence the restore, and hence failing loudly if the
+        Episode cannot be read BEFORE anything is switched: switching without
+        knowing where to come back to is the one outcome worse than skipping
+        the errand entirely.
+        """
+        from tools.switch_episode import SwitchEpisodeError, switch_episode
+
+        original = detect_current_episode(self.device, self.store)
+        if original is None:
+            log.warning("errand: cannot read the current Episode off home — "
+                        "skipping %s rather than switching with no way back", path)
+            return
+        log.info("errand: %s across episodes %s (currently on %d)",
+                 path, episodes, original)
+
+        for episode in episodes:
+            if episode != original or episodes.index(episode) > 0:
+                try:
+                    switch_episode(self.device, self.store, episode)
+                except SwitchEpisodeError as e:
+                    # One episode failing to open is not worth abandoning the
+                    # rest — the map not settling is the usual cause and the
+                    # next switch starts from home again either way.
+                    log.warning("errand: switch to Episode %d failed: %s — skipping it",
+                                episode, e)
+                    continue
+            log.info("errand: starting %s on Episode %d (start_state=%s)",
+                     path, episode, sub_cfg.start_state)
+            Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)
+            log.info("errand: Episode %d done", episode)
+
+        try:
+            switch_episode(self.device, self.store, original)
+            log.info("errand: %s finished, Episode %d restored, resuming", path, original)
+        except SwitchEpisodeError as e:
+            # The farm loop would otherwise keep running against the wrong
+            # Episode without anything in the log saying so.
+            log.error("errand: could NOT restore Episode %d: %s — the farm loop "
+                      "is now running against a different Episode", original, e)
+            send_alert(
+                self.webhook_url,
+                "NetRunner: episode not restored",
+                f"Send-Life finished but Episode {original} could not be "
+                f"re-selected (```{e}```) — farming may be on the wrong Episode "
+                f"on device {self.device.serial}.",
+            )
 
     def _due_routine(self, state: str, inter_game_state: str,
                      due: dict[str, float]) -> dict | None:
