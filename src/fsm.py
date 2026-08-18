@@ -133,6 +133,12 @@ class Runner:
         cycles = 0
         same_state_streak = 0
         stuck_alerted = False
+        # Times each state has been entered this run, for `max_visits` — a state
+        # whose own work is one item per visit (the mailbox sweep confirms one
+        # friend's Life per pass) needs a cap in ITEMS, which neither watchdog
+        # measures: both ask "has the bot stopped making progress", and a sweep
+        # working through a long list is progressing the whole time.
+        visits: dict[str, int] = {}
         absent_streak = 0        # consecutive absent polls in the current state
         # Same count, but it survives state changes: absent_streak resets on every
         # transition, which is precisely what a chain walking 30 states in a row
@@ -333,6 +339,18 @@ class Runner:
                 else:
                     same_state_streak = 0
                     stuck_alerted = False
+
+                if did_transition:
+                    visits[state] = visits.get(state, 0) + 1
+                    cap = self.cfg.states[state].get("max_visits")
+                    if cap is not None and visits[state] >= cap:
+                        target = self.cfg.states[state]["max_visits_goto"]
+                        log.info("state '%s' hit max_visits %d -> goto '%s'",
+                                 state, cap, target)
+                        visits[state] = 0
+                        state = target
+                        force_entry = True
+                        continue
                 if state != prev_state or force_entry:
                     force_entry = False
                     state_entered_at = time.monotonic()

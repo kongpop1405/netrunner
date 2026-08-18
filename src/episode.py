@@ -19,10 +19,19 @@ from .perceive import PerceiveError, TemplateStore, find_named, read_counter
 #: episode-specific and silently broke the whole bot once the account advanced).
 EPISODE_LABEL_MARKER = "home/episode_label_marker.png"
 
-#: Digit box relative to the marker's top-left (dx, dy, w, h) — measured live off
-#: a 1920x1080 frame at Episode 4 (marker top-left (352,113), digit ink at
-#: x 492-520, y 113-142).
-EPISODE_DIGIT_OFFSET = (140, 0, 28, 29)
+#: Digit box relative to the marker's top-left (dx, dy, w, h).
+#: Re-measured 2026-08-18 off a clean home frame: the marker crops the word
+#: "Episode" at (386,118)-(488,148) and the digit ink sits at x 492-508 — an
+#: HSV mask of the label's yellow text put the seven letter-runs at strip x
+#: 49-145 and the digit alone at 155-163, so the box starts past that gap and is
+#: wide enough for two digits.
+#:
+#: The previous values were cropped from a frame dimmed by a "Connection lost!"
+#: scrim and were also offset right, so the marker scored 0.690 against the 0.82
+#: threshold on every real home frame — detect_current_episode returned None
+#: every time, and Runner._run_errand_per_episode correctly refused to switch
+#: with no way back. Net effect: 5 live attempts, 5 skips, Send-Life never ran.
+EPISODE_DIGIT_OFFSET = (106, 0, 22, 30)
 
 #: Episodes the game has. A read outside this range is OCR noise, not an answer.
 EPISODE_RANGE = range(1, 8)
