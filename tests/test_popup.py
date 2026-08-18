@@ -259,3 +259,49 @@ class TestGuardParity:
             assert goto in raw["states"], f"{name}: watchdog points at missing {goto}"
             esc = raw.get("no_progress_escalate_goto")
             assert esc in raw["states"], f"{name}: escalation points at missing {esc}"
+
+
+class TestMailboxBaseHandlesEmptyFriendList:
+    """Live 2026-08-18: 'No Lives received! Send Lives to friends...' — the Quick
+    Receive & Send banner never renders when nobody's on the list, but the old
+    single-marker detect (lives_tab_marker only) still matched every poll, so
+    on_match kept blindly tap_template-ing a banner that plain wasn't there:
+    logged WARNING and skipped, forever (acted=True is set before the tap even
+    runs, so the no-action livelock detector never trips; timeout_ms only fires
+    on the on_absent path). Fix: detect both markers, branch on which one
+    actually matched, and skip the tap when only the tab (not the banner) is
+    present.
+    """
+
+    PATH = Path("config/cookierun/sendlife_mailbox.json")
+
+    def _mailbox_base(self):
+        raw = json.loads(self.PATH.read_text(encoding="utf-8"))
+        return raw["states"]["mailbox_base"]
+
+    def test_detect_lists_both_markers(self):
+        st = self._mailbox_base()
+        assert st["detect"] == ["quick_btn_marker.png", "lives_tab_marker.png"], st["detect"]
+
+    def test_banner_present_branch_taps_and_advances(self):
+        st = self._mailbox_base()
+        branch = st["on_match"]["quick_btn_marker.png"]
+        taps = [a for a in branch if a.get("type") == "tap_template"]
+        assert len(taps) == 1 and taps[0]["template"] == "quick_btn_marker.png", branch
+        assert branch[-1] == {"type": "goto", "state": "confirm_loop"}, branch
+
+    def test_banner_absent_branch_skips_the_tap(self):
+        """Only the tab marker matched (empty list) -> go straight to
+        confirm_loop, no tap_template attempted against a banner that isn't
+        there."""
+        st = self._mailbox_base()
+        branch = st["on_match"]["lives_tab_marker.png"]
+        assert not any(a.get("type") == "tap_template" for a in branch), branch
+        assert branch == [{"type": "goto", "state": "confirm_loop"}], branch
+
+    def test_neither_marker_still_falls_back_to_confirm_loop(self):
+        """Genuinely-off-screen case (e.g. mailbox closed underneath us) must
+        keep reaching confirm_loop too, same destination as both on_match
+        branches — nothing here should be able to strand the run."""
+        st = self._mailbox_base()
+        assert st["on_absent"] == {"goto": "confirm_loop"}, st["on_absent"]

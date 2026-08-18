@@ -38,25 +38,33 @@
       "timeout_ms": 8000
     },
     "mailbox_base": {
-      "_note": "Lives tab visible, no send-life dialog yet — tap the Quick Receive & Send Lives banner once to kick off the confirm chain. tap_template (not a fixed tap_xy) so the tap follows wherever the banner actually renders, and every tap already gets engine-level spatial jitter + randomized delay (src/act.py _jitter) — no two taps land on the exact same pixel or land at the exact same interval.",
-      "detect": "lives_tab_marker.png",
-      "on_match": [
-        {
-          "type": "tap_template",
-          "template": "quick_btn_marker.png"
-        },
-        {
-          "type": "wait",
-          "ms": [
-            500,
-            900
-          ]
-        },
-        {
-          "type": "goto",
-          "state": "confirm_loop"
-        }
-      ],
+      "_note": "Lives tab visible, no send-life dialog yet. detect is a 2-marker list: lives_tab_marker confirms we're on the right tab, quick_btn_marker is the actual Quick Receive & Send banner — present only when the friend list is non-empty. BUG FOUND LIVE 2026-08-18: when a friend's list has nobody to send to ('No Lives received! Send Lives to friends...'), the banner never renders at all, but lives_tab_marker alone still matched every poll, so the old single-marker detect kept re-entering on_match and tap_template kept firing on a template that plain isn't on screen (best score 0.19 < 0.85) — logged as a WARNING and skipped, forever, never reaching confirm_loop/done because 'acted' is set True before the tap runs so the no-action livelock detector never trips, and this state's own timeout_ms only fires on the on_absent path. Real run spammed this every ~1s until an external restart broke it. Fix: branch on which marker actually matched — quick_btn_marker present -> tap it -> confirm_loop (unchanged happy path); only lives_tab_marker (banner absent, empty list) -> skip straight to confirm_loop with no tap, same destination confirm_loop already reaches via on_absent for the genuinely-off-screen case.",
+      "detect": ["quick_btn_marker.png", "lives_tab_marker.png"],
+      "on_match": {
+        "quick_btn_marker.png": [
+          {
+            "type": "tap_template",
+            "template": "quick_btn_marker.png"
+          },
+          {
+            "type": "wait",
+            "ms": [
+              500,
+              900
+            ]
+          },
+          {
+            "type": "goto",
+            "state": "confirm_loop"
+          }
+        ],
+        "lives_tab_marker.png": [
+          {
+            "type": "goto",
+            "state": "confirm_loop"
+          }
+        ]
+      },
       "on_absent": {
         "goto": "confirm_loop"
       },
