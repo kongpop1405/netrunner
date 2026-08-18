@@ -260,6 +260,26 @@ class TestGuardParity:
             esc = raw.get("no_progress_escalate_goto")
             assert esc in raw["states"], f"{name}: escalation points at missing {esc}"
 
+    def test_check_heart_runs_sendlife_before_mailbox_with_headroom(self):
+        """User request 2026-08-18: send lives to friends during the heart-empty
+        wait (not just passively receive via mailbox), sendlife.json first so
+        friends have time to send back before the mailbox sweep collects them.
+
+        sendlife.json alone measured 1411s (23.5 min) on 2026-08-16; mailbox
+        measured 138s; summed 1549s left almost no margin under the old
+        1,500,000ms (25 min) check_heart timeout — raised to 3,000,000ms (50 min)
+        when sendlife was re-added so the ceiling has real headroom again."""
+        for name, raw in self._home_configs().items():
+            st = raw["states"].get("check_heart")
+            if not st:
+                continue
+            calls = [a["config"] for a in st["on_match"] if a.get("type") == "run_config"]
+            assert calls == [
+                "config/cookierun/sendlife.json",
+                "config/cookierun/sendlife_mailbox.json",
+            ], f"{name}: {calls}"
+            assert st["timeout_ms"] >= 3_000_000, f"{name}: timeout_ms {st['timeout_ms']}"
+
 
 class TestMailboxBaseHandlesEmptyFriendList:
     """Live 2026-08-18: 'No Lives received! Send Lives to friends...' — the Quick
