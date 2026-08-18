@@ -1,8 +1,8 @@
 {
-  "_comment": "Cookie Run OvenBreak — auto Send-Life to friends (Friends tab, home screen). Precondition: sit on home with the Friends tab already selected (default tab) so the leaderboard/friends list with per-row Send-Life icons is visible. Loop: scan for any visible green Send-Life icon -> tap it -> confirm the 'Send <name> a free Life?' dialog -> confirm the 'Message sent!' popup -> back to scan. When no icon is visible, swipe the list up to reveal more rows and re-scan; if still nothing after the swipe, the list is exhausted -> stop. SPEED-TUNED: poll_ms 400 and waits trimmed (scan 700, confirm 800, message_sent 700, scroll 1200) — each still covers its animation (dialog/popup fade ~1s, list reload ~1.2s) but the loop cycles ~35% faster. All coords verified live @1920x1080.",
+  "_comment": "Cookie Run OvenBreak — auto Send-Life to friends (Friends tab, home screen). Precondition: sit on home with the Friends tab already selected (default tab) so the leaderboard/friends list with per-row Send-Life icons is visible. Loop: scan for any visible green Send-Life icon -> tap it -> confirm the 'Send <name> a free Life?' dialog -> confirm the 'Message sent!' popup -> back to scan. When no icon is visible, swipe the list up to reveal more rows and re-scan; if still nothing after the swipe, the list is exhausted -> stop. SPEED-TUNED 2026-08-18 (second pass): poll_ms 250 and the hot-path waits trimmed again — scan 450, confirm 450, message_sent 400, scroll 800. Measured from the 2026-08-15/16 run (1411s, 164 sends, 0 close_popup retries across the whole pass): 84% of the wall clock sat in the three per-send states, and their cost was poll + tap + settle + the close_popup verify grab, not the taps themselves. The verify re-detect is KEPT everywhere — it is the fix for 'the close sometimes does not take' and it never once had to retry at these timings, which is the evidence the settle waits were oversized rather than load-bearing. Cold-path settles (peel_* 1000, probe_inactive 4000, recover_* 4000/12000, guard_not_partyrun 1200) are untouched: they fire a handful of times per run, so trimming them buys nothing and each covers a slower animation or a login round-trip. All coords verified live @1920x1080.",
   "device": "127.0.0.1:5555",
   "templates_dir": "templates/cookierun",
-  "poll_ms": 400,
+  "poll_ms": 250,
   "match_threshold": 0.85,
   "start_state": "scan",
   "states": {
@@ -17,7 +17,7 @@
         },
         {
           "type": "wait",
-          "ms": 700
+          "ms": 450
         },
         {
           "type": "goto",
@@ -101,7 +101,7 @@
           "x": 1189,
           "y": 687,
           "verify": "sendlife/sendlife_confirm_marker.png",
-          "settle_ms": 800
+          "settle_ms": 450
         },
         {
           "type": "goto",
@@ -122,7 +122,7 @@
           "x": 1189,
           "y": 687,
           "verify": "sendlife/sendlife_confirm_gp_marker.png",
-          "settle_ms": 800
+          "settle_ms": 450
         },
         {
           "type": "goto",
@@ -143,7 +143,7 @@
           "x": 957,
           "y": 685,
           "verify": "sendlife/messagesent_marker.png",
-          "settle_ms": 700
+          "settle_ms": 400
         },
         {
           "type": "goto",
@@ -175,7 +175,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -204,7 +204,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -233,7 +233,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -262,7 +262,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
@@ -291,7 +291,7 @@
         },
         {
           "type": "wait",
-          "ms": 1200
+          "ms": 800
         },
         {
           "type": "goto",
