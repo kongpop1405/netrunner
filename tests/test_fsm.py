@@ -356,3 +356,70 @@ class TestErrandPerEpisode:
         runner, events = self._runner(monkeypatch, detected=4)
         runner._run_errand("errand.json")
         assert events == [("run", None)], events
+
+
+class TestMaxVisits:
+    """A cap in ITEMS, which neither watchdog can express: both ask whether the
+    bot has stopped progressing, and the mailbox sweep confirming one friend's
+    Life per pass is progressing on every single pass — it would drain a
+    200-friend list before the Send-Life run ever started.
+    """
+
+    def _states(self, cap, target="escaped"):
+        return {
+            "loop": {"detect": "a.png", "max_visits": cap, "max_visits_goto": target,
+                     "on_match": [{"type": "tap_xy", "x": 1, "y": 1},
+                                  {"type": "goto", "state": "loop"}]},
+            "escaped": {"detect": "esc.png", "on_match": [{"type": "stop"}]},
+        }
+
+    def test_the_cap_fires_after_exactly_that_many_passes(self, monkeypatch, grabs, caplog):
+        """Count the loop's own passes, not the number echoed in the log line:
+        asserting on "max_visits 3" only re-reads the configured value back, so a
+        >-vs->= slip and a count-every-poll slip both survive it (both mutants
+        did). The confirms are the thing that must be capped.
+        """
+        _patch_find(monkeypatch, {"a.png", "esc.png"})
+        with caplog.at_level("INFO"):
+            fsm.Runner(_cfg(self._states(3), "loop"),
+                       FakeDevice()).run(dry_run=True, max_cycles=40)
+        msgs = [r.message for r in caplog.records]
+        passes = sum("transition loop -> loop" in m for m in msgs)
+        assert passes == 3, f"expected 3 confirms before the cap, got {passes}"
+        fired = [m for m in msgs if "max_visits" in m]
+        assert fired and "goto 'escaped'" in fired[0], fired
+
+    def test_a_pass_only_counts_when_the_state_is_re_entered(self, monkeypatch, grabs, caplog):
+        """The counter has to tick on transitions, not on polls: a state that
+        polls several times per item (waiting for the dialog to re-open) would
+        otherwise hit the cap having confirmed far fewer than `cap` friends."""
+        # absent for two polls, so the state is re-polled without transitioning
+        _patch_find(monkeypatch, {"esc.png"})
+        states = self._states(2)
+        states["loop"]["absent_retries"] = 2
+        states["loop"]["absent_wait_ms"] = 1
+        states["loop"]["on_absent"] = {"goto": "escaped"}
+        with caplog.at_level("INFO"):
+            fsm.Runner(_cfg(states, "loop"),
+                       FakeDevice()).run(dry_run=True, max_cycles=20)
+        assert not [r for r in caplog.records if "max_visits" in r.message], \
+            "polls without a transition must not count toward the cap"
+
+    def test_a_short_list_still_ends_on_its_own(self, monkeypatch, grabs, caplog):
+        """Under the cap nothing changes: the dialog stops reappearing and
+        on_absent takes it to `done` exactly as before."""
+        _patch_find(monkeypatch, {"esc.png"})  # dialog never present
+        with caplog.at_level("INFO"):
+            fsm.Runner(_cfg(self._states(30), "loop"),
+                       FakeDevice()).run(dry_run=True, max_cycles=20)
+        assert not [r for r in caplog.records if "max_visits" in r.message], \
+            "the cap fired on a list that was already empty"
+
+    def test_uncapped_states_are_untouched(self, monkeypatch, grabs, caplog):
+        _patch_find(monkeypatch, {"a.png", "esc.png"})
+        states = self._states(3)
+        del states["loop"]["max_visits"], states["loop"]["max_visits_goto"]
+        with caplog.at_level("INFO"):
+            fsm.Runner(_cfg(states, "loop"),
+                       FakeDevice()).run(dry_run=True, max_cycles=12)
+        assert not [r for r in caplog.records if "max_visits" in r.message]

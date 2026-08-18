@@ -298,3 +298,37 @@ def test_run_config_episodes_rejects_bad_values(tmp_path, tdir, bad):
     ran and the switch failed mid-session, so it has to fail at load."""
     with pytest.raises(cfgmod.ConfigError, match="episodes"):
         _run_config_with_episodes(tmp_path, tdir, bad)
+
+
+def _with_max_visits(tmp_path, tdir, **over):
+    data = _minimal(tdir)
+    data["states"]["b"] = {"detect": "marker.png", "on_match": [{"type": "stop"}]}
+    data["states"]["a"].update(over)
+    return cfgmod.load(_write(tmp_path, data))
+
+
+def test_max_visits_accepts_a_cap_with_a_target(tmp_path, tdir):
+    cfg = _with_max_visits(tmp_path, tdir, max_visits=30, max_visits_goto="b")
+    assert cfg.states["a"]["max_visits"] == 30
+
+
+def test_max_visits_requires_a_target(tmp_path, tdir):
+    """A cap with nowhere to go would leave the state pinned at the cap."""
+    with pytest.raises(cfgmod.ConfigError, match="max_visits_goto"):
+        _with_max_visits(tmp_path, tdir, max_visits=30)
+
+
+def test_max_visits_target_cannot_be_itself(tmp_path, tdir):
+    with pytest.raises(cfgmod.ConfigError, match="targets itself"):
+        _with_max_visits(tmp_path, tdir, max_visits=5, max_visits_goto="a")
+
+
+def test_max_visits_target_must_exist(tmp_path, tdir):
+    with pytest.raises(cfgmod.ConfigError, match="undefined state"):
+        _with_max_visits(tmp_path, tdir, max_visits=5, max_visits_goto="ghost")
+
+
+@pytest.mark.parametrize("bad", [0, -1, 1.5, True, "30"])
+def test_max_visits_rejects_non_positive_ints(tmp_path, tdir, bad):
+    with pytest.raises(cfgmod.ConfigError, match="max_visits"):
+        _with_max_visits(tmp_path, tdir, max_visits=bad, max_visits_goto="b")

@@ -333,6 +333,24 @@ def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> Non
     if wait_ms is not None and (not isinstance(wait_ms, int) or wait_ms <= 0):
         raise ConfigError(f"state '{sname}': 'absent_wait_ms' must be a positive integer (ms)")
 
+    cap = state.get("max_visits")
+    if cap is not None:
+        if not isinstance(cap, int) or isinstance(cap, bool) or cap < 1:
+            raise ConfigError(
+                f"state '{sname}': 'max_visits' must be a positive integer")
+        target = state.get("max_visits_goto")
+        if not target:
+            raise ConfigError(
+                f"state '{sname}': 'max_visits' needs 'max_visits_goto' — a cap "
+                f"with nowhere to go would leave the state stuck at the cap")
+        if target == sname:
+            raise ConfigError(
+                f"state '{sname}': 'max_visits_goto' targets itself, so the cap "
+                f"can never be escaped")
+        if target not in names:
+            raise ConfigError(
+                f"state '{sname}': 'max_visits_goto' targets undefined state '{target}'")
+
     actions: list[dict] = []
     om = state.get("on_match", [])
     if isinstance(om, dict):
