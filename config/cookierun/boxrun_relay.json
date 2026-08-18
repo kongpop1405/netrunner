@@ -12,7 +12,7 @@
       "on_match": [
         {
           "type": "goto",
-          "state": "verify_no_popup"
+          "state": "verify_no_connectionlost"
         }
       ],
       "on_absent": {
@@ -2056,6 +2056,32 @@
           "state": "guard_not_inactive"
         }
       ],
+      "timeout_ms": 8000
+    },
+    "verify_no_connectionlost": {
+      "_note": "Play-tap gate, connection-lost arm — added 2026-08-18 after a live livelock. 'Connection lost!' dims home but Play! still matches through its scrim, so home took its on_match path, tapped Play into the dialog, and came straight back: home -> verify_* -> await_shop -> running -> guard_not_home -> home, 24 laps with every transition logging normally and no state ever repeating, so neither livelock detector tripped. probe_connectionlost existed the whole time but hangs off home.on_absent, which a matching home never takes — the guard was unreachable on the only path that runs. Same failure shape as the inactive popup this chain was built for (see verify_no_popup), so it belongs in the same chain rather than only in the probe chain. Confirm (960,700) restarts the client rather than dismissing, so hand to restart_app + recover_login exactly as probe_connectionlost does.",
+      "detect": "home/connectionlost_marker.png",
+      "on_match": [
+        {
+          "type": "tap_xy",
+          "x": 960,
+          "y": 700
+        },
+        {
+          "type": "wait",
+          "ms": 2000
+        },
+        {
+          "type": "restart_app"
+        },
+        {
+          "type": "goto",
+          "state": "recover_login"
+        }
+      ],
+      "on_absent": {
+        "goto": "verify_no_popup"
+      },
       "timeout_ms": 8000
     }
   },
