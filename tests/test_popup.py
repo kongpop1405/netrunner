@@ -332,3 +332,68 @@ class TestMailboxBaseHandlesEmptyFriendList:
         branches — nothing here should be able to strand the run."""
         st = self._mailbox_base()
         assert st["on_absent"] == {"goto": "confirm_loop"}, st["on_absent"]
+
+
+class TestConnectionLostReachableFromMatchingHome:
+    """Live livelock 2026-08-18: 'Connection lost!' dims home but Play! still
+    matches through its scrim, so `home` took its on_match path, tapped Play into
+    the dialog, and came right back — home -> verify_* -> await_shop -> running ->
+    guard_not_home -> home, 24 laps, every transition logging normally and no
+    state repeating, so neither the same-state nor the no-act livelock detector
+    tripped. probe_connectionlost existed the whole time, but it hangs off
+    home.on_absent, and a home that MATCHES never takes on_absent: the guard was
+    unreachable on the only path that actually runs.
+
+    So the dialog has to be ruled out on the match path too, which is what the
+    verify_* chain is for (it was built for the inactive popup, which fails the
+    exact same way — see verify_no_popup's own note).
+    """
+
+    def _configs(self):
+        out = {}
+        for path in sorted(CONFIG_DIR.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if "verify_no_popup" in raw.get("states", {}):
+                out[path.stem] = raw
+        # The farm configs all carry this chain; an errand config does not. A
+        # count this far below the set means the fixture stopped finding them.
+        assert len(out) >= 8, f"expected the whole farm set, got {sorted(out)}"
+        return out
+
+    def _goto(self, spec):
+        if isinstance(spec, dict):
+            return spec.get("goto")
+        if isinstance(spec, list):
+            return next((a["state"] for a in spec if a.get("type") == "goto"), None)
+        return None
+
+    def test_the_play_tap_path_checks_connection_lost_before_tapping(self):
+        configs = self._configs()
+        assert configs, "no config carries the verify chain — wrong fixture?"
+        for name, raw in configs.items():
+            st = raw["states"]
+            # walk what home's on_match hands off to, and require the dialog
+            # check to sit on that path BEFORE any tap of Play.
+            entry = next((a["state"] for a in st["home"].get("on_match", [])
+                          if a.get("type") == "goto"), None)
+            assert entry, f"{name}: home no longer hands off to a verify chain"
+
+            walked, node = [], entry
+            while node and node in st and node not in walked:
+                walked.append(node)
+                node = self._goto(st[node].get("on_absent"))
+            assert "verify_no_connectionlost" in walked, (
+                f"{name}: connection-lost is not checked on the path a MATCHING "
+                f"home takes — walked {walked}")
+
+    def test_the_dialog_arm_restarts_rather_than_dismissing(self):
+        """Confirm on this dialog restarts the client rather than closing it, so a
+        close_popup that waits for the marker to vanish would be waiting on the
+        wrong thing — probe_connectionlost already handles it via restart_app."""
+        for name, raw in self._configs().items():
+            s = raw["states"]["verify_no_connectionlost"]
+            assert s["detect"] == "home/connectionlost_marker.png", name
+            kinds = [a.get("type") for a in s["on_match"]]
+            assert "restart_app" in kinds, f"{name}: {kinds}"
+            assert not any(k == "close_popup" for k in kinds), f"{name}: {kinds}"
+            assert self._goto(s["on_match"]) == "recover_login", f"{name}: {kinds}"
