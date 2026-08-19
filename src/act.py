@@ -31,6 +31,9 @@ class Actor:
     ):
         self.device = device
         self.store = store
+        #: Last Episode seen selected on home, put back after a re-login resets
+        #: it. None until something reads one.
+        self.remembered_episode: int | None = None
         self.dry_run = dry_run
         self.default_threshold = default_threshold
 
@@ -195,6 +198,72 @@ class Actor:
             return
         log.info("restart_app: cycling the game process")
         self.restarter.restart()
+
+    def remember_episode(self) -> None:
+        """Record which Episode is selected, while home is on screen to read it.
+
+        Re-logging in resets the selection: `recover_pick` taps the saved-account
+        row, and the game comes back on Episode 1 whatever was chosen before.
+        Measured 2026-08-19 — two restarts that went through recover_login left
+        Episode 1 selected, while a restart that did not kept Episode 2. The farm
+        configs only ever tap Play!, never an Episode, so nothing puts the
+        selection back and the bot silently farms the wrong Episode from then on.
+
+        Cheap and safe to call on any home-side state: an unreadable Episode
+        leaves the last known value alone rather than overwriting it with None,
+        because a bad read must not erase a good answer.
+        """
+        from .episode import detect_current_episode
+        try:
+            ep = detect_current_episode(self.device, self.store)
+        except Exception as e:
+            log.debug("remember_episode: could not read the Episode (%s)", e)
+            return
+        if ep is None:
+            return
+        if ep != self.remembered_episode:
+            log.info("remember_episode: Episode %d selected", ep)
+        self.remembered_episode = ep
+
+    def restore_episode(self) -> None:
+        """Put the remembered Episode back if something changed it.
+
+        Called after the login chain, the one path that resets the selection.
+        A no-op when the Episode already matches, so it costs a single read on
+        every normal pass through recovery.
+        """
+        if self.dry_run:
+            log.info("restore_episode [dry]")
+            return
+        want = self.remembered_episode
+        if want is None:
+            log.debug("restore_episode: nothing remembered yet")
+            return
+        from .episode import detect_current_episode
+        try:
+            now = detect_current_episode(self.device, self.store)
+        except Exception as e:
+            log.warning("restore_episode: could not read the Episode (%s)", e)
+            return
+        if now == want:
+            return
+        if now is None:
+            # Switching blind is worse than leaving it: switch_episode taps the
+            # Episode button without knowing what it is on, and the caller has
+            # no way back if the read was wrong.
+            log.warning("restore_episode: wanted Episode %d but cannot read the "
+                        "current one — leaving it alone", want)
+            return
+        from tools.switch_episode import SwitchEpisodeError, switch_episode
+        log.warning("restore_episode: Episode %d selected, wanted %d — switching back",
+                    now, want)
+        try:
+            switch_episode(self.device, self.store, want)
+        except SwitchEpisodeError as e:
+            log.error("restore_episode: could NOT put Episode %d back (%s) — "
+                      "the farm loop is on Episode %d", want, e, now)
+            return
+        log.info("restore_episode: Episode %d restored", want)
 
     def require_foreground(self) -> None:
         """Cycle the game if something else owns the screen.
@@ -483,6 +552,12 @@ class Actor:
             )
         if kind == "require_foreground":
             self.require_foreground()
+            return None
+        if kind == "remember_episode":
+            self.remember_episode()
+            return None
+        if kind == "restore_episode":
+            self.restore_episode()
             return None
         if kind == "restart_app":
             self.restart_app()

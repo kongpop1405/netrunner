@@ -356,6 +356,117 @@ class TestForegroundCheckOnRecovery:
         assert cfgmod._REQUIRED_FIELDS.get("require_foreground") == set()
 
 
+class TestEpisodeSurvivesRelogin:
+    """Measured 2026-08-19: two restarts that went through recover_login came
+    back on Episode 1, while a restart that did not kept Episode 2. recover_pick
+    taps the saved-account row, and the game starts a fresh session on Episode 1.
+    The farm configs only ever tap Play!, never an Episode, so nothing put the
+    selection back — the bot farmed the wrong Episode with nothing in the log
+    saying so."""
+
+    class _Store:
+        dir = Path("templates/cookierun")
+        def get(self, name): return None
+
+    def _actor(self, reads, *, dry_run=False):
+        """reads: successive detect_current_episode results."""
+        a = Actor(object(), self._Store(), dry_run=dry_run, default_threshold=0.82)
+        seq = list(reads)
+        switched = []
+        import src.episode as epmod
+        import tools.switch_episode as swmod
+        orig_detect, orig_switch = epmod.detect_current_episode, swmod.switch_episode
+        epmod.detect_current_episode = lambda *a, **k: seq.pop(0) if seq else None
+        swmod.switch_episode = lambda dev, store, ep, **k: switched.append(ep)
+        try:
+            yield_ = (a, switched)
+            return yield_, (orig_detect, orig_switch, epmod, swmod)
+        except Exception:
+            epmod.detect_current_episode, swmod.switch_episode = orig_detect, orig_switch
+            raise
+
+    def _run(self, reads, *, remembered=None, dry_run=False):
+        (a, switched), (od, os_, epmod, swmod) = self._actor(reads, dry_run=dry_run)
+        try:
+            a.remembered_episode = remembered
+            if remembered is None:
+                a.remember_episode()
+            else:
+                a.restore_episode()
+            return a.remembered_episode, switched
+        finally:
+            epmod.detect_current_episode, swmod.switch_episode = od, os_
+
+    def test_remembers_what_home_shows(self):
+        assert self._run([2])[0] == 2
+
+    def test_an_unreadable_episode_does_not_erase_a_good_one(self):
+        """A bad read must not overwrite the answer that will be restored."""
+        (a, _), (od, os_, epmod, swmod) = self._actor([None])
+        try:
+            a.remembered_episode = 2
+            a.remember_episode()
+            assert a.remembered_episode == 2
+        finally:
+            epmod.detect_current_episode, swmod.switch_episode = od, os_
+
+    def test_restores_when_the_login_reset_it(self):
+        _, switched = self._run([1], remembered=2)
+        assert switched == [2], switched
+
+    def test_no_switch_when_the_episode_already_matches(self):
+        _, switched = self._run([2], remembered=2)
+        assert switched == [], switched
+
+    def test_refuses_to_switch_blind(self):
+        """switch_episode taps the Episode button without knowing what it is on,
+        and there is no way back if the read was wrong."""
+        _, switched = self._run([None], remembered=2)
+        assert switched == [], switched
+
+    def test_nothing_remembered_means_nothing_to_do(self):
+        (a, switched), (od, os_, epmod, swmod) = self._actor([1])
+        try:
+            a.remembered_episode = None
+            a.restore_episode()
+            assert switched == []
+        finally:
+            epmod.detect_current_episode, swmod.switch_episode = od, os_
+
+    def test_dry_run_never_switches(self):
+        _, switched = self._run([1], remembered=2, dry_run=True)
+        assert switched == [], switched
+
+
+class TestEpisodeActionsAreWired:
+    def _farm_configs(self):
+        out = {}
+        for path in sorted(CONFIG_DIR.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            st = raw.get("states", {})
+            if "recover_pick" in st and "home" in st:
+                out[path.stem] = raw
+        return out
+
+    def test_home_records_the_episode(self):
+        for name, raw in self._farm_configs().items():
+            kinds = [a.get("type") for a in raw["states"]["home"]["on_match"]]
+            assert "remember_episode" in kinds, f"{name}: {kinds}"
+
+    def test_login_recovery_restores_it_before_leaving(self):
+        for name, raw in self._farm_configs().items():
+            acts = raw["states"]["recover_pick"]["on_match"]
+            kinds = [a.get("type") for a in acts]
+            assert "restore_episode" in kinds, f"{name}: {kinds}"
+            assert kinds.index("restore_episode") < kinds.index("goto"), (
+                f"{name}: restores after leaving the state: {kinds}")
+
+    def test_actions_are_registered(self):
+        for kind in ("remember_episode", "restore_episode"):
+            assert kind in cfgmod._ACTION_TYPES
+            assert cfgmod._REQUIRED_FIELDS.get(kind) == set()
+
+
 class TestRequireForegroundAction:
     """The check that answers what no template can: is this the game at all?"""
 

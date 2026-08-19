@@ -7,9 +7,12 @@
   "start_state": "home",
   "states": {
     "home": {
-      "_note": "Main menu, detected by the episode-independent 'Play!' button (home/home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). Play! at (1650,970) -> await_shop. No home-spam and no after_play gate: after_play misread the Play! button showing THROUGH the shop fade (~0.87) as a missed tap and double-tapped Play, which closed the shop. Fast Start is spammed later (await_shop absent = direct run, or check_heart = shop path) — always AFTER we have left home, so it can never hit the leaderboard.",
+      "_note": "Main menu, detected by the episode-independent 'Play!' button (home/home_play_marker.png — see coinrun.json for why the old Episode-banner marker silently broke). Play! visible = nothing covers it, tap it. Absent -> a modal covers it or we're elsewhere: hand off to probe_sendlife (NEVER blind-tap from here). 3000ms wait covers the boost-shop fade-in before await_shop re-checks. Play! at (1650,970). Play! at (1650,970) -> await_shop. No home-spam and no after_play gate: after_play misread the Play! button showing THROUGH the shop fade (~0.87) as a missed tap and double-tapped Play, which closed the shop. Fast Start is spammed later (await_shop absent = direct run, or check_heart = shop path) — always AFTER we have left home, so it can never hit the leaderboard. EPISODE REMEMBERED 2026-08-19: home is the one screen the Episode can be read off, so the selection is recorded here for restore_episode to put back after a re-login. Re-logging in resets it — measured that day: two restarts that went through recover_login came back on Episode 1 while a restart that did not kept Episode 2. These configs only ever tap Play!, never an Episode, so without this the bot farms whatever the game picked and nothing says so.",
       "detect": "home/home_play_marker.png",
       "on_match": [
+        {
+          "type": "remember_episode"
+        },
         {
           "type": "goto",
           "state": "verify_no_connectionlost"
@@ -1101,7 +1104,7 @@
       "timeout_ms": 6000
     },
     "recover_pick": {
-      "_note": "Login recovery step 2 (account picker). MARKER SWAPPED 2026-08-16: the old login_marker (CookieRun logo + full two-line text, 220x720 crop) scored only 0.512 against threshold 0.82 on the one live picker frame captured -- it never matched, so this state's on_absent always fired and this whole recovery step silently never ran. The picker held the screen live for ~16 minutes (2026-08-16 17:44-18:00) with the FSM walking jump/relay/guard states normally the whole time (they don't verify screen changes), until the user tapped the saved-account row by hand. loginpicker_marker.png is a tighter crop of just 'an account!' (157x30 at 478,555) with no logo and minimal background bleed: scores 1.000 on all 3 live positives captured so far (2026-08-14 and twice on 2026-08-16), 0.589 max noise across 1,418 archived frames -- a 0.41 margin, so threshold 0.75 here. Present -> tap the top saved account row (1100,490), wait out the ~12s login + home load, re-enter start_state (home). Absent -> the picker isn't up (login already completed, or the title is still animating) -> go to start_state and let its own detection settle; if we're still on the title, home will be absent and the probe chain loops us back to recover_login.",
+      "_note": "Login recovery step 2 (account picker). MARKER SWAPPED 2026-08-16: the old login_marker (CookieRun logo + full two-line text, 220x720 crop) scored only 0.512 against threshold 0.82 on the one live picker frame captured -- it never matched, so this state's on_absent always fired and this whole recovery step silently never ran. The picker held the screen live for ~16 minutes (2026-08-16 17:44-18:00) with the FSM walking jump/relay/guard states normally the whole time (they don't verify screen changes), until the user tapped the saved-account row by hand. loginpicker_marker.png is a tighter crop of just 'an account!' (157x30 at 478,555) with no logo and minimal background bleed: scores 1.000 on all 3 live positives captured so far (2026-08-14 and twice on 2026-08-16), 0.589 max noise across 1,418 archived frames -- a 0.41 margin, so threshold 0.75 here. Present -> tap the top saved account row (1100,490), wait out the ~12s login + home load, re-enter start_state (home). Absent -> the picker isn't up (login already completed, or the title is still animating) -> go to start_state and let its own detection settle; if we're still on the title, home will be absent and the probe chain loops us back to recover_login. EPISODE RESTORED 2026-08-19: recover_pick taps the saved-account row, and the game comes back on Episode 1 whatever was selected before. A no-op when the Episode already matches, and it refuses to switch when the current one cannot be read — switching blind is worse than leaving it.",
       "detect": "home/loginpicker_marker.png",
       "on_match": [
         {
@@ -1112,6 +1115,9 @@
         {
           "type": "wait",
           "ms": 12000
+        },
+        {
+          "type": "restore_episode"
         },
         {
           "type": "goto",
