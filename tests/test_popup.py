@@ -314,6 +314,67 @@ class TestGuardParity:
             assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"
 
 
+class TestSendLifeExitsToHome:
+    """Live 09:02-09:05 on 2026-08-19: sendlife.json ended on scroll_retry_5's
+    bare `stop`, which leaves the Friends panel over home. The caller switches
+    Episodes next, and switch_episode taps the Episode button at (1280,175)
+    straight into that panel: Episode 1 finished, all six switches failed with
+    "Episode Map did not open", the restore failed too, and the farm loop ran
+    against an Episode nobody chose until the watchdog fired at 1100s."""
+
+    def _cfg(self):
+        return json.loads(
+            (CONFIG_DIR / "sendlife.json").read_text(encoding="utf-8"))
+
+    def test_no_exit_stops_without_reaching_home(self):
+        """Every `stop` must sit in a state that has just seen home_marker —
+        otherwise the errand can hand back any screen at all."""
+        st = self._cfg()["states"]
+        for name, spec in st.items():
+            for branch in ("on_match", "on_absent"):
+                acts = spec.get(branch)
+                acts = [acts] if isinstance(acts, dict) else (acts or [])
+                if not any(a.get("type") == "stop" for a in acts):
+                    continue
+                if branch == "on_match":
+                    assert spec.get("detect") == "home/home_marker.png", (
+                        f"{name}.{branch} stops on a screen that is not home: "
+                        f"detect={spec.get('detect')}")
+                else:
+                    # An on_absent stop is the give-up path; it may only appear
+                    # at the end of the bounded BACK chain.
+                    assert name.startswith("exit_to_home"), (
+                        f"{name}.on_absent stops without ever looking for home")
+
+    def test_exit_chain_is_bounded_and_terminates(self):
+        """BACK on home itself raises the game's own "Exit the game?" dialog, so
+        the chain must not press it forever."""
+        st = self._cfg()["states"]
+        seen, node = [], "exit_to_home"
+        while node and node not in seen:
+            seen.append(node)
+            nxt = [a.get("state") for a in st[node]["on_absent"]
+                   if a.get("type") == "goto"]
+            node = nxt[0] if nxt else None
+        assert node is None, f"exit chain loops back into {node}: {seen}"
+        assert len(seen) <= 4, f"exit chain presses BACK {len(seen)}x: {seen}"
+        last = st[seen[-1]]["on_absent"]
+        assert any(a.get("type") == "stop" for a in last), (
+            f"{seen[-1]} neither continues nor stops")
+
+    def test_scroll_exhaustion_routes_into_the_exit(self):
+        st = self._cfg()["states"]
+        gotos = [a.get("state") for a in st["scroll_retry_5"]["on_absent"]
+                 if a.get("type") == "goto"]
+        assert gotos == ["exit_to_home"], st["scroll_retry_5"]["on_absent"]
+
+    def test_exit_states_press_back(self):
+        st = self._cfg()["states"]
+        for name in [k for k in st if k.startswith("exit_to_home")]:
+            keys = [a for a in st[name]["on_absent"] if a.get("type") == "key"]
+            assert keys and keys[0].get("code") == 4, f"{name}: {st[name]['on_absent']}"
+
+
 class TestPartyRunnersSeasonScreen:
     """Live 01:20 on 2026-08-19: the "Best Party Runners / The season is over!"
     leaderboard held the screen while the farm loop walked its guard chain

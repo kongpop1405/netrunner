@@ -301,7 +301,7 @@
       "timeout_ms": 5000
     },
     "scroll_retry_5": {
-      "_note": "Swipe attempt #6 (final). Still nothing after 6 consecutive swipes -> the list has stopped moving -> bottom of the friends list reached -> stop.",
+      "_note": "Swipe attempt #6 (final). Still nothing after 6 consecutive swipes -> the list has stopped moving -> bottom of the friends list reached -> stop. EXIT FIXED 2026-08-19: stopping here left the Friends panel over home — see exit_to_home for what that cost.",
       "detect": "sendlife/sendlife_icon.png",
       "on_match": [
         {
@@ -311,10 +311,91 @@
       ],
       "on_absent": [
         {
-          "type": "stop"
+          "type": "goto",
+          "state": "exit_to_home"
         }
       ],
       "timeout_ms": 5000
+    },
+    "exit_to_home": {
+      "_note": "Leaves the Friends panel before handing control back. The panel has no X: Android BACK closes it, which is how a human does it. detect is home_marker, so each step is a wait-for-home rather than a tap-and-hope — on_match means home is really there and the errand can end. Three bounded attempts rather than a self-loop: pressing BACK on home itself raises the game's own 'Exit the game?' dialog, so this must never press it forever. ADDED 2026-08-19: scroll_retry_5 used to `stop` outright, ending the errand with the panel still over home. The caller then switches Episodes, and switch_episode taps the Episode button at (1280,175) straight into the panel — caught live 09:02-09:05: Episode 1 finished, all six switches failed with 'Episode Map did not open', the restore failed too, and the farm loop ran against an Episode nobody chose until the watchdog fired at 1100s.",
+      "detect": "home/home_marker.png",
+      "on_match": [
+        {
+          "type": "stop"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            700,
+            1000
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "exit_to_home_2"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "exit_to_home_2": {
+      "_note": "Second BACK press — see exit_to_home.",
+      "detect": "home/home_marker.png",
+      "on_match": [
+        {
+          "type": "stop"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            700,
+            1000
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "exit_to_home_3"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "exit_to_home_3": {
+      "_note": "Third and last BACK press — see exit_to_home. Stops rather than pressing a fourth time: the caller re-reads the Episode before switching and refuses to switch blind when it cannot, which is the safe outcome.",
+      "detect": "home/home_marker.png",
+      "on_match": [
+        {
+          "type": "stop"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            700,
+            1000
+          ]
+        },
+        {
+          "type": "stop"
+        }
+      ],
+      "timeout_ms": 8000
     },
     "probe_inactive": {
       "_note": "Home-side inactive guard. 'You've been inactive for a while. The game will restart!' can queue on/over home after a long idle. Confirm (953,690) lets the restart proceed, then hand to recover_login to re-auth. Absent -> probe_prevresults.",
