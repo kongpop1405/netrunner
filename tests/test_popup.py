@@ -9,7 +9,7 @@ import src.act as actmod
 from src import config as cfgmod
 from src.config import goto_targets
 from src.act import Actor
-from src.perceive import Match
+from src.perceive import Match, TemplateStore
 
 CONFIG_DIR = Path("config/cookierun")
 
@@ -312,6 +312,101 @@ class TestGuardParity:
             # 7 episodes x ~358s measured + 8 switches + the mailbox sweep budgets
             # to ~2,844s; run_config blocks in this state so it is all billed here.
             assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"
+
+
+class TestForegroundCheckOnRecovery:
+    """Live 19:01-19:11 on 2026-08-19: LDPlayer's own store opened over the
+    running game. Every guard and probe asks "which game screen is this?", so a
+    screen that is not the game at all defeats all of them together — the FSM
+    kept transitioning and the log read healthy while the bot jumped into a
+    storefront. The first recovery pass could not help either: it also only
+    looks for game screens."""
+
+    def _configs_with_recovery(self):
+        out = {}
+        for path in sorted(CONFIG_DIR.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if "recover_unknown" in raw.get("states", {}):
+                out[path.stem] = raw
+        return out
+
+    def test_recovery_checks_the_foreground_before_probing(self):
+        for name, raw in self._configs_with_recovery().items():
+            acts = raw["states"]["recover_unknown"]["on_absent"]
+            acts = [acts] if isinstance(acts, dict) else acts
+            kinds = [a.get("type") for a in acts]
+            assert "require_foreground" in kinds, f"{name}: {kinds}"
+            # Before the goto, or the probe walk happens first and the check is
+            # only reached on the next lap.
+            assert kinds.index("require_foreground") < kinds.index("goto"), (
+                f"{name}: foreground check runs after the goto: {kinds}")
+
+    def test_recovery_still_ends_where_it_did(self):
+        """The check is an addition, not a redirect — the chain must still walk
+        the probe states it always did."""
+        for name, raw in self._configs_with_recovery().items():
+            acts = raw["states"]["recover_unknown"]["on_absent"]
+            acts = [acts] if isinstance(acts, dict) else acts
+            gotos = [a.get("state") for a in acts if a.get("type") == "goto"]
+            assert len(gotos) == 1, f"{name}: {gotos}"
+            assert gotos[0] in raw["states"], f"{name}: goes to missing {gotos[0]}"
+
+    def test_action_is_registered(self):
+        assert "require_foreground" in cfgmod._ACTION_TYPES
+        assert cfgmod._REQUIRED_FIELDS.get("require_foreground") == set()
+
+
+class TestRequireForegroundAction:
+    """The check that answers what no template can: is this the game at all?"""
+
+    class _Restarter:
+        def __init__(self): self.calls = 0
+        def restart(self): self.calls += 1
+
+    class _Dev:
+        serial = "fake"
+        def __init__(self, out): self.out = out
+        def shell(self, *a, **k): return self.out
+
+    GAME = "com.devsisters.crg"
+    STORE = "com.android.ld.appstore"
+
+    def _run(self, dumpsys, *, dry_run=False, wired=True):
+        r = self._Restarter()
+        a = Actor(self._Dev(dumpsys), TemplateStore("templates/cookierun"),
+                  dry_run=dry_run, default_threshold=0.82)
+        a.restarter = r if wired else None
+        a.require_foreground()
+        return r.calls
+
+    def test_no_restart_while_the_game_owns_the_screen(self):
+        """A watchdog fire is usually a game screen that recovers on its own —
+        one of the two seen on 2026-08-19 did. This must not restart those."""
+        focus = f"  mCurrentFocus=Window{{a u0 {self.GAME}/com.unity3d.player.UnityPlayerActivity}}"
+        assert self._run(focus) == 0
+
+    def test_restarts_when_another_app_is_in_front(self):
+        focus = f"  mCurrentFocus=Window{{b u0 {self.STORE}/.app.activity.MainActivity}}"
+        assert self._run(focus) == 1
+
+    def test_restarts_when_the_foreground_cannot_be_read(self):
+        """Unknown is treated as "not the game": the alternative is jumping into
+        whatever is there until a second watchdog fire, which is what happened."""
+        assert self._run("  mCurrentFocus=null") == 1
+
+    def test_the_package_must_be_the_focused_one_not_merely_mentioned(self):
+        out = chr(10).join([
+            f"  someOtherLine={self.GAME} appears here",
+            f"  mCurrentFocus=Window{{c u0 {self.STORE}/.Main}}",
+        ])
+        assert self._run(out) == 1
+
+    def test_dry_run_never_restarts(self):
+        focus = f"  mCurrentFocus=Window{{b u0 {self.STORE}/.Main}}"
+        assert self._run(focus, dry_run=True) == 0
+
+    def test_without_a_restarter_it_warns_instead_of_crashing(self):
+        assert self._run("anything", wired=False) == 0
 
 
 class TestSendLifeExitsToHome:

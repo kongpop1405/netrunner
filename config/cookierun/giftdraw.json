@@ -331,7 +331,7 @@
       "timeout_ms": 8000
     },
     "recover_unknown": {
-      "_note": "Watchdog recovery entry (src/fsm.py no_progress_goto), mirroring the bot configs. Reached when no progress state has been touched for no_progress_s OR when enough consecutive polls matched nothing that the screen cannot be one this config knows — see _BLIND_LAP_CYCLES. Home visible means there is nothing to recover, so rejoin at start_state; otherwise escalate to the restart, because a screen we cannot identify has no close button we can aim at.",
+      "_note": "Watchdog recovery entry (src/fsm.py no_progress_goto), mirroring the bot configs. Reached when no progress state has been touched for no_progress_s OR when enough consecutive polls matched nothing that the screen cannot be one this config knows — see _BLIND_LAP_CYCLES. Home visible means there is nothing to recover, so rejoin at start_state; otherwise escalate to the restart, because a screen we cannot identify has no close button we can aim at. FOREGROUND CHECK ADDED 2026-08-19: on_absent now asks whether the game still owns the screen before walking the probe chain. Every state in that chain matches a game screen, so a screen that is not the game defeats all of them at once — caught live 19:01-19:11 when LDPlayer's own store (com.android.ld.appstore) opened over the running game: the bot jumped into a storefront for ten minutes, this recovery pass ran and could not help, and only the second watchdog fire would have cycled the app. require_foreground is a no-op when the game is in front, so the fire that recovers on its own (one of the two seen that day) still does.",
       "detect": "home/home_marker.png",
       "on_match": [
         {
@@ -339,9 +339,15 @@
           "state": "gift_draw"
         }
       ],
-      "on_absent": {
-        "goto": "recover_unknown_restart"
-      },
+      "on_absent": [
+        {
+          "type": "require_foreground"
+        },
+        {
+          "type": "goto",
+          "state": "recover_unknown_restart"
+        }
+      ],
       "timeout_ms": 8000
     },
     "recover_unknown_restart": {

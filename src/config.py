@@ -16,6 +16,7 @@ _ACTION_TYPES = {
     # shared game actions — behaviour lives in Actor so a fix reaches every
     # config naming the action (see src/act.py "shared game actions").
     "relay_tap", "faststart_tap", "close_popup", "restart_app", "solve_cards",
+    "require_foreground",
     "run_config",
 }
 _REQUIRED_FIELDS = {
@@ -34,6 +35,7 @@ _REQUIRED_FIELDS = {
     "faststart_tap": set(),
     "close_popup": {"x", "y"},
     "restart_app": set(),
+    "require_foreground": set(),
     "solve_cards": {"cells", "cell_size", "bail_goto"},
     "run_config": {"config"},
 }

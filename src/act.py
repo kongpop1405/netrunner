@@ -196,6 +196,39 @@ class Actor:
         log.info("restart_app: cycling the game process")
         self.restarter.restart()
 
+    def require_foreground(self) -> None:
+        """Cycle the game if something else owns the screen.
+
+        Every guard and probe in a config asks "which game screen is this?", so
+        a screen that is not the game at all defeats all of them at once: the
+        FSM keeps transitioning against templates none of which can match, and
+        the log reads healthy. Caught live 19:01-19:11 on 2026-08-19, when
+        LDPlayer's own store (com.android.ld.appstore) opened over the running
+        game -- the bot jumped into a storefront for ten minutes while the
+        progress watchdog counted down, and its first recovery pass could not
+        help either, because that pass also only looks for game screens.
+
+        Checking the foreground package answers the question the templates
+        cannot. When the game still owns the screen this is a cheap no-op, so it
+        is safe on a recovery path that usually recovers on its own -- of the
+        two watchdog fires that day one was a genuine in-game screen that came
+        back without a restart, and this must not turn that case into a restart.
+        """
+        if self.dry_run:
+            log.info("require_foreground [dry]")
+            return
+        if self.restarter is None:
+            log.warning("require_foreground requested but no restarter is wired "
+                        "— pass --launch or set session_reset_s to enable it")
+            return
+        from .launcher import COOKIE_RUN_PACKAGE, _app_foreground
+        if _app_foreground(self.device, COOKIE_RUN_PACKAGE):
+            log.info("require_foreground: %s still in front", COOKIE_RUN_PACKAGE)
+            return
+        log.warning("require_foreground: %s is NOT in front — cycling the game",
+                    COOKIE_RUN_PACKAGE)
+        self.restarter.restart()
+
     # --- shared game actions --------------------------------------------------
     # Behaviour every bot shares lives here, not copy-pasted into each config, so
     # a tuning fix reaches every config that names the action without touching
@@ -448,6 +481,9 @@ class Actor:
                 gap_min=float(action.get("gap_min", 0.04)),
                 confirm_xy=action.get("confirm_xy"),
             )
+        if kind == "require_foreground":
+            self.require_foreground()
+            return None
         if kind == "restart_app":
             self.restart_app()
             return None
