@@ -239,3 +239,56 @@ def read_counter(frame: np.ndarray, region: tuple[int, int, int, int] | None = N
     if not digits:
         return None
     return int(digits)
+
+
+#: Page-segmentation modes to try when one read is not enough. 7 is "one text
+#: line" and is what read_counter uses alone; 8 is "one word" and 13 is "raw
+#: line, no layout analysis". Measured 2026-08-20 on live Lives-tab badges: psm 7
+#: returned nothing at all for 18, 16, and 14 once the crop carried a few pixels
+#: of padding, while psm 8 read every one of them correctly off the same pixels.
+_COUNTER_PSMS = (7, 8, 13)
+
+#: Padding to try around the region. A flush crop and a padded crop fail on
+#: opposite inputs — flush misread a single-digit "4" as "47" by clipping into
+#: the neighbouring badge, padded made two-digit numbers starting with 1
+#: unreadable — so both get a vote rather than one being picked as the winner.
+_COUNTER_PADS = (0, 2, 4, 8)
+
+
+def read_counter_voted(frame: np.ndarray, region: tuple[int, int, int, int],
+                       *, scale: int = _COUNTER_SCALE) -> int | None:
+    """Read a small integer by majority vote across crops and OCR modes.
+
+    read_counter takes one reading; this takes up to len(_COUNTER_PADS) *
+    len(_COUNTER_PSMS) of them and returns the value the most readings agree on.
+    Ties go to the larger vote count, and a completely unreadable badge is still
+    None — a caller must treat that as "unknown", never as zero.
+
+    Worth the extra passes wherever a wrong answer is expensive and the value is
+    read rarely. Measured 2026-08-20 across four live badge frames plus one
+    neighbouring badge: single-read got 3 of 5 right, voting got 5 of 5, and the
+    one previously-wrong single-digit read (4 seen as 47) lost 3 votes to 8.
+    """
+    x, y, w, h = region
+    votes: dict[int, int] = {}
+    for pad in _COUNTER_PADS:
+        crop = frame[max(0, y - pad): y + h + pad, max(0, x - pad): x + w + pad]
+        if crop.size == 0:
+            continue
+        gray = crop if crop.ndim == 2 else cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        if scale > 1:
+            gray = cv2.resize(gray, None, fx=scale, fy=scale,
+                              interpolation=cv2.INTER_CUBIC)
+        _, binary = cv2.threshold(gray, 0, 255,
+                                  cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        if float(binary.mean()) < 127:
+            binary = cv2.bitwise_not(binary)
+        for psm in _COUNTER_PSMS:
+            raw = read_text(binary,
+                            config=f"--psm {psm} -c tessedit_char_whitelist=0123456789")
+            digits = "".join(c for c in raw if c.isdigit())
+            if digits:
+                votes[int(digits)] = votes.get(int(digits), 0) + 1
+    if not votes:
+        return None
+    return max(votes.items(), key=lambda kv: kv[1])[0]

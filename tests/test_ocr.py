@@ -1,12 +1,13 @@
 """Phase 8 — reading the box counter, and coping when OCR is unavailable."""
 import logging
+from pathlib import Path
 
 import cv2
 import numpy as np
 import pytest
 
 import src.perceive as perceive
-from src.perceive import PerceiveError, read_counter
+from src.perceive import PerceiveError, read_counter, read_counter_voted
 
 _HAS_TESSERACT = False
 try:
@@ -207,3 +208,56 @@ class TestBoxQuitRunnerFallback:
         assert not r._ocr_available          # never retried
         assert r._read_box_count(frame) is None
         assert sum("OCR unavailable" in rec.message for rec in caplog.records) == 1
+
+
+class TestVotedCounterOnRealBadges:
+    """Live regression 2026-08-20. read_counter took one reading at one padding,
+    and three sweeps in a row logged "no readable Lives badge" while the badge
+    plainly showed 18, 16, and 14 — the gate then skipped Send-Life every time,
+    so the feature was dead in the field while every unit test passed.
+
+    Cause was the crop, not the digits: with a few px of padding, psm 7 returned
+    the empty string for those three, and flush it read all of them. But flush is
+    what had earlier misread the single-digit Rewards badge as 47 by clipping into
+    its neighbour. Neither crop is right for both, so the reader votes across
+    paddings and psm modes.
+
+    Fixtures are the actual failing frames, cropped to the pill plus 16px.
+    """
+
+    DIR = Path(__file__).parent / "fixtures" / "badges"
+
+    #: Every badge value seen live so far, including the one that broke the
+    #: opposite way (single digit, neighbour adjacent).
+    CASES = [("53", 53), ("18", 18), ("16", 16), ("14", 14), ("4", 4)]
+
+    def _frame(self, name):
+        img = cv2.imread(str(self.DIR / f"badge_{name}.png"))
+        assert img is not None, f"missing fixture badge_{name}.png"
+        return img
+
+    #: The pill sits at the fixture's 16px margin, its measured 55x40.
+    REGION = (16, 16, 55, 40)
+
+    @pytest.mark.parametrize("name,expected", CASES)
+    def test_voting_reads_every_badge_seen_live(self, name, expected):
+        assert read_counter_voted(self._frame(name), self.REGION) == expected
+
+    def test_voting_beats_a_single_reading(self):
+        """Guards the reason the voted reader exists: a single padded reading is
+        what shipped, and it got 2 of these 5 right."""
+        singles = [read_counter(self._frame(n), (12, 12, 63, 48))
+                   for n, _ in self.CASES]
+        voted = [read_counter_voted(self._frame(n), self.REGION)
+                 for n, _ in self.CASES]
+        want = [v for _, v in self.CASES]
+        assert voted == want, voted
+        assert singles != want, (
+            "a single reading now passes too — if the OCR install changed, "
+            f"re-check whether voting is still buying anything: {singles}")
+
+    def test_an_unreadable_region_is_none_not_zero(self):
+        """A caller must be able to tell "nothing there" from "zero waiting";
+        the tab drops the badge entirely at zero."""
+        blank = np.full((72, 87, 3), 210, dtype=np.uint8)
+        assert read_counter_voted(blank, self.REGION) is None
