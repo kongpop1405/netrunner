@@ -3,6 +3,42 @@
 What the farm loop can dismiss, and what still stalls it. An unhandled popup
 costs the whole session until the livelock warning fires and someone looks.
 
+## Fast-close for a popup with NO marker at all
+
+Every mechanism above needs the popup identified first — a marker, a probe
+state. A popup nobody has cropped yet is invisible to all of it: live
+2026-08-21 a new "Friendly Run" submenu (two popups deep, no marker for
+either) stalled the bot for the full `no_progress_s` window before the
+watchdog even started recovering, because `recover_unknown_probe` only walks
+screens the config already recognises.
+
+**`recover_unknown_backspam_1/2/3`** sits ahead of that probe walk (or ahead
+of `restart_app` in the errand configs, which have no probe walk at all — see
+`sendlife.json`/`addfriend.json`/`giftdraw.json`). It presses Android BACK,
+checks for `home_play_marker`, and rejoins the loop the moment it appears —
+otherwise presses again, up to 3 times. `key()`'s own docstring already says
+BACK "dismisses most dialogs safely," and the sendlife exit chain has relied
+on exactly that for leaving the Friends panel; this is the same trick given a
+name and put ahead of the expensive paths.
+
+Recovers most unmarked popups in a few seconds instead of the full probe walk
+plus a process restart. It does NOT replace cropping a marker for a popup that
+recurs — BACK-closing something every single watchdog fire is a sign that
+popup is common enough to deserve a real probe state (see "Missing" below);
+this exists for the popup that only shows up once.
+
+**Bounded at 3, not more**: BACK pressed on `home` itself raises the game's
+own "Exit the game?" confirm — the same trap `exit_to_home_3` already guards
+against in `sendlife.json`. A backspam chain that kept pressing past the point
+where the unknown popup actually closed would eventually hit that dialog
+instead of stopping. `exit_dismiss_exitgame` (below) is the fallback if a
+future recovery path presses BACK more than 3 times and lands on it anyway.
+
+Apply the same 3-state pattern to any other recovery-style chain that presses
+BACK without knowing what is on screen: `detect: home_play_marker.png`,
+`on_match: goto <the loop's real entry state>`, `on_absent: key 4 → wait →
+goto <next step, or the expensive fallback on the last one>`.
+
 ## Two kinds of popup — a handler alone is not enough
 
 A popup that **covers** the Play button makes `home_play_marker` absent, so
@@ -89,6 +125,7 @@ popup appears, crop the title ribbon (tight crops match best), drop it in
 | Relic Claim | `RELIC_CLAIM_1.png` | claim, close, then **wait 10–15 s** for the cutscene | low |
 | Daily New | `DAILY_NEW_1.png` | X | low |
 | Daily Check-in Boost Set | `DAILY_CHECKIN_BOOST_SET_1.png` | confirm; extends the daily chain | low |
+| Friendly Run / Select a Mode | none — no reference either, new as of 2026-08-21 | two popups deep (Friendly Run submenu over a Select-a-Mode dialog), each with its own X; recovered live via `recover_unknown_backspam` in seconds | low unless it recurs — promote to a real probe state if it does |
 
 ### Where a new probe goes
 

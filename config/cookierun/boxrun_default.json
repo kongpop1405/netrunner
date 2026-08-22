@@ -1196,10 +1196,97 @@
           "state": "home"
         }
       ],
-      "on_absent": {
-        "goto": "recover_unknown_pick"
-      },
+      "on_absent": [
+        {
+          "type": "goto",
+          "state": "recover_unknown_pick"
+        }
+      ],
       "timeout_ms": 8000
+    },
+    "recover_unknown_backspam_1": {
+      "_note": "Fast BACK-press attempt before the expensive probe walk. Live 2026-08-21: a screen with no marker at all (a new \"Friendly Run\" submenu, two popups deep) stalled the bot for the full no_progress_s window because recover_unknown_probe only recognises screens this config already has markers for — an unrecognised one is invisible to it. Android BACK dismisses most dialogs without needing to know what they are (see key()'s own docstring, and sendlife's exit_to_home chain, which already relies on exactly this). So this presses BACK, checks for home, and only presses again if that didn't work — bounded at 3 like exit_to_home, because BACK on home itself raises the game's own \"Exit the game?\" confirm (the same trap exit_to_home_3 guards against).",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "recover_unknown_backspam_2"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_unknown_backspam_2": {
+      "_note": "BACK press 2/3 of the fast-close attempt — see recover_unknown_backspam_1's note.",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "recover_unknown_backspam_3"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_unknown_backspam_3": {
+      "_note": "BACK press 3/3 of the fast-close attempt — see recover_unknown_backspam_1's note.",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "home"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "probe_sdkfail"
+        }
+      ],
+      "timeout_ms": 6000
     },
     "recover_unknown_pick": {
       "_note": "Account-picker check inserted into the watchdog recovery path (added 2026-08-16, live-verified: the picker sat on screen from ~17:33 to at least 17:55 while the log walked jump/relay/guard states normally the whole time -- jump_2's on_absent jumps unconditionally, so a screen the run chain does not recognise still LOOKS like a healthy run to every counter except the progress watchdog, and recover_unknown_probe's own walk to probe_sdkfail never checks this screen because the picker is only reachable today via recover_login -> recover_pick, a chain the probe walk does not enter). detect is the same home/login_marker.png recover_pick uses. Present -> hand straight to recover_pick, which already knows how to tap the saved-account row. Absent -> continue into the normal probe walk exactly as before this state existed.",
@@ -1211,7 +1298,7 @@
         }
       ],
       "on_absent": {
-        "goto": "probe_sdkfail"
+        "goto": "recover_unknown_backspam_1"
       },
       "timeout_ms": 8000,
       "threshold": 0.75

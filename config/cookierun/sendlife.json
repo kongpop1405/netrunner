@@ -541,10 +541,94 @@
         },
         {
           "type": "goto",
-          "state": "recover_unknown_restart"
+          "state": "recover_unknown_backspam_1"
         }
       ],
       "timeout_ms": 8000
+    },
+    "recover_unknown_backspam_1": {
+      "_note": "Fast BACK-press attempt before the expensive restart_app. Live 2026-08-21: a screen with no marker at all stalled a farm config for the full no_progress_s window before it even started recovering. Errand configs like this one have no probe chain to fall back through — home or restart is the whole recovery — so this sits directly ahead of restart_app instead of ahead of a probe walk. Android BACK dismisses most dialogs without needing to know what they are (see key()'s own docstring, and this very config's exit_to_home chain, which already relies on exactly this to leave the Friends panel). Bounded at 3 like exit_to_home, because BACK on home itself raises the game's own \"Exit the game?\" confirm.",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "recover_unknown_backspam_2"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_unknown_backspam_2": {
+      "_note": "BACK press 2/3 of the fast-close attempt — see recover_unknown_backspam_1's note.",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "recover_unknown_backspam_3"
+        }
+      ],
+      "timeout_ms": 6000
+    },
+    "recover_unknown_backspam_3": {
+      "_note": "BACK press 3/3 of the fast-close attempt — see recover_unknown_backspam_1's note.",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "goto",
+          "state": "scan"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "key",
+          "code": 4
+        },
+        {
+          "type": "wait",
+          "ms": [
+            500,
+            800
+          ]
+        },
+        {
+          "type": "goto",
+          "state": "recover_unknown_restart"
+        }
+      ],
+      "timeout_ms": 6000
     },
     "recover_unknown_restart": {
       "_note": "Expensive half, and the one that always works. A screen with no marker has no button to aim at, so cycle the process instead: restart_app -> recover_login re-auths -> start_state. An errand loses nothing by restarting — unlike the farm loop it has no run in flight to forfeit.\n\nMARKER FIXED 2026-08-20: this waited on home/home_marker.png, which has the words \"Episode 1\" cropped inside it — measured against a real home frame with Episode 2 selected it scores 0.431 (absent) while home/home_play_marker.png scores 1.000. Live that day, three cycles running, Send-Life reached Episodes 1 and 2 and then failed every switch to 3-7 with \"Episode Map did not open\", plus the restore of the original Episode: on Episode 1 this chain matched and stopped with 0 BACK presses and the next switch worked on the first tap; on Episode 2 it matched nothing, pressed BACK three times, and handed control back on whatever screen that left. The farm configs moved to the Play! marker earlier (see coinrun.json on why the Episode-banner marker \"silently broke\"); these errands were missed.",

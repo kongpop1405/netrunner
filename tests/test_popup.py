@@ -262,15 +262,20 @@ class TestGuardParity:
             assert esc in raw["states"], f"{name}: escalation points at missing {esc}"
 
     def test_check_heart_sweeps_mailbox_then_gates_sendlife(self):
-        """User request 2026-08-18: only send lives when the mailbox came up
-        short. How many Lives are waiting cannot be read before opening the
-        Mailbox — the Lives tab shows rows with no total, and the home envelope
-        badge counts Notices+Rewards (seen going 46 -> 53 -> 58 in one session
-        while sweeps confirmed 2-5 items, never dropping afterwards). So the
-        sweep runs first and mailbox_count_gate branches on confirms actually
-        made: 30 (the confirm_loop cap) means more were waiting, so get back to
-        farming; fewer means the list drained and the idle heart-wait is worth
-        spending on Send-Life across every Episode."""
+        """User request 2026-08-18, revised 2026-08-20: pick ONE of two paths per
+        heart-empty pass. Lots of mail waiting -> just drain it and get back to
+        farming. Little mail -> spend the idle heart-wait sending Lives across
+        every Episode, then drain again to collect what came back.
+
+        The quantity is read, not inferred: remember_lives_waiting reads the
+        Lives TAB badge with the Mailbox open and before the first Confirm.
+        Measured 2026-08-20 on one frame: home envelope 55, Lives tab 53, Rewards
+        tab 4 — the home badge totals every tab, so it cannot stand in for Lives
+        (it read 46 -> 53 -> 58 across a session whose sweeps confirmed 2-5
+        items, never dropping). The gate used to count confirm_loop visits
+        against that state's own 30-confirm cap instead; the cap is gone now that
+        the sweep must drain the list, so the badge is what is left to decide on.
+        """
         for name, raw in self._home_configs().items():
             st = raw["states"].get("check_heart")
             if not st:
@@ -286,31 +291,42 @@ class TestGuardParity:
             gate_name = st["on_match"][-1].get("state")
             assert gate_name, f"{name}: check_heart must end by going to the gate"
             gate = raw["states"][gate_name]
-            under = gate["visits_under"]
-            assert under["state"] == "confirm_loop", gate
-            # The gate's count and the sweep's own cap are the same quantity —
-            # if they drift, "hit the cap" and "counted as many" stop agreeing.
+            assert "visits_under" not in gate, (
+                f"{name}: the sweep no longer caps, so a visits count cannot "
+                f"tell a long list from a short one — gate on the badge instead")
+            assert gate["lives_under"]["count"] == 30, gate["lives_under"]
+
             sweep = json.loads(
                 (CONFIG_DIR / "sendlife_mailbox.json").read_text(encoding="utf-8"))
-            cap = sweep["states"]["confirm_loop"]["max_visits"]
-            assert under["count"] == cap, (
-                f"{name}: gate counts {under['count']} but confirm_loop caps at {cap}")
+            # The gate can only decide if something actually read the count, and
+            # it has to be read before the drain empties the list.
+            base = sweep["states"]["mailbox_base"]
+            for marker, branch in base["on_match"].items():
+                reads = [k for k, a in enumerate(branch)
+                         if a.get("type") == "remember_lives_waiting"]
+                assert reads == [0], (
+                    f"{marker} branch must read the badge first, before the "
+                    f"banner tap that starts draining: {branch}")
 
-            # Fewer than the cap -> Send-Life across every Episode, then back.
+            # Few waiting -> Send-Life across every Episode, then sweep again so
+            # the Lives those sends bring back are collected before farming.
             few = gate["on_match"]
-            sl = [a for a in few if a.get("type") == "run_config"]
-            assert [a["config"] for a in sl] == ["config/cookierun/sendlife.json"], sl
-            assert sl[0].get("episodes") == [1, 2, 3, 4, 5, 6, 7], sl[0]
+            sl = [a["config"] for a in few if a.get("type") == "run_config"]
+            assert sl == ["config/cookierun/sendlife.json",
+                          "config/cookierun/sendlife_mailbox.json"], sl
+            eps = [a for a in few if a.get("config", "").endswith("sendlife.json")]
+            assert eps[0].get("episodes") == [1, 2, 3, 4, 5, 6, 7], eps[0]
             assert few[-1] == {"type": "goto", "state": "check_heart"}, few[-1]
 
-            # At the cap -> straight back, no Send-Life on this pass.
+            # Many waiting, or an unreadable badge -> straight back to farming.
             many = gate["on_absent"]
             many = many if isinstance(many, list) else [many]
             assert not [a for a in many if a.get("type") == "run_config"], (
                 f"{name}: the mailbox-had-more branch must not run Send-Life")
 
-            # 7 episodes x ~358s measured + 8 switches + the mailbox sweep budgets
-            # to ~2,844s; run_config blocks in this state so it is all billed here.
+            # 7 episodes x ~358s measured + 8 switches + two mailbox sweeps
+            # budget to ~2,844s; run_config blocks in this state so it is all
+            # billed here.
             assert st["timeout_ms"] >= 5_700_000, f"{name}: timeout_ms {st['timeout_ms']}"
 
 
@@ -543,7 +559,11 @@ class TestSendLifeExitsToHome:
                 if not any(a.get("type") == "stop" for a in acts):
                     continue
                 if branch == "on_match":
-                    assert spec.get("detect") == "home/home_marker.png", (
+                    # home_play_marker, not home_marker: the latter has
+                    # "Episode 1" cropped into it and so only sees home on
+                    # Episode 1 (0.431 vs 1.000 on an Episode-2 home frame,
+                    # measured 2026-08-20).
+                    assert spec.get("detect") == "home/home_play_marker.png", (
                         f"{name}.{branch} stops on a screen that is not home: "
                         f"detect={spec.get('detect')}")
                 else:
@@ -563,7 +583,12 @@ class TestSendLifeExitsToHome:
                    if a.get("type") == "goto"]
             node = nxt[0] if nxt else None
         assert node is None, f"exit chain loops back into {node}: {seen}"
-        assert len(seen) <= 4, f"exit chain presses BACK {len(seen)}x: {seen}"
+        # Three BACK presses, then the Exit-dialog dismissal, then one last look:
+        # what matters is the number of PRESSES, not the chain's length.
+        presses = [n for n in seen
+                   if any(a.get("type") == "key" for a in st[n]["on_absent"])]
+        assert len(presses) <= 3, f"exit chain presses BACK {len(presses)}x: {presses}"
+        assert len(seen) <= 5, f"exit chain is {len(seen)} states: {seen}"
         last = st[seen[-1]]["on_absent"]
         assert any(a.get("type") == "stop" for a in last), (
             f"{seen[-1]} neither continues nor stops")
@@ -575,10 +600,37 @@ class TestSendLifeExitsToHome:
         assert gotos == ["exit_to_home"], st["scroll_retry_5"]["on_absent"]
 
     def test_exit_states_press_back(self):
+        """Each BACK step presses BACK. exit_to_home_verify is the exception on
+        purpose: it is the look AFTER the last press, and a fourth BACK is what
+        raises the game's own "Exit the game?" dialog."""
         st = self._cfg()["states"]
-        for name in [k for k in st if k.startswith("exit_to_home")]:
+        pressers = [k for k in st
+                    if k.startswith("exit_to_home") and k != "exit_to_home_verify"]
+        assert len(pressers) == 3, pressers
+        for name in pressers:
             keys = [a for a in st[name]["on_absent"] if a.get("type") == "key"]
             assert keys and keys[0].get("code") == 4, f"{name}: {st[name]['on_absent']}"
+
+    def test_the_last_step_looks_before_handing_control_back(self):
+        """The old tail pressed BACK and stopped on the result unchecked, so a
+        chain that never found home handed an unknown screen to switch_episode —
+        the Episodes 3-7 failures of 2026-08-20."""
+        st = self._cfg()["states"]
+        tail = st["exit_to_home_verify"]
+        assert tail["detect"] == "home/home_play_marker.png", tail
+        third = st["exit_to_home_3"]["on_absent"]
+        assert [a.get("type") for a in third][-1] == "goto", (
+            f"exit_to_home_3 still stops on its own BACK unchecked: {third}")
+        # It hands off to the Exit-dialog dismissal first: BACK on home is what
+        # raises that dialog, so the last press is the likeliest to have created
+        # it. The dismissal then reaches the final look either way.
+        nxt = third[-1]["state"]
+        assert nxt == "exit_dismiss_exitgame", third
+        for branch in ("on_match", "on_absent"):
+            acts = st[nxt][branch]
+            acts = [acts] if isinstance(acts, dict) else acts
+            gotos = [a["state"] for a in acts if a.get("type") == "goto"]
+            assert gotos == ["exit_to_home_verify"], (branch, acts)
 
 
 class TestPartyRunnersSeasonScreen:
@@ -639,66 +691,225 @@ class TestPartyRunnersSeasonScreen:
         assert (Path("templates/cookierun/home/partyrunners_marker.png").exists())
 
 
-class TestMailboxCapClosesItsDialog:
-    """Live 00:24-00:33 on 2026-08-19: confirm_loop hit max_visits 30 and went
-    straight to `done`, leaving item 31's "Send X a free Life?" dialog open.
-    `done` looks for alldone_marker (measured 0.474 on that frame — absent), so
-    it fell to close_mailbox, whose X at (1692,135) the dialog covers; close_popup
-    warned twice and `stop` handed control back to the farm loop with the dialog
-    still up. Nothing in the farm loop matches that screen (sendlife_marker scores
-    0.598, under the 0.82 threshold), so it walked its guard chain looking healthy
-    until the progress watchdog fired 601s later."""
+class TestLivesBadgeDecidesTheSendLifePass:
+    """Measured 2026-08-20 on one live Lives-tab frame: home envelope badge 55,
+    Lives tab badge 53, Rewards tab badge 4. The home badge totals the tabs, so
+    only the tab's own badge answers "how much mail is waiting". read_counter got
+    53 off that frame at three different offsets and paddings, and 4 off the
+    Rewards badge only once padded — cropped flush it read 47, picking up the
+    neighbour, which is why the offset carries 4px of padding on every side.
+
+    A count that cannot be read must not become a number: the expensive branch is
+    a Send-Life pass over 7 Episodes, so an unread badge takes the cheap branch.
+    """
+
+    class _Store:
+        dir = Path("templates/cookierun/mailbox")
+        def get(self, name): return None
+
+    def _actor(self, reads):
+        a = Actor(object(), self._Store(), default_threshold=0.85)
+        import src.mailbox as mbmod
+        orig = mbmod.read_lives_waiting
+        seq = list(reads)
+        def fake(*_a, **_k):
+            v = seq.pop(0)
+            if isinstance(v, Exception):
+                raise v
+            return v
+        mbmod.read_lives_waiting = fake
+        return a, mbmod, orig
+
+    def _read(self, value):
+        a, mbmod, orig = self._actor([value])
+        try:
+            a.remember_lives_waiting()
+            return a.lives_waiting
+        finally:
+            mbmod.read_lives_waiting = orig
+
+    def test_a_readable_badge_is_remembered(self):
+        assert self._read(53) == 53
+
+    def test_an_unreadable_badge_stays_none(self):
+        assert self._read(None) is None
+
+    def test_a_raising_read_does_not_escape(self):
+        """This runs inside the sweep; a perception failure must not abort the
+        drain, only leave the count unknown."""
+        assert self._read(RuntimeError("no tesseract")) is None
+
+    def test_a_fresh_read_replaces_a_stale_one(self):
+        a, mbmod, orig = self._actor([53, 4])
+        try:
+            a.remember_lives_waiting()
+            a.remember_lives_waiting()
+            assert a.lives_waiting == 4
+        finally:
+            mbmod.read_lives_waiting = orig
+
+    def test_a_failed_read_clears_the_previous_count(self):
+        """Opposite of remember_episode, deliberately: a stale Episode is still
+        the right Episode to restore, but a stale mail count belongs to a list
+        that has already been drained, so keeping it would decide the next pass
+        off the last one's number."""
+        a, mbmod, orig = self._actor([53, None])
+        try:
+            a.remember_lives_waiting()
+            a.remember_lives_waiting()
+            assert a.lives_waiting is None
+        finally:
+            mbmod.read_lives_waiting = orig
+
+    def test_the_reader_uses_the_lives_tab_not_the_home_badge(self):
+        """Guards the measurement above: anchoring on anything but the Lives tab
+        marker reads a different quantity."""
+        from src import mailbox
+        assert mailbox.LIVES_TAB_MARKER == "lives_tab_marker.png"
+        dx, dy, w, h = mailbox.LIVES_BADGE_OFFSET
+        # The badge sits on the tab's top-right corner: right of the marker's
+        # left edge, and above its top (the pill overhangs the tab).
+        assert dx > 0 and dy < 0, mailbox.LIVES_BADGE_OFFSET
+        assert w >= 55 and h >= 40, (
+            "the flush crop that misread the Rewards badge was 55x40; the box "
+            "must be padded beyond it")
+
+    def test_zero_and_absurd_reads_are_refused(self):
+        """The tab drops the badge entirely at zero, so a 0 is a misread, and a
+        count far past any friend list is OCR noise."""
+        from src import mailbox
+        assert mailbox.LIVES_MAX >= 100
+        called = {}
+        def fake_counter(frame, region):
+            return called.setdefault("n", 0)
+        import src.mailbox as mbmod
+        orig_find, orig_grab, orig_rc = mbmod.find_named, mbmod.grab, mbmod.read_counter_voted
+        mbmod.grab = lambda dev: None
+        mbmod.find_named = lambda *a, **k: Match(found=True, score=1.0, x=900, y=215, w=200, h=100)
+        try:
+            for bad in (0, mailbox.LIVES_MAX + 1):
+                mbmod.read_counter_voted = lambda frame, region, _b=bad: _b
+                assert mbmod.read_lives_waiting(object(), self._Store()) is None, bad
+            mbmod.read_counter_voted = lambda frame, region: 53
+            assert mbmod.read_lives_waiting(object(), self._Store()) == 53
+        finally:
+            mbmod.find_named, mbmod.grab, mbmod.read_counter_voted = orig_find, orig_grab, orig_rc
+
+    def test_an_unreadable_badge_keeps_the_frame(self, tmp_path):
+        """Live 2026-08-20 00:28: the sweep logged "no readable Lives badge" while
+        53 were waiting a minute earlier, and replaying that saved frame through
+        this same reader got 53 — so the frame the sweep actually saw was
+        different, and it was gone. An empty list and a failed read are the same
+        None, so the frame is what separates them next time."""
+        import src.mailbox as mbmod
+        orig_find, orig_grab, orig_rc = mbmod.find_named, mbmod.grab, mbmod.read_counter_voted
+        mbmod.grab = lambda dev: np.zeros((300, 1200, 3), dtype=np.uint8)
+        mbmod.find_named = lambda *a, **k: Match(found=True, score=1.0, x=900, y=215, w=200, h=100)
+        mbmod.read_counter_voted = lambda frame, region: None
+        try:
+            got = mbmod.read_lives_waiting(object(), self._Store(),
+                                           keep_unreadable_in=str(tmp_path))
+            assert got is None
+            kept = list(tmp_path.glob("lives_badge_*.png"))
+            assert len(kept) == 1, kept
+        finally:
+            mbmod.find_named, mbmod.grab, mbmod.read_counter_voted = orig_find, orig_grab, orig_rc
+
+    def test_a_readable_badge_keeps_nothing(self, tmp_path):
+        """The diagnostic must not fill the directory on the normal path."""
+        import src.mailbox as mbmod
+        orig_find, orig_grab, orig_rc = mbmod.find_named, mbmod.grab, mbmod.read_counter_voted
+        mbmod.grab = lambda dev: np.zeros((300, 1200, 3), dtype=np.uint8)
+        mbmod.find_named = lambda *a, **k: Match(found=True, score=1.0, x=900, y=215, w=200, h=100)
+        mbmod.read_counter_voted = lambda frame, region: 53
+        try:
+            assert mbmod.read_lives_waiting(object(), self._Store(),
+                                            keep_unreadable_in=str(tmp_path)) == 53
+            assert not list(tmp_path.glob("*.png"))
+        finally:
+            mbmod.find_named, mbmod.grab, mbmod.read_counter_voted = orig_find, orig_grab, orig_rc
+
+    def test_the_diagnostic_cannot_break_the_sweep(self, tmp_path):
+        """It runs mid-drain; a broken save must not take the run down with it."""
+        import src.mailbox as mbmod
+        orig_find, orig_grab, orig_rc = mbmod.find_named, mbmod.grab, mbmod.read_counter_voted
+        mbmod.grab = lambda dev: np.zeros((300, 1200, 3), dtype=np.uint8)
+        mbmod.find_named = lambda *a, **k: Match(found=True, score=1.0, x=900, y=215, w=200, h=100)
+        mbmod.read_counter_voted = lambda frame, region: None
+        try:
+            # cv2.imwrite cannot write here: the parent is an existing FILE,
+            # so mkdir raises rather than the write failing quietly.
+            blocker = tmp_path / "not_a_dir"
+            blocker.write_text("x")
+            assert mbmod.read_lives_waiting(object(), self._Store(),
+                                            keep_unreadable_in=str(blocker / "sub")) is None
+        finally:
+            mbmod.find_named, mbmod.grab, mbmod.read_counter_voted = orig_find, orig_grab, orig_rc
+
+    def test_an_absent_tab_reads_nothing(self):
+        import src.mailbox as mbmod
+        orig_find, orig_grab = mbmod.find_named, mbmod.grab
+        mbmod.grab = lambda dev: None
+        mbmod.find_named = lambda *a, **k: Match(found=False, score=0.1, x=0, y=0, w=0, h=0)
+        try:
+            assert mbmod.read_lives_waiting(object(), self._Store()) is None
+        finally:
+            mbmod.find_named, mbmod.grab = orig_find, orig_grab
+
+
+class TestMailboxDrainsTheWholeList:
+    """User request 2026-08-20: "sendlife_mailbox ต้องทำให้หมด ทำจนจดหมายหมด".
+
+    The 30-confirm cap this replaces existed for a real reason and its cost was
+    measured: live 00:24-00:33 on 2026-08-19 the cap fired and went straight to
+    `done`, leaving item 31's "Send X a free Life?" dialog open. `done` looks for
+    alldone_marker (0.474 on that frame — absent), so it fell to close_mailbox,
+    whose X at (1692,135) the dialog covers; close_popup warned twice and `stop`
+    handed control back with the dialog still up. The farm loop matches nothing on
+    that screen (sendlife_marker 0.598, under the 0.82 threshold), so it walked
+    its guard chain looking healthy for 601s until the progress watchdog fired.
+    Stopping mid-list is what created that frame; running to the end reaches
+    `done` on the game's own "All Lives received and sent!" popup instead.
+
+    The cap's second job — telling the parent gate a long list from a short one —
+    moved to remember_lives_waiting reading the Lives tab badge before the drain.
+    """
 
     def _sweep(self):
         return json.loads(
             (CONFIG_DIR / "sendlife_mailbox.json").read_text(encoding="utf-8"))
 
-    def test_cap_exits_through_a_state_that_closes_the_dialog(self):
-        st = self._sweep()["states"]
-        target = st["confirm_loop"]["max_visits_goto"]
-        assert target != "done", (
-            "the cap must not hand straight to `done` — the dialog that stopped "
-            "the sweep is still on screen")
-        gate = st[target]
-        # It must key off the same marker confirm_loop uses, or it cannot tell
-        # whether a dialog is actually there.
-        assert gate["detect"] == st["confirm_loop"]["detect"], gate
-        closes = [a for a in gate["on_match"]
-                  if a.get("type") in ("close_popup", "tap_template", "tap_xy")]
-        assert closes, f"{target} does not dismiss anything: {gate['on_match']}"
-        # close_popup, not a blind tap: it re-reads the frame and warns if the
-        # marker never clears.
-        assert closes[0]["type"] == "close_popup", closes[0]
-        assert closes[0].get("verify") == gate["detect"], closes[0]
+    def test_the_sweep_has_no_confirm_cap(self):
+        cl = self._sweep()["states"]["confirm_loop"]
+        assert "max_visits" not in cl and "max_visits_goto" not in cl, (
+            "a cap stops the sweep with mail still waiting, which is exactly "
+            "what the user asked to stop doing")
 
-    def test_cap_exit_leaves_the_queue_instead_of_working_it(self):
-        """Measured live 2026-08-19 on the stuck frame (Lives badge 70): only the
-        dialog's own X leaves the queue. Cancel accepts the current Life and
-        re-opens the dialog for the next friend — 12 Cancel taps took the badge
-        70 -> 37 and the heart counter up 32 before "All Lives received and sent!"
-        appeared. Confirm does the same and sends a Life besides. Either button
-        drains the list, which is what the cap exists to prevent."""
-        st = self._sweep()["states"]
-        gate = st[st["confirm_loop"]["max_visits_goto"]]
-        buttons = {"Cancel": 727, "Confirm": 1192}  # measured button centres
-        for a in gate["on_match"]:
-            x, y = a.get("x"), a.get("y")
-            if x is None:
-                continue
-            for label, bx in buttons.items():
-                on_button_row = y is not None and abs(y - 687) < 60
-                assert not (abs(x - bx) < 100 and on_button_row), (
-                    f"tap at ({x},{y}) lands on {label} ({bx},687), which works "
-                    f"the queue instead of leaving it")
+    def test_the_cap_only_exit_is_gone_with_it(self):
+        """cap_close_dialog existed solely to clean up after the cap. Left behind
+        with nothing jumping to it, it reads as an orphan state."""
+        assert "cap_close_dialog" not in self._sweep()["states"]
 
-    def test_cap_target_is_reachable(self):
-        """`max_visits_goto` is an engine jump with no goto naming it, so the
-        reachability walk has to know about it or this state reads as an orphan."""
-        from src.config import goto_targets
-        st = self._sweep()["states"]
-        target = st["confirm_loop"]["max_visits_goto"]
-        assert target in goto_targets(st["confirm_loop"]), (
-            "goto_targets does not follow max_visits_goto")
+    def test_the_drain_still_has_a_stop(self):
+        """The user chose the existing timeout over a high safety cap, so those
+        stops have to actually be there: a wall clock on the state and the
+        config-level no-progress watchdog."""
+        raw = self._sweep()
+        cl = raw["states"]["confirm_loop"]
+        assert cl["timeout_ms"] >= 20_000, cl["timeout_ms"]
+        assert raw["no_progress_s"] > 0 and raw["no_progress_goto"] in raw["states"]
+        assert "confirm_loop" in raw["progress_states"], (
+            "each confirm has to count as progress or the watchdog fires "
+            "mid-drain on a long list")
+
+    def test_running_out_exits_through_done(self):
+        """Absent dialog means the list is finished, and `done` is what closes the
+        game's own end-of-list popup — the path a full drain now always takes."""
+        cl = self._sweep()["states"]["confirm_loop"]
+        assert cl["on_absent"] == {"goto": "done"}, cl["on_absent"]
+        assert cl.get("absent_retries", 0) >= 3, (
+            "the dialog re-opens in ~500-700ms between friends; without retries "
+            "that gap reads as an empty list")
 
 
 class TestMailboxBaseHandlesEmptyFriendList:
@@ -737,7 +948,8 @@ class TestMailboxBaseHandlesEmptyFriendList:
         st = self._mailbox_base()
         branch = st["on_match"]["lives_tab_marker.png"]
         assert not any(a.get("type") == "tap_template" for a in branch), branch
-        assert branch == [{"type": "goto", "state": "confirm_loop"}], branch
+        assert branch == [{"type": "remember_lives_waiting"},
+                          {"type": "goto", "state": "confirm_loop"}], branch
 
     def test_neither_marker_still_falls_back_to_confirm_loop(self):
         """Genuinely-off-screen case (e.g. mailbox closed underneath us) must
@@ -810,3 +1022,238 @@ class TestConnectionLostReachableFromMatchingHome:
             assert "restart_app" in kinds, f"{name}: {kinds}"
             assert not any(k == "close_popup" for k in kinds), f"{name}: {kinds}"
             assert self._goto(s["on_match"]) == "recover_login", f"{name}: {kinds}"
+
+
+class TestHomeIsDetectedEpisodeIndependently:
+    """Live 2026-08-20, three cycles in a row (04:32, 06:40, 07:56): Send-Life
+    ran on Episodes 1 and 2, then every switch to 3-7 failed with "Episode Map
+    did not open" and the restore of the original Episode failed too — so the
+    farm loop was left on whatever Episode the last attempt touched, and only
+    2 of 7 Episodes ever got Lives.
+
+    Root cause is the marker, not the taps: home/home_marker.png is cropped with
+    the words "Episode 1" inside it, so it only matches while Episode 1 is
+    selected. Scored against a real home frame with Episode 2 up, it gets 0.431
+    (absent) while home/home_play_marker.png — the Play! button alone — gets
+    1.000. sendlife's exit_to_home chain waits for home using the episode-bound
+    one: on Episode 1 it matched and stopped cleanly (0 BACK presses, switch
+    then worked first tap), on Episode 2 it never matched, pressed BACK three
+    times, and exit_to_home_3 stops without re-checking — leaving some other
+    screen up for switch_episode to tap the Episode button on.
+
+    The farm configs already moved to the Play! marker (coinrun.json's note says
+    why the Episode-banner one "silently broke"); these errands were missed.
+    """
+
+    PATHS = [Path("config/cookierun") / n for n in
+             ("sendlife.json", "addfriend.json", "giftdraw.json")]
+
+    def test_no_state_waits_for_home_with_an_episode_bound_marker(self):
+        # Only USES count. The _note fields deliberately still name the old
+        # marker to explain what was wrong with it — scanning the whole state
+        # blob flagged every state this fix already corrected.
+        def uses(state):
+            det = state.get("detect")
+            if det == "home/home_marker.png":
+                return True
+            if isinstance(det, list) and "home/home_marker.png" in det:
+                return True
+            for branch in ("on_match", "on_absent", "on_match_timeout"):
+                acts = state.get(branch)
+                acts = [acts] if isinstance(acts, dict) else (acts or [])
+                for a in acts:
+                    if isinstance(a, dict) and "home/home_marker.png" in (
+                            a.get("verify"), a.get("template")):
+                        return True
+            return False
+
+        offenders = []
+        for path in self.PATHS:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            for name, state in raw["states"].items():
+                if uses(state):
+                    offenders.append(f"{path.name}:{name}")
+        assert not offenders, (
+            "home/home_marker.png has 'Episode 1' cropped into it, so these "
+            f"states only see home on Episode 1: {offenders}")
+
+    def test_the_exit_chain_ends_by_confirming_home(self):
+        """exit_to_home_3 used to press BACK and stop without looking, so a
+        chain that never found home handed control back anyway — the caller then
+        tapped the Episode button on an unknown screen. Its note claimed the
+        caller re-reads the Episode first; _run_errand_per_episode only reads it
+        once, before the loop."""
+        raw = json.loads((Path("config/cookierun") / "sendlife.json")
+                         .read_text(encoding="utf-8"))
+        states = raw["states"]
+        kinds = [a.get("type") for a in states["exit_to_home_3"]["on_absent"]]
+        assert kinds[-1] == "goto", (
+            f"the last BACK press stops without ever confirming home: {kinds}")
+        assert "exit_dismiss_exitgame" in states, (
+            "the chain must clear the Exit dialog its own BACK presses raise")
+        assert states["exit_to_home_verify"]["detect"] == "home/home_play_marker.png"
+
+
+class TestExitGameDialogIsRuledOut:
+    """Caught live 2026-08-20 09:13:55 by snapping the failure instead of
+    reasoning about it. The screen when "Episode Map did not open" fires is home
+    with the game's own "Exit the game?" dialog centred over it — Cancel/Confirm
+    — because sendlife's exit chain presses BACK three times: the first closes
+    the Friends panel and reaches home, the next two land ON home, and BACK on
+    home raises that dialog (exit_to_home's own note says so).
+
+    The trap is that home/home_play_marker.png scores 1.000 through it: Play!
+    sits bottom-right, the dialog is centred, nothing overlaps. Measured that
+    day — dialog frame: exitgame 1.000, home_play 1.000; clean Episode-2 home:
+    exitgame 0.399, home_play 1.000. So switch_episode's "wait for home" guard
+    passes and it taps the Episode button into a modal, three attempts, then
+    reports the map as the thing that failed.
+
+    An earlier theory blamed the episode-bound home_marker.png crop. That marker
+    IS wrong for this (0.431 on Episode-2 home) and is fixed alongside, but it is
+    not what defeats the switch: the probe showed home_play at 1.000 on the very
+    frame that failed, so the switch would have gone ahead either way.
+    """
+
+    MARKER = "home/exitgame_marker.png"
+
+    def test_the_marker_exists(self):
+        assert (Path("templates/cookierun") / self.MARKER).exists(), (
+            "cropped from the live failure frame — 'Exit the game?' text only, "
+            "no buttons, so it stays valid if the buttons move")
+
+    def test_the_exit_chain_dismisses_it(self):
+        """The chain that CREATES the dialog has to be the one that clears it:
+        every BACK press after the panel closes risks raising it."""
+        raw = json.loads((Path("config/cookierun") / "sendlife.json")
+                         .read_text(encoding="utf-8"))
+        st = raw["states"]
+        handlers = [n for n, s in st.items()
+                    if self.MARKER in json.dumps(s, ensure_ascii=False)]
+        assert handlers, (
+            "nothing in sendlife.json looks for the dialog its own BACK presses "
+            f"raise: {sorted(st)}")
+
+    def test_dismissal_taps_cancel_never_confirm(self):
+        """Confirm closes the GAME. Measured button centres on the failure frame:
+        Cancel (724,687), Confirm (1188,687)."""
+        raw = json.loads((Path("config/cookierun") / "sendlife.json")
+                         .read_text(encoding="utf-8"))
+        for name, spec in raw["states"].items():
+            blob = json.dumps(spec, ensure_ascii=False)
+            if self.MARKER not in blob:
+                continue
+            acts = spec.get("on_match")
+            acts = [acts] if isinstance(acts, dict) else (acts or [])
+            for a in acts:
+                x, y = a.get("x"), a.get("y")
+                if x is None or y is None:
+                    continue
+                assert not (abs(x - 1188) < 120 and abs(y - 687) < 60), (
+                    f"{name} taps ({x},{y}) — that is Confirm, which exits the game")
+
+
+class TestUnknownScreenClosesFast:
+    """Live 2026-08-21: a screen with no marker at all (a new "Friendly Run"
+    submenu, two popups deep) stalled the bot for the full no_progress_s window
+    before the watchdog even started recovering — recover_unknown_probe only
+    walks screens this config already has a marker for, so an unrecognised one
+    is invisible to every step of it until recover_unknown_restart's expensive
+    app cycle.
+
+    Android BACK dismisses most dialogs without needing to know what they are —
+    key() says so already, and the sendlife exit chain has relied on exactly
+    this for a while. So the recovery path spends a few fast BACK presses,
+    checking for home after each one, BEFORE the probe walk that requires
+    recognising the screen. A screen that closes on BACK recovers in seconds
+    instead of the full probe walk plus restart.
+    """
+
+    def _configs_with_recovery(self):
+        out = {}
+        for path in sorted(CONFIG_DIR.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if "recover_unknown" in raw.get("states", {}):
+                out[path.stem] = raw
+        return out
+
+    def _farm_configs(self):
+        """Configs with a full probe walk (recover_unknown_probe exists).
+        Errand configs (sendlife/addfriend/giftdraw) go straight from
+        recover_unknown to the backspam chain — there is no probe walk to
+        stand in front of."""
+        return {n: r for n, r in self._configs_with_recovery().items()
+               if "recover_unknown_probe" in r["states"]}
+
+    def _errand_configs(self):
+        return {n: r for n, r in self._configs_with_recovery().items()
+               if "recover_unknown_probe" not in r["states"]}
+
+    def test_farm_configs_try_back_before_the_probe_walk(self):
+        for name, raw in self._farm_configs().items():
+            st = raw["states"]
+            acts = st["recover_unknown_probe"]["on_absent"]
+            acts = [acts] if isinstance(acts, dict) else acts
+            gotos = [a.get("state") for a in acts if a.get("type") == "goto"]
+            assert gotos and gotos[0].startswith("recover_unknown_backspam") or (
+                gotos == ["recover_unknown_pick"]
+                and "recover_unknown_backspam_1" in raw["states"]["recover_unknown_pick"]
+                   .get("on_absent", {}).get("goto", "")
+            ), (f"{name}: recover_unknown_probe.on_absent must reach the "
+                f"backspam chain before the probe walk resumes, got {gotos}")
+
+    def test_errand_configs_try_back_before_restart(self):
+        for name, raw in self._errand_configs().items():
+            st = raw["states"]
+            acts = st["recover_unknown"]["on_absent"]
+            acts = [acts] if isinstance(acts, dict) else acts
+            gotos = [a.get("state") for a in acts if a.get("type") == "goto"]
+            assert gotos == ["recover_unknown_backspam_1"], (
+                f"{name}: recover_unknown.on_absent must try backspam before "
+                f"restart_app, got {gotos}")
+
+    def test_backspam_checks_home_after_every_press(self):
+        """Not a blind burst: a screen that closes on the first BACK must not
+        eat two more presses (which could re-open something, or hit the game's
+        own Exit-the-game confirm on a THIRD press while sitting on home)."""
+        for name, raw in self._configs_with_recovery().items():
+            st = raw["states"]
+            chain = [n for n in st if n.startswith("recover_unknown_backspam")]
+            assert len(chain) >= 2, f"{name}: only one backspam step: {chain}"
+            resume = raw["start_state"]
+            for n in chain:
+                assert st[n]["detect"] == "home/home_play_marker.png", (
+                    f"{name}:{n} must detect home before pressing again")
+                on_match = st[n]["on_match"]
+                on_match = [on_match] if isinstance(on_match, dict) else on_match
+                assert any(a.get("type") == "goto" and a.get("state") == resume
+                           for a in on_match), (
+                    f"{name}:{n}.on_match must rejoin ({resume}) immediately, "
+                    f"not press BACK again")
+
+    def test_backspam_is_bounded_and_falls_back_to_the_probe_walk(self):
+        """BACK on home itself raises the game's own Exit confirm — the same
+        trap exit_to_home_3 already guards against — so this chain must stop
+        pressing well before that, and hand off to the known-popup probe walk
+        rather than looping or stopping silently."""
+        for name, raw in self._configs_with_recovery().items():
+            st = raw["states"]
+            chain = sorted(n for n in st if n.startswith("recover_unknown_backspam"))
+            assert len(chain) <= 3, f"{name}: too many BACK presses: {chain}"
+            last = st[chain[-1]]
+            on_absent = last["on_absent"]
+            on_absent = [on_absent] if isinstance(on_absent, dict) else on_absent
+            gotos = [a.get("state") for a in on_absent if a.get("type") == "goto"]
+            expect = "probe_sdkfail" if "recover_unknown_probe" in st else "recover_unknown_restart"
+            assert gotos == [expect], (
+                f"{name}: {chain[-1]} must fall through to {expect} on "
+                f"exhaustion, got {gotos}")
+
+    def test_every_backspam_state_presses_key_4(self):
+        for name, raw in self._configs_with_recovery().items():
+            st = raw["states"]
+            for n in sorted(k for k in st if k.startswith("recover_unknown_backspam")):
+                acts = st[n]["on_absent"]
+                acts = [acts] if isinstance(acts, dict) else acts
+                keys = [a for a in acts if a.get("type") == "key"]
+                assert keys and keys[0].get("code") == 4, f"{name}:{n}: {acts}"
