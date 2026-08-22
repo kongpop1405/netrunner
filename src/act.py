@@ -34,6 +34,11 @@ class Actor:
         #: Last Episode seen selected on home, put back after a re-login resets
         #: it. None until something reads one.
         self.remembered_episode: int | None = None
+        #: Lives waiting in the Mailbox, read before the sweep drains them —
+        #: read by `lives_under` gates. None until something reads one, and reset
+        #: to None once a gate has consumed it so a later gate cannot decide from
+        #: a count that belongs to an earlier sweep.
+        self.lives_waiting: int | None = None
         self.dry_run = dry_run
         self.default_threshold = default_threshold
 
@@ -264,6 +269,36 @@ class Actor:
                       "the farm loop is on Episode %d", want, e, now)
             return
         log.info("restore_episode: Episode %d restored", want)
+
+    def remember_lives_waiting(self) -> None:
+        """Record how many Lives are waiting, before the sweep drains them.
+
+        Must run with the Mailbox open on the Lives tab and before the first
+        Confirm: the badge is gone once the list is empty, and the count is what
+        decides whether the idle heart-wait is worth a Send-Life pass across
+        every Episode.
+
+        An unreadable badge leaves the value at None rather than guessing, and a
+        `lives_under` gate treats None as "cannot decide" — the sweep still runs,
+        only the Send-Life pass is skipped. Guessing the other way would spend
+        several minutes of Episode switching off a bad OCR read.
+        """
+        from .mailbox import read_lives_waiting
+        try:
+            # An empty list and a failed read both come back as None; keeping the
+            # frame is what tells them apart later, since mail has to be waiting
+            # to reproduce the second one.
+            n = read_lives_waiting(self.device, self.store,
+                                   keep_unreadable_in="unknown_screens")
+        except Exception as e:
+            log.debug("remember_lives_waiting: could not read the badge (%s)", e)
+            self.lives_waiting = None
+            return
+        self.lives_waiting = n
+        if n is None:
+            log.info("remember_lives_waiting: no readable Lives badge")
+        else:
+            log.info("remember_lives_waiting: %d Lives waiting", n)
 
     def require_foreground(self) -> None:
         """Cycle the game if something else owns the screen.
@@ -552,6 +587,9 @@ class Actor:
             )
         if kind == "require_foreground":
             self.require_foreground()
+            return None
+        if kind == "remember_lives_waiting":
+            self.remember_lives_waiting()
             return None
         if kind == "remember_episode":
             self.remember_episode()

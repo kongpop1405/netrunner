@@ -423,3 +423,224 @@ class TestMaxVisits:
             fsm.Runner(_cfg(states, "loop"),
                        FakeDevice()).run(dry_run=True, max_cycles=12)
         assert not [r for r in caplog.records if "max_visits" in r.message]
+
+
+class TestLivesUnderGate:
+    """The Mailbox sweep drains the whole list, so how long that list was cannot
+    be recovered afterwards — the count has to come from the Lives-tab badge read
+    before the drain (remember_lives_waiting). This gate spends it.
+
+    Measured 2026-08-20: home envelope 55 vs Lives tab 53 vs Rewards 4 on one
+    frame, i.e. the home badge counts other tabs too, which is why the count is
+    read from inside the Mailbox and why an unread count must not be guessed at.
+    """
+
+    @staticmethod
+    def _seed(monkeypatch, waiting):
+        """Leave lives_waiting where remember_lives_waiting would have.
+
+        Patching Actor itself with a factory breaks the engine — it reads
+        Actor.UNSURE off the class — so hook __init__ instead.
+        """
+        orig_init = fsm.Actor.__init__
+
+        def init(self, *a, **k):
+            orig_init(self, *a, **k)
+            self.lives_waiting = waiting
+
+        monkeypatch.setattr(fsm.Actor, "__init__", init)
+
+    def _states(self):
+        return {
+            "gate": {
+                "lives_under": {"count": 30},
+                "on_match": [{"type": "goto", "state": "few"}],
+                "on_absent": [{"type": "goto", "state": "many"}],
+            },
+            # Each branch taps a distinct y so the taps say which one ran: a
+            # `stop` returns before the engine counts the state, so the visits
+            # dict cannot tell them apart.
+            "few": {"detect": "few.png",
+                    "on_match": [{"type": "tap_xy", "x": 1, "y": 111},
+                                 {"type": "stop"}]},
+            "many": {"detect": "many.png",
+                     "on_match": [{"type": "tap_xy", "x": 1, "y": 222},
+                                  {"type": "stop"}]},
+        }
+
+    def _run(self, monkeypatch, waiting):
+        _patch_find(monkeypatch, {"few.png", "many.png"})
+        self._seed(monkeypatch, waiting)
+        taps = []
+        dev = FakeDevice()
+        dev.shell = lambda *a: (taps.append(a), "")[1]
+        fsm.Runner(_cfg(self._states(), "gate"), dev).run(max_cycles=6)
+        # Taps carry the Actor's humanization jitter (Gaussian, clipped at 8px),
+        # so match by distance, not by string: an exact compare reads every tap
+        # as neither branch.
+        ys = [int(a[-1]) for a in taps if len(a) >= 4 and a[0] == "input"]
+        hit = ("few" if any(abs(y - 111) <= 12 for y in ys)
+               else "many" if any(abs(y - 222) <= 12 for y in ys)
+               else "none")
+        return {hit: 1}
+
+    def test_a_short_list_takes_the_send_life_branch(self, monkeypatch, grabs):
+        visits = self._run(monkeypatch, 12)
+        assert "few" in visits and "many" not in visits, visits
+
+    def test_a_long_list_goes_straight_back(self, monkeypatch, grabs):
+        visits = self._run(monkeypatch, 53)
+        assert "many" in visits and "few" not in visits, visits
+
+    def test_the_boundary_counts_as_long(self, monkeypatch, grabs):
+        """"fewer than 30" is strict: exactly 30 is the long branch."""
+        visits = self._run(monkeypatch, 30)
+        assert "many" in visits and "few" not in visits, visits
+
+    def test_an_unread_count_takes_the_cheap_branch(self, monkeypatch, grabs):
+        """None is "cannot decide". The other branch costs a Send-Life pass over
+        7 Episodes, so it must never run off a failed read."""
+        visits = self._run(monkeypatch, None)
+        assert "many" in visits and "few" not in visits, visits
+
+    def test_the_gate_spends_the_count(self, monkeypatch, grabs):
+        """A second gate pass must not re-decide from a sweep already acted on:
+        the count belongs to a list that has since been drained."""
+        _patch_find(monkeypatch, {"back.png", "done.png"})
+        self._seed(monkeypatch, 12)
+        states = {
+            "gate": {
+                "lives_under": {"count": 30},
+                "on_match": [{"type": "goto", "state": "back"}],
+                "on_absent": [{"type": "goto", "state": "done"}],
+            },
+            "back": {"detect": "back.png", "on_match": [{"type": "goto", "state": "gate"}]},
+            "done": {"detect": "done.png", "on_match": [{"type": "stop"}]},
+        }
+        states["done"]["on_match"] = [{"type": "tap_xy", "x": 1, "y": 222},
+                                      {"type": "stop"}]
+        taps = []
+        dev = FakeDevice()
+        dev.shell = lambda *a: (taps.append(a), "")[1]
+        visits = fsm.Runner(_cfg(states, "gate"), dev).run(max_cycles=8)
+        # Pass 1: 12 < 30 -> back -> gate. Pass 2: the count is spent, so the
+        # gate falls to on_absent and reaches `done` instead of looping forever.
+        assert visits.get("gate", 0) >= 2, visits
+        ys = [int(a[-1]) for a in taps if len(a) >= 4 and a[0] == "input"]
+        assert any(abs(y - 222) <= 12 for y in ys), (
+            f"never reached `done` — the count was not consumed: {visits} {ys}")
+
+    def test_a_gate_that_decides_nothing_is_refused(self, monkeypatch, grabs):
+        """Same rule visits_under carries: a gate spends no capture, so an exit
+        back to itself spins without ever looking at the screen."""
+        self._seed(monkeypatch, 12)
+        states = {
+            "gate": {
+                "lives_under": {"count": 30},
+                "on_match": [{"type": "goto", "state": "gate"}],
+                "on_absent": [{"type": "goto", "state": "gate"}],
+            },
+        }
+        with pytest.raises(fsm.FsmError):
+            fsm.Runner(_cfg(states, "gate"), FakeDevice()).run(max_cycles=5)
+
+    def test_the_gate_spends_no_capture(self, monkeypatch, grabs):
+        """It decides from a remembered number, not from the screen."""
+        before = grabs["n"]
+        self._run(monkeypatch, 12)
+        # one grab for `few`'s own detect, none for the gate itself
+        assert grabs["n"] - before == 1, grabs["n"] - before
+
+
+class TestLivesCountCrossesTheErrandBoundary:
+    """The count is read INSIDE the sweep (a run_config errand) and spent by a
+    gate in the PARENT config, so it has to survive the boundary between them.
+
+    _run_errand drives the errand with its own Runner, which builds its own
+    Actor — so an action that only writes to `self.lives_waiting` writes to the
+    child's copy and the parent's gate sees None forever, i.e. the "few waiting"
+    branch could never run. Caught by reading _run_errand rather than live,
+    because the branch it disables is the one that needs mail waiting to observe.
+    """
+
+    def test_a_count_read_inside_an_errand_reaches_the_parent(self, monkeypatch, grabs):
+        _patch_find(monkeypatch, {"child.png", "few.png", "many.png"})
+
+        child_states = {
+            "child": {"detect": "child.png",
+                      "on_match": [{"type": "remember_lives_waiting"},
+                                   {"type": "stop"}]},
+        }
+        parent_states = {
+            "sweep": {"detect": "child.png",
+                      "on_match": [{"type": "run_config", "config": "child.json"},
+                                   {"type": "goto", "state": "gate"}]},
+            "gate": {"lives_under": {"count": 30},
+                     "on_match": [{"type": "tap_xy", "x": 1, "y": 111},
+                                  {"type": "stop"}],
+                     "on_absent": [{"type": "tap_xy", "x": 1, "y": 222},
+                                   {"type": "stop"}]},
+        }
+        monkeypatch.setattr(fsm, "load_config",
+                            lambda path: _cfg(child_states, "child"))
+        monkeypatch.setattr(fsm.time, "sleep", lambda s: None)
+        # The child's own read succeeds; only the hand-back is under test.
+        import src.mailbox as mbmod
+        monkeypatch.setattr(mbmod, "read_lives_waiting", lambda *a, **k: 12)
+
+        taps = []
+        dev = FakeDevice()
+        dev.shell = lambda *a: (taps.append(a), "")[1]
+        fsm.Runner(_cfg(parent_states, "sweep"), dev).run(max_cycles=10)
+        ys = [int(a[-1]) for a in taps if len(a) >= 4 and a[0] == "input"]
+        assert any(abs(y - 111) <= 12 for y in ys), (
+            f"the parent gate never saw the count the errand read: taps {ys} — "
+            f"12 < 30 should have taken the Send-Life branch")
+
+    def test_a_failed_read_inside_an_errand_does_not_erase_the_parents_count(
+            self, monkeypatch, grabs):
+        """Only a real count is handed back. The gate's own consume is what
+        clears it, so an errand that could not read must not clear it on the
+        gate's behalf — that would turn "read 12, then a later sweep saw an empty
+        list" into "unread", i.e. the wrong branch on a count that WAS read."""
+        _patch_find(monkeypatch, {"child.png", "gate.png"})
+        child_states = {
+            "child": {"detect": "child.png",
+                      "on_match": [{"type": "remember_lives_waiting"},
+                                   {"type": "stop"}]},
+        }
+        parent_states = {
+            "sweep": {"detect": "child.png",
+                      "on_match": [{"type": "run_config", "config": "child.json"},
+                                   {"type": "goto", "state": "gate"}]},
+            "gate": {"lives_under": {"count": 30},
+                     "on_match": [{"type": "tap_xy", "x": 1, "y": 111},
+                                  {"type": "stop"}],
+                     "on_absent": [{"type": "tap_xy", "x": 1, "y": 222},
+                                   {"type": "stop"}]},
+        }
+        monkeypatch.setattr(fsm, "load_config",
+                            lambda path: _cfg(child_states, "child"))
+        monkeypatch.setattr(fsm.time, "sleep", lambda s: None)
+        import src.mailbox as mbmod
+        monkeypatch.setattr(mbmod, "read_lives_waiting", lambda *a, **k: None)
+
+        # The parent already holds a count (an earlier sweep read it).
+        orig_init = fsm.Actor.__init__
+        parents = []
+
+        def init(self, *a, **k):
+            orig_init(self, *a, **k)
+            if not parents:            # the parent's Actor is built first
+                self.lives_waiting = 12
+                parents.append(self)
+
+        monkeypatch.setattr(fsm.Actor, "__init__", init)
+
+        taps = []
+        dev = FakeDevice()
+        dev.shell = lambda *a: (taps.append(a), "")[1]
+        fsm.Runner(_cfg(parent_states, "sweep"), dev).run(max_cycles=10)
+        ys = [int(a[-1]) for a in taps if len(a) >= 4 and a[0] == "input"]
+        assert any(abs(y - 111) <= 12 for y in ys), (
+            f"an unreadable errand wiped the count the parent already had: {ys}")

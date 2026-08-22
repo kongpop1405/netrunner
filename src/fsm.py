@@ -223,6 +223,41 @@ class Runner:
 
                 spec = self.cfg.states[state]
                 try:
+                    gate = spec.get("lives_under")
+                    if gate is not None:
+                        # Same shape as visits_under below and for the same
+                        # reason — a decision state must not spend a capture —
+                        # but it decides from what the Mailbox's own Lives badge
+                        # said before the sweep drained it, which is the quantity
+                        # the user's rule is written in. The count is consumed
+                        # here so a later gate cannot re-decide from a sweep that
+                        # has already been acted on; an unread count (None) takes
+                        # on_absent, i.e. skip the expensive Episode pass rather
+                        # than run it off a guess.
+                        got = self.actor.lives_waiting
+                        self.actor.lives_waiting = None
+                        want = int(gate["count"])
+                        under = got is not None and got < want
+                        branch = "on_match" if under else "on_absent"
+                        log.info("lives_under: %s waiting /%d -> %s",
+                                 "unread" if got is None else got, want, branch)
+                        actions = spec.get(branch, [])
+                        if isinstance(actions, dict):
+                            actions = [actions]
+                        next_state, _ = self._run_actions(actions, None, state)
+                        if next_state == _STOP:
+                            return total_visits
+                        if next_state is None or next_state == state:
+                            raise FsmError(
+                                f"state '{state}': lives_under '{branch}' must "
+                                f"go somewhere else — a gate that decides nothing "
+                                f"spins on itself without ever grabbing a frame")
+                        total_visits[state] = total_visits.get(state, 0) + 1
+                        state = next_state
+                        entered_at = time.monotonic()
+                        state_entered_at = entered_at
+                        frame = None
+                        continue
                     gate = spec.get("visits_under")
                     if gate is not None:
                         # A pure decision state: it asks how far the last errand
@@ -637,11 +672,21 @@ class Runner:
             self._run_errand_per_episode(path, sub_cfg, episodes)
             return {}
         log.info("errand: starting %s (start_state=%s)", path, sub_cfg.start_state)
-        visits = Runner(sub_cfg, self.device).run(dry_run=self._errand_dry_run)
+        sub = Runner(sub_cfg, self.device)
+        visits = sub.run(dry_run=self._errand_dry_run)
         log.info("errand: %s finished, resuming", path)
         # Kept so a `visits_under` gate in the calling config can branch on what
         # this errand actually got through — see Runner.run's total_visits.
         self._last_errand_visits = visits
+        # A count read inside the errand belongs to the parent's gate: the sweep
+        # is the only place the Mailbox's Lives badge is on screen, and the
+        # decision it feeds lives in the config that called the sweep. The
+        # sub-Runner has its own Actor, so without this hand-back the parent's
+        # `lives_under` gate reads None every time and its "few waiting" branch
+        # is dead code.
+        counted = getattr(getattr(sub, "actor", None), "lives_waiting", None)
+        if counted is not None:
+            self.actor.lives_waiting = counted
         return visits
 
     def _run_errand_per_episode(self, path: str, sub_cfg: Config,

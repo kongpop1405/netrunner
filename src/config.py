@@ -17,6 +17,7 @@ _ACTION_TYPES = {
     # config naming the action (see src/act.py "shared game actions").
     "relay_tap", "faststart_tap", "close_popup", "restart_app", "solve_cards",
     "require_foreground", "remember_episode", "restore_episode",
+    "remember_lives_waiting",
     "run_config",
 }
 _REQUIRED_FIELDS = {
@@ -36,6 +37,7 @@ _REQUIRED_FIELDS = {
     "close_popup": {"x", "y"},
     "restart_app": set(),
     "require_foreground": set(),
+    "remember_lives_waiting": set(),
     "remember_episode": set(),
     "restore_episode": set(),
     "solve_cards": {"cells", "cell_size", "bail_goto"},
@@ -322,6 +324,38 @@ def unreachable_states(states: dict[str, dict], start_state: str,
 
 
 def _validate_state(sname: str, state: dict, names: set[str], tdir: Path) -> None:
+    gate = state.get("lives_under")
+    if gate is not None:
+        if state.get("detect") is not None:
+            raise ConfigError(
+                f"state '{sname}': 'lives_under' decides from the Lives count a "
+                f"'remember_lives_waiting' read earlier, never from the screen — "
+                f"it must not also 'detect'")
+        if state.get("visits_under") is not None:
+            raise ConfigError(
+                f"state '{sname}': 'lives_under' and 'visits_under' both decide "
+                f"this state's exit — keep one")
+        if not isinstance(gate, dict):
+            raise ConfigError(
+                f"state '{sname}': 'lives_under' must be an object with 'count'")
+        count = gate.get("count")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+            raise ConfigError(
+                f"state '{sname}': 'lives_under' 'count' must be a positive integer")
+        for branch in ("on_match", "on_absent"):
+            acts = state.get(branch)
+            if not acts:
+                raise ConfigError(
+                    f"state '{sname}': 'lives_under' needs both 'on_match' "
+                    f"(fewer than {count} were waiting) and 'on_absent' (at least "
+                    f"{count}, or the count could not be read) — a gate with one "
+                    f"exit decides nothing")
+            if isinstance(acts, dict):
+                acts = [acts]
+            for a in acts:
+                _validate_action(sname, a, names, tdir)
+        return
+
     gate = state.get("visits_under")
     if gate is not None:
         if state.get("detect") is not None:
