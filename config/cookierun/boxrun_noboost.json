@@ -204,9 +204,8 @@
       "timeout_ms": 5700000
     },
     "mailbox_count_gate": {
-      "_note": "Decides whether Send-Life runs, from what the mailbox sweep just got through rather than from the screen. confirm_loop caps at 30 (max_visits), so 30 means the list was long and still had more waiting — collect and get back to farming. Fewer than 30 means the sweep drained the list, so there is idle heart-wait time worth spending on sending Lives across every Episode. Reached only from check_heart, immediately after the sweep, so _last_errand_visits still holds that sweep's counts.",
-      "visits_under": {
-        "state": "confirm_loop",
+      "_note": "Decides whether the Send-Life pass runs, from the Lives badge the sweep read before it started draining (remember_lives_waiting in sendlife_mailbox's mailbox_base) rather than from how many confirms the sweep got through. REWRITTEN 2026-08-20 (user: two branches, \"เลือกทำอย่างใดอย่างหนึ่ง\"): the old gate counted confirm_loop visits against the sweep's own 30-confirm cap, so \"30\" meant \"the cap stopped it\" and mail was deliberately left behind. The cap is gone — every sweep now drains the list — so the count has to come from the badge instead.\n\nFewer than 30 were waiting: little mail, so the idle heart-wait is worth spending on Lives across every Episode, and a second sweep after it collects whatever those sends brought back before farming resumes.\n30 or more (or the badge could not be read): the first sweep already drained a long list, so go straight back to farming — no Episode pass, no second sweep. An unread badge takes this branch on purpose: skipping the pass costs one cycle of Lives, guessing at it costs several minutes of Episode switching.",
+      "lives_under": {
         "count": 30
       },
       "on_match": [
@@ -222,6 +221,14 @@
             6,
             7
           ]
+        },
+        {
+          "type": "wait",
+          "ms": 1500
+        },
+        {
+          "type": "run_config",
+          "config": "config/cookierun/sendlife_mailbox.json"
         },
         {
           "type": "wait",
