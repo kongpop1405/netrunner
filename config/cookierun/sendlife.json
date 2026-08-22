@@ -318,8 +318,8 @@
       "timeout_ms": 5000
     },
     "exit_to_home": {
-      "_note": "Leaves the Friends panel before handing control back. The panel has no X: Android BACK closes it, which is how a human does it. detect is home_marker, so each step is a wait-for-home rather than a tap-and-hope — on_match means home is really there and the errand can end. Three bounded attempts rather than a self-loop: pressing BACK on home itself raises the game's own 'Exit the game?' dialog, so this must never press it forever. ADDED 2026-08-19: scroll_retry_5 used to `stop` outright, ending the errand with the panel still over home. The caller then switches Episodes, and switch_episode taps the Episode button at (1280,175) straight into the panel — caught live 09:02-09:05: Episode 1 finished, all six switches failed with 'Episode Map did not open', the restore failed too, and the farm loop ran against an Episode nobody chose until the watchdog fired at 1100s.",
-      "detect": "home/home_marker.png",
+      "_note": "Leaves the Friends panel before handing control back. The panel has no X: Android BACK closes it, which is how a human does it. detect is home_marker, so each step is a wait-for-home rather than a tap-and-hope — on_match means home is really there and the errand can end. Three bounded attempts rather than a self-loop: pressing BACK on home itself raises the game's own 'Exit the game?' dialog, so this must never press it forever. ADDED 2026-08-19: scroll_retry_5 used to `stop` outright, ending the errand with the panel still over home. The caller then switches Episodes, and switch_episode taps the Episode button at (1280,175) straight into the panel — caught live 09:02-09:05: Episode 1 finished, all six switches failed with 'Episode Map did not open', the restore failed too, and the farm loop ran against an Episode nobody chose until the watchdog fired at 1100s.\n\nMARKER FIXED 2026-08-20: this waited on home/home_marker.png, which has the words \"Episode 1\" cropped inside it — measured against a real home frame with Episode 2 selected it scores 0.431 (absent) while home/home_play_marker.png scores 1.000. Live that day, three cycles running, Send-Life reached Episodes 1 and 2 and then failed every switch to 3-7 with \"Episode Map did not open\", plus the restore of the original Episode: on Episode 1 this chain matched and stopped with 0 BACK presses and the next switch worked on the first tap; on Episode 2 it matched nothing, pressed BACK three times, and handed control back on whatever screen that left. The farm configs moved to the Play! marker earlier (see coinrun.json on why the Episode-banner marker \"silently broke\"); these errands were missed.",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "stop"
@@ -345,8 +345,8 @@
       "timeout_ms": 8000
     },
     "exit_to_home_2": {
-      "_note": "Second BACK press — see exit_to_home.",
-      "detect": "home/home_marker.png",
+      "_note": "Second BACK press — see exit_to_home.\n\nMARKER FIXED 2026-08-20: this waited on home/home_marker.png, which has the words \"Episode 1\" cropped inside it — measured against a real home frame with Episode 2 selected it scores 0.431 (absent) while home/home_play_marker.png scores 1.000. Live that day, three cycles running, Send-Life reached Episodes 1 and 2 and then failed every switch to 3-7 with \"Episode Map did not open\", plus the restore of the original Episode: on Episode 1 this chain matched and stopped with 0 BACK presses and the next switch worked on the first tap; on Episode 2 it matched nothing, pressed BACK three times, and handed control back on whatever screen that left. The farm configs moved to the Play! marker earlier (see coinrun.json on why the Episode-banner marker \"silently broke\"); these errands were missed.",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "stop"
@@ -372,8 +372,8 @@
       "timeout_ms": 8000
     },
     "exit_to_home_3": {
-      "_note": "Third and last BACK press — see exit_to_home. Stops rather than pressing a fourth time: the caller re-reads the Episode before switching and refuses to switch blind when it cannot, which is the safe outcome.",
-      "detect": "home/home_marker.png",
+      "_note": "Third and last BACK press — see exit_to_home. Hands the result of its own BACK press to exit_to_home_verify instead of stopping on it unchecked. The old note claimed the caller re-reads the Episode and refuses to switch blind — it does not: _run_errand_per_episode reads the Episode once, before the loop, and switch_episode's own home guard uses the Play! marker, which matched while this chain's episode-bound one did not. So an unchecked stop here was exactly the blind switch the note said could not happen.\n\nMARKER FIXED 2026-08-20: this waited on home/home_marker.png, which has the words \"Episode 1\" cropped inside it — measured against a real home frame with Episode 2 selected it scores 0.431 (absent) while home/home_play_marker.png scores 1.000. Live that day, three cycles running, Send-Life reached Episodes 1 and 2 and then failed every switch to 3-7 with \"Episode Map did not open\", plus the restore of the original Episode: on Episode 1 this chain matched and stopped with 0 BACK presses and the next switch worked on the first tap; on Episode 2 it matched nothing, pressed BACK three times, and handed control back on whatever screen that left. The farm configs moved to the Play! marker earlier (see coinrun.json on why the Episode-banner marker \"silently broke\"); these errands were missed.",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "stop"
@@ -391,6 +391,46 @@
             1000
           ]
         },
+        {
+          "type": "goto",
+          "state": "exit_dismiss_exitgame"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "exit_dismiss_exitgame": {
+      "_note": "Clears the game's own \"Exit the game?\" dialog, which this chain's own BACK presses raise: the first BACK closes the Friends panel and lands on home, and every press after that is a BACK on home, which is what opens it (exit_to_home says so in its note — nothing acted on it until now). Snapped live 2026-08-20 09:13:55 on the frame where \"Episode Map did not open\" fired: the dialog was centred over home while home/home_play_marker.png still scored 1.000 through it (Play! is bottom-right, the dialog is centred, nothing overlaps), so switch_episode's wait-for-home guard passed and it tapped the Episode button into the modal three times. Episodes 3-7 failed that way three cycles running, and the restore of the original Episode with them.\n\nCancel at (727,685), NEVER Confirm at (1188,684) — Confirm closes the game. Both centres measured off that frame by colour blob (grey pill vs green pill). close_popup rather than a bare tap so the marker clearing is verified; absent means some other BACK already took it away.",
+      "detect": "home/exitgame_marker.png",
+      "on_match": [
+        {
+          "type": "close_popup",
+          "x": 727,
+          "y": 685,
+          "verify": "home/exitgame_marker.png",
+          "settle_ms": 1200
+        },
+        {
+          "type": "goto",
+          "state": "exit_to_home_verify"
+        }
+      ],
+      "on_absent": [
+        {
+          "type": "goto",
+          "state": "exit_to_home_verify"
+        }
+      ],
+      "timeout_ms": 8000
+    },
+    "exit_to_home_verify": {
+      "_note": "Final look after the third BACK. Reached only when home was not seen after three presses, which before 2026-08-20 meant the chain stopped on an unknown screen and the caller tapped the Episode button into it (Episodes 3-7 all failed \"Episode Map did not open\", three cycles running). Home here -> stop clean. Still not home -> stop anyway, because a fourth BACK on home raises the game's own \"Exit the game?\" dialog and pressing more is how that gets hit; the difference is that the caller's own home guard now decides, and this state's absent branch is the one log line that says the exit chain gave up.\n\nReached after exit_dismiss_exitgame 2026-08-20, so \"still not home\" here means the Exit dialog was not what was in the way — a genuinely unknown screen. Stopping is still right: the caller's switch_episode has its own home guard and refuses to switch when it cannot see home, and this state's absent branch is the log line that says the exit chain gave up.",
+      "detect": "home/home_play_marker.png",
+      "on_match": [
+        {
+          "type": "stop"
+        }
+      ],
+      "on_absent": [
         {
           "type": "stop"
         }
@@ -487,8 +527,8 @@
       "timeout_ms": 8000
     },
     "recover_unknown": {
-      "_note": "Watchdog recovery entry (src/fsm.py no_progress_goto), mirroring the bot configs. Reached when no progress state has been touched for no_progress_s OR when enough consecutive polls matched nothing that the screen cannot be one this config knows — see _BLIND_LAP_CYCLES. Home visible means there is nothing to recover, so rejoin at start_state; otherwise escalate to the restart, because a screen we cannot identify has no close button we can aim at. FOREGROUND CHECK ADDED 2026-08-19: on_absent now asks whether the game still owns the screen before walking the probe chain. Every state in that chain matches a game screen, so a screen that is not the game defeats all of them at once — caught live 19:01-19:11 when LDPlayer's own store (com.android.ld.appstore) opened over the running game: the bot jumped into a storefront for ten minutes, this recovery pass ran and could not help, and only the second watchdog fire would have cycled the app. require_foreground is a no-op when the game is in front, so the fire that recovers on its own (one of the two seen that day) still does.",
-      "detect": "home/home_marker.png",
+      "_note": "Watchdog recovery entry (src/fsm.py no_progress_goto), mirroring the bot configs. Reached when no progress state has been touched for no_progress_s OR when enough consecutive polls matched nothing that the screen cannot be one this config knows — see _BLIND_LAP_CYCLES. Home visible means there is nothing to recover, so rejoin at start_state; otherwise escalate to the restart, because a screen we cannot identify has no close button we can aim at. FOREGROUND CHECK ADDED 2026-08-19: on_absent now asks whether the game still owns the screen before walking the probe chain. Every state in that chain matches a game screen, so a screen that is not the game defeats all of them at once — caught live 19:01-19:11 when LDPlayer's own store (com.android.ld.appstore) opened over the running game: the bot jumped into a storefront for ten minutes, this recovery pass ran and could not help, and only the second watchdog fire would have cycled the app. require_foreground is a no-op when the game is in front, so the fire that recovers on its own (one of the two seen that day) still does.\n\nMARKER FIXED 2026-08-20: this waited on home/home_marker.png, which has the words \"Episode 1\" cropped inside it — measured against a real home frame with Episode 2 selected it scores 0.431 (absent) while home/home_play_marker.png scores 1.000. Live that day, three cycles running, Send-Life reached Episodes 1 and 2 and then failed every switch to 3-7 with \"Episode Map did not open\", plus the restore of the original Episode: on Episode 1 this chain matched and stopped with 0 BACK presses and the next switch worked on the first tap; on Episode 2 it matched nothing, pressed BACK three times, and handed control back on whatever screen that left. The farm configs moved to the Play! marker earlier (see coinrun.json on why the Episode-banner marker \"silently broke\"); these errands were missed.",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
@@ -507,8 +547,8 @@
       "timeout_ms": 8000
     },
     "recover_unknown_restart": {
-      "_note": "Expensive half, and the one that always works. A screen with no marker has no button to aim at, so cycle the process instead: restart_app -> recover_login re-auths -> start_state. An errand loses nothing by restarting — unlike the farm loop it has no run in flight to forfeit.",
-      "detect": "home/home_marker.png",
+      "_note": "Expensive half, and the one that always works. A screen with no marker has no button to aim at, so cycle the process instead: restart_app -> recover_login re-auths -> start_state. An errand loses nothing by restarting — unlike the farm loop it has no run in flight to forfeit.\n\nMARKER FIXED 2026-08-20: this waited on home/home_marker.png, which has the words \"Episode 1\" cropped inside it — measured against a real home frame with Episode 2 selected it scores 0.431 (absent) while home/home_play_marker.png scores 1.000. Live that day, three cycles running, Send-Life reached Episodes 1 and 2 and then failed every switch to 3-7 with \"Episode Map did not open\", plus the restore of the original Episode: on Episode 1 this chain matched and stopped with 0 BACK presses and the next switch worked on the first tap; on Episode 2 it matched nothing, pressed BACK three times, and handed control back on whatever screen that left. The farm configs moved to the Play! marker earlier (see coinrun.json on why the Episode-banner marker \"silently broke\"); these errands were missed.",
+      "detect": "home/home_play_marker.png",
       "on_match": [
         {
           "type": "goto",
