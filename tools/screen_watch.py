@@ -36,6 +36,15 @@ from src.perceive import TemplateStore, find  # noqa: E402
 IDLE_SCREENS = {
     "boxrun/heart_empty.png": 1800,      # heart regen is a long, correct wait
     "home/home_play_marker.png": 600,    # sitting on home between games
+    # Send-Life re-opens the SAME dialog for each friend in turn, so the glass
+    # barely changes while the bot is working at full speed — only the friend's
+    # name and portrait differ, which an 8x8 aHash cannot see. Reported stuck
+    # 263s on 2026-08-21 while the log showed scan -> confirm_dialog ->
+    # message_sent cycling every ~5s, and it cleared itself 30s later. Measured
+    # across 46 real runs, one episode's pass lasts 10s to 6074s, so this has to
+    # tolerate a long hold; sendlife.json's own progress watchdog (180s without a
+    # state change) is what actually catches this screen genuinely hanging.
+    "mailbox/confirm_btn.png": 1800,
 }
 
 
